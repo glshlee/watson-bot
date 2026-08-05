@@ -1,4 +1,4 @@
-# Telegram Bot Advanced Project 🚀
+# Watson Bot 🚀
 
 고도화된 비동기 텔레그램 봇 프로젝트입니다. `aiogram 3.x` 프레임워크 기반으로 확장 가능하고 깔끔한 모듈화 구조를 제공합니다.
 
