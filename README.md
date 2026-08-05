@@ -1,30 +1,33 @@
 # Watson Bot 🚀
 
-고도화된 비동기 텔레그램 봇 프로젝트입니다. `aiogram 3.x` 프레임워크 기반으로 확장 가능하고 깔끔한 모듈화 구조를 제공합니다.
+Watson Bot은 개인 생산성(Todo, Memo, Schedule)을 효율적으로 관리할 수 있는 가벼운 비동기 봇 서비스입니다.
 
-## 주요 특징
-- **비동기 기반**: Python `asyncio` & `aiogram 3.x` 적용
-- **모듈화 핸들러**: 기능별 핸들러(Handlers) 분리 구조
-- **환경 변수 관리**: `.env` 파일 기반 안전한 토큰 및 구성 관리
+## 🏗️ Architecture & Key Features
 
-## 시작하기
+- **Layered Architecture (레이어 분리 설계)**:
+  - `interfaces/`: 챗봇 및 UI 입출력 레이어 (현재 텔레그램 `aiogram 3.x`, 추후 Discord/Slack 등 확장 가능)
+  - `services/`: 도메인 및 생산성 비즈니스 로직
+  - `storage/`: 저장소 레이어 (Markdown 직렬화 및 Git Sync)
+  - `domain/`: 핵심 데이터 엔티티
 
-### 1. 가상환경 구축 및 패키지 설치
-```bash
-python -m venv .venv
-source .venv/bin/activate  # Linux/macOS
-# .venv\Scripts\activate   # Windows
+- **Markdown & Git Persistence**:
+  - 생성된 모든 할 일, 메모, 일정은 상위 저장소 `life_log` (`02_personal/watson/user_{user_id}.md`) 내의 표준 GFM 마크다운 문서로 자동 저장됩니다.
+  - 변경 시 Git commit 및 push가 트리거되어 **GitHub 웹 UI** 상에서도 관리가 가능합니다.
 
-pip install -r requirements.txt
-```
+## 🚀 Quick Start
 
-### 2. 환경 변수 설정
-```bash
-cp .env.example .env
-# .env 파일에 Telegram Bot Token 입력
-```
+1. **의존성 패키지 설치**:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-### 3. 봇 실행
-```bash
-python main.py
-```
+2. **환경변수 설정 (`.env`)**:
+   ```env
+   BOT_TOKEN=your_telegram_bot_token_here
+   LIFE_LOG_PATH=/path/to/life_log
+   ```
+
+3. **실행**:
+   ```bash
+   python main.py
+   ```
