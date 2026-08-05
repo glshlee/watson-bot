@@ -1,0 +1,20 @@
+# Python virtual environment
+.venv/
+venv/
+ENV/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Configuration & secrets
+.env
+
+# IDEs
+.vscode/
+.idea/
+
+# Logs & temp
+*.log
+scratch/
