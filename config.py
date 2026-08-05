@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
+AUTHORIZED_USER_ID = os.getenv("AUTHORIZED_USER_ID", "")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 # Life log repository path
