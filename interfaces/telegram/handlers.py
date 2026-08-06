@@ -3,6 +3,7 @@ from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from services.productivity import ProductivityService
+from services.ai_agent import WatsonAIEngine
 import config
 
 router = Router()
@@ -29,7 +30,7 @@ def get_todo_keyboard(todos) -> InlineKeyboardMarkup:
         buttons.append([InlineKeyboardButton(text=f"{status_icon} {t.title}", callback_data=f"toggle:{t.id}")])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-def register_handlers(service: ProductivityService):
+def register_handlers(service: ProductivityService, ai_engine: WatsonAIEngine):
     @router.message(Command("start", "help"))
     async def cmd_start(message: Message):
         if not is_authorized(message.from_user.id):
@@ -38,14 +39,15 @@ def register_handlers(service: ProductivityService):
             return
 
         text = (
-            "🤖 **Watson Bot에 오신 것을 환영합니다!**\n\n"
-            "사용 가능한 명령어 목록:\n"
+            "🤖 **Watson AI Assistant에 오신 것을 환영합니다!**\n\n"
+            "저는 당신의 대화 상대이자 생산성 조수입니다.\n"
+            "• 자유롭게 아이디어나 질문, 잡담을 나눠보세요.\n"
+            "• 할 일이나 메모 작성을 요청하시면 자동으로 Markdown 저장소에 기록합니다.\n\n"
+            "직접 명령어 안내:\n"
             "• `/todo [할일]` - 새로운 할 일 등록\n"
-            "• `/todos` - 할 일 목록 조회 및 완료 상태 변경\n"
+            "• `/todos` - 할 일 목록 조회 및 완료 상태 토글\n"
             "• `/memo [내용]` - 메모 저장\n"
-            "• `/memos` - 전체 메모 목록 조회\n"
-            "• `/schedule [내용]` - 일정 등록\n\n"
-            "💡 *명령어 없이 일반 텍스트를 전송하면 자동으로 메모로 저장됩니다.*"
+            "• `/memos` - 전체 메모 목록 조회"
         )
         await send_safe_message(message, text)
 
@@ -112,15 +114,33 @@ def register_handlers(service: ProductivityService):
             lines.append(f"• {m.content}")
         await send_safe_message(message, "\n".join(lines))
 
-    # 일반 텍스트 입력 처리 핸들러 (커맨드가 아닌 일반 메시지는 자동 메모 저장 처리)
+    # 스마트 AI 대화 및 의도 자동 구분 처리 핸들러
     @router.message(F.text & ~F.text.startswith("/"))
     async def handle_general_text(message: Message):
         if not is_authorized(message.from_user.id):
             await message.answer("🔒 사용 권한이 없습니다.")
             return
-        content = message.text.strip()
-        memo = await service.create_memo(user_id=message.from_user.id, content=content)
-        await message.answer(f"📝 메모로 자동 저장되었습니다:\n- {memo.content}\n\n*(할 일을 추가하려면 `/todo [내용]`을 입력해 주세요)*", parse_mode="Markdown")
+
+        await message.bot.send_chat_action(chat_id=message.chat.id, action="typing")
+        
+        user_text = message.text.strip()
+        ai_res = await ai_engine.analyze_and_respond(user_text=user_text, user_id=message.from_user.id)
+        
+        action = ai_res.get("action", "chat")
+        content = ai_res.get("content", user_text)
+        reply = ai_res.get("reply", "응답을 처리했습니다.")
+
+        if action == "save_todo":
+            todo = await service.create_todo(user_id=message.from_user.id, title=content or user_text)
+            reply = f"{reply}\n\n📌 *(할 일에 자동 저장됨: {todo.title})*"
+        elif action == "save_memo":
+            memo = await service.create_memo(user_id=message.from_user.id, content=content or user_text)
+            reply = f"{reply}\n\n📝 *(메모에 자동 저장됨: {memo.content})*"
+        elif action == "save_schedule":
+            schedule = await service.create_schedule(user_id=message.from_user.id, title=content or user_text, remind_time="")
+            reply = f"{reply}\n\n📅 *(일정에 자동 저장됨: {schedule.title})*"
+
+        await send_safe_message(message, reply)
 
     # 알 수 없는 커맨드 처리 핸들러
     @router.message(F.text.startswith("/"))
