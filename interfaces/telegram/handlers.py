@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
@@ -16,12 +17,14 @@ def is_authorized(user_id: int) -> bool:
 async def send_safe_message(message: Message, text: str, reply_markup=None, parse_mode="Markdown"):
     """4000자를 초과하는 긴 메시지를 안전하게 분할 전송"""
     if len(text) <= 4000:
-        await message.answer(text, reply_markup=reply_markup, parse_mode=parse_mode)
+        return await message.answer(text, reply_markup=reply_markup, parse_mode=parse_mode)
     else:
+        last_msg = None
         for i in range(0, len(text), 4000):
             chunk = text[i:i+4000]
             current_markup = reply_markup if i + 4000 >= len(text) else None
-            await message.answer(chunk, reply_markup=current_markup, parse_mode=parse_mode)
+            last_msg = await message.answer(chunk, reply_markup=current_markup, parse_mode=parse_mode)
+        return last_msg
 
 def get_todo_keyboard(todos) -> InlineKeyboardMarkup:
     buttons = []
@@ -121,9 +124,13 @@ def register_handlers(service: ProductivityService, ai_engine: WatsonAIEngine):
             await message.answer("🔒 사용 권한이 없습니다.")
             return
 
+        # 1. 즉시 "생각 중..." 피드백 메시지 발송
+        status_msg = await message.answer("🤔 *Watson이 생각 중입니다...*", parse_mode="Markdown")
         await message.bot.send_chat_action(chat_id=message.chat.id, action="typing")
         
         user_text = message.text.strip()
+        
+        # 2. AI 처리 비동기 호출
         ai_res = await ai_engine.analyze_and_respond(user_text=user_text, user_id=message.from_user.id)
         
         action = ai_res.get("action", "chat")
@@ -140,7 +147,15 @@ def register_handlers(service: ProductivityService, ai_engine: WatsonAIEngine):
             schedule = await service.create_schedule(user_id=message.from_user.id, title=content or user_text, remind_time="")
             reply = f"{reply}\n\n📅 *(일정에 자동 저장됨: {schedule.title})*"
 
-        await send_safe_message(message, reply)
+        # 3. 피드백 메시지를 최종 결과로 수정 또는 교체 전송
+        try:
+            if len(reply) <= 4000:
+                await status_msg.edit_text(reply, parse_mode="Markdown")
+            else:
+                await status_msg.delete()
+                await send_safe_message(message, reply)
+        except Exception:
+            await send_safe_message(message, reply)
 
     # 알 수 없는 커맨드 처리 핸들러
     @router.message(F.text.startswith("/"))
