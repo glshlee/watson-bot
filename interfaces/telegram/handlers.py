@@ -1,3 +1,4 @@
+import logging
 from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
@@ -18,7 +19,6 @@ async def send_safe_message(message: Message, text: str, reply_markup=None, pars
     else:
         for i in range(0, len(text), 4000):
             chunk = text[i:i+4000]
-            # 인라인 키보드는 마지막 조각에만 부착
             current_markup = reply_markup if i + 4000 >= len(text) else None
             await message.answer(chunk, reply_markup=current_markup, parse_mode=parse_mode)
 
@@ -30,20 +30,22 @@ def get_todo_keyboard(todos) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def register_handlers(service: ProductivityService):
-    @router.message(Command("start"))
+    @router.message(Command("start", "help"))
     async def cmd_start(message: Message):
         if not is_authorized(message.from_user.id):
+            logging.warning(f"Unauthorized access attempt from user_id: {message.from_user.id}")
             await message.answer("🔒 사용 권한이 없습니다.")
             return
 
         text = (
             "🤖 **Watson Bot에 오신 것을 환영합니다!**\n\n"
-            "생산성 관리 명령어 안내:\n"
-            "• `/todo [할일]` - 새로운 할 일 추가\n"
-            "• `/todos` - 할 일 목록 확인 및 토글\n"
+            "사용 가능한 명령어 목록:\n"
+            "• `/todo [할일]` - 새로운 할 일 등록\n"
+            "• `/todos` - 할 일 목록 조회 및 완료 상태 변경\n"
             "• `/memo [내용]` - 메모 저장\n"
-            "• `/memos` - 메모 목록 확인\n"
-            "• `/schedule [내용]` - 일정 등록"
+            "• `/memos` - 전체 메모 목록 조회\n"
+            "• `/schedule [내용]` - 일정 등록\n\n"
+            "💡 *명령어 없이 일반 텍스트를 전송하면 자동으로 메모로 저장됩니다.*"
         )
         await send_safe_message(message, text)
 
@@ -109,5 +111,23 @@ def register_handlers(service: ProductivityService):
         for m in memos:
             lines.append(f"• {m.content}")
         await send_safe_message(message, "\n".join(lines))
+
+    # 일반 텍스트 입력 처리 핸들러 (커맨드가 아닌 일반 메시지는 자동 메모 저장 처리)
+    @router.message(F.text & ~F.text.startswith("/"))
+    async def handle_general_text(message: Message):
+        if not is_authorized(message.from_user.id):
+            await message.answer("🔒 사용 권한이 없습니다.")
+            return
+        content = message.text.strip()
+        memo = await service.create_memo(user_id=message.from_user.id, content=content)
+        await message.answer(f"📝 메모로 자동 저장되었습니다:\n- {memo.content}\n\n*(할 일을 추가하려면 `/todo [내용]`을 입력해 주세요)*", parse_mode="Markdown")
+
+    # 알 수 없는 커맨드 처리 핸들러
+    @router.message(F.text.startswith("/"))
+    async def handle_unknown_command(message: Message):
+        if not is_authorized(message.from_user.id):
+            await message.answer("🔒 사용 권한이 없습니다.")
+            return
+        await message.answer("❓ 알 수 없는 명령어입니다. `/start` 또는 `/help`를 입력하여 사용법을 확인하세요.", parse_mode="Markdown")
 
     return router
