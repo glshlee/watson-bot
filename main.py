@@ -10,10 +10,14 @@ logging.basicConfig(level=config.LOG_LEVEL)
 
 async def heartbeat_loop(filepath: str = "/tmp/agy_bot.heartbeat"):
     """Watchdog(Engineer Bot) 오판 방지를 위한 하트비트 파일 주기적 갱신"""
+    logging.info("Heartbeat loop task initiated...")
     while True:
         try:
+            now_ts = time.time()
             with open(filepath, "w") as f:
-                f.write(str(time.time()))
+                f.write(str(now_ts))
+                f.flush()
+            logging.info(f"Heartbeat updated timestamp: {now_ts}")
         except Exception as e:
             logging.error(f"Heartbeat update failed: {e}")
         await asyncio.sleep(30)
