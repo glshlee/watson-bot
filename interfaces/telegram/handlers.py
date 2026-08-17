@@ -43,9 +43,10 @@ def register_handlers(service: ProductivityService, ai_engine: WatsonAIEngine):
 
         text = (
             "🤖 **Watson AI Assistant에 오신 것을 환영합니다!**\n\n"
-            "저는 당신의 대화 상대이자 생산성 조수입니다.\n"
-            "• 자유롭게 아이디어나 질문, 잡담을 나눠보세요.\n"
-            "• 할 일이나 메모 작성을 요청하시면 자동으로 Markdown 저장소에 기록합니다.\n\n"
+            "저는 당신의 지속 대화 상대이자 생산성 조수입니다.\n"
+            "• 자유롭게 아이디어나 질문, 잡담을 나눠보세요. (대화 맥락이 연속 유지됩니다)\n"
+            "• 모든 대화는 GitHub `life_log` 내 Chat Log 노트에 자동 저장됩니다.\n"
+            "• 할 일이나 메모 작성을 요청하시면 Todo/Memo 저장소에도 함께 기록됩니다.\n\n"
             "직접 명령어 안내:\n"
             "• `/todo [할일]` - 새로운 할 일 등록\n"
             "• `/todos` - 할 일 목록 조회 및 완료 상태 토글\n"
@@ -117,7 +118,7 @@ def register_handlers(service: ProductivityService, ai_engine: WatsonAIEngine):
             lines.append(f"• {m.content}")
         await send_safe_message(message, "\n".join(lines))
 
-    # 스마트 AI 대화 및 의도 자동 구분 처리 핸들러
+    # 스마트 AI 대화 및 세션 연속성 + 대화 마크다운 깃 로그 자동 기록
     @router.message(F.text & ~F.text.startswith("/"))
     async def handle_general_text(message: Message):
         if not is_authorized(message.from_user.id):
@@ -125,12 +126,12 @@ def register_handlers(service: ProductivityService, ai_engine: WatsonAIEngine):
             return
 
         # 1. 즉시 "생각 중..." 피드백 메시지 발송
-        status_msg = await message.answer("🤔 *Watson이 생각 중입니다...*", parse_mode="Markdown")
+        status_msg = await message.answer("🤔 *Watson이 대화 맥락을 기억하며 답변 중입니다...*", parse_mode="Markdown")
         await message.bot.send_chat_action(chat_id=message.chat.id, action="typing")
         
         user_text = message.text.strip()
         
-        # 2. AI 처리 비동기 호출
+        # 2. AI 대화 호출 (유저별 연속 세션 유지)
         ai_res = await ai_engine.analyze_and_respond(user_text=user_text, user_id=message.from_user.id)
         
         action = ai_res.get("action", "chat")
@@ -147,7 +148,10 @@ def register_handlers(service: ProductivityService, ai_engine: WatsonAIEngine):
             schedule = await service.create_schedule(user_id=message.from_user.id, title=content or user_text, remind_time="")
             reply = f"{reply}\n\n📅 *(일정에 자동 저장됨: {schedule.title})*"
 
-        # 3. 피드백 메시지를 최종 결과로 수정 또는 교체 전송
+        # 3. 대화 내용을 life_log/02_personal/watson/chat_log_{user_id}.md 에 기록 후 Git push
+        asyncio.create_task(service.record_chat_log(user_id=message.from_user.id, user_text=user_text, watson_reply=reply))
+
+        # 4. 텔레그램 화면 출력
         try:
             if len(reply) <= 4000:
                 await status_msg.edit_text(reply, parse_mode="Markdown")

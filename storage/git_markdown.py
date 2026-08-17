@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import List, Optional
 from pathlib import Path
 import git
+import pytz
 
 from storage.base import AbstractStorageRepository
 from domain.models import TodoItem, MemoItem, ScheduleItem
@@ -25,6 +26,9 @@ class GitMarkdownStorageRepository(AbstractStorageRepository):
 
     def _get_user_filepath(self, user_id: int) -> Path:
         return self.watson_dir / f"user_{user_id}.md"
+
+    def _get_chat_log_filepath(self, user_id: int) -> Path:
+        return self.watson_dir / f"chat_log_{user_id}.md"
 
     def _commit_and_push(self, message: str):
         if not self.repo:
@@ -155,3 +159,24 @@ class GitMarkdownStorageRepository(AbstractStorageRepository):
         filepath = self._get_user_filepath(user_id)
         data = self._read_markdown(filepath)
         return data["schedules"]
+
+    async def append_chat_log(self, user_id: int, user_text: str, watson_reply: str):
+        filepath = self._get_chat_log_filepath(user_id)
+        kst = pytz.timezone('Asia/Seoul')
+        now_str = datetime.now(kst).strftime("%Y-%m-%d %H:%M:%S")
+
+        if not filepath.exists():
+            header = f"# Watson Chat History - User {user_id}\n\n"
+            filepath.write_text(header, encoding="utf-8")
+
+        log_entry = (
+            f"### 📅 {now_str}\n"
+            f"- 👤 **User**: {user_text}\n"
+            f"- 🤖 **Watson**: {watson_reply}\n\n"
+            f"---\n\n"
+        )
+
+        with open(filepath, "a", encoding="utf-8") as f:
+            f.write(log_entry)
+
+        self._commit_and_push(f"Log conversation for user {user_id}")

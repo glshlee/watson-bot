@@ -26,3 +26,6 @@ class ProductivityService:
 
     async def get_all_schedules(self, user_id: int) -> List[ScheduleItem]:
         return await self.storage.list_schedules(user_id=user_id)
+
+    async def record_chat_log(self, user_id: int, user_text: str, watson_reply: str):
+        await self.storage.append_chat_log(user_id=user_id, user_text=user_text, watson_reply=watson_reply)

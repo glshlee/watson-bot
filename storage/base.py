@@ -30,3 +30,8 @@ class AbstractStorageRepository(ABC):
     @abstractmethod
     async def list_schedules(self, user_id: int) -> List[ScheduleItem]:
         pass
+
+    @abstractmethod
+    async def append_chat_log(self, user_id: int, user_text: str, watson_reply: str):
+        """대화 기록(Chat Log)을 깃허브 마크다운 노트 파일에 추가"""
+        pass
