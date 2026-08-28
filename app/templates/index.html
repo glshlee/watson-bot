@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watson - 24/7 GitHub LifeLog AI Agent</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo">
+                <i class="fa-solid fa-brain-circuit"></i>
+                <h2>Watson <span>LifeLog</span></h2>
+            </div>
+            
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" data-tab="dashboard">
+                    <i class="fa-solid fa-chart-line"></i> 대시보드
+                </a>
+                <a href="#" class="nav-item" data-tab="calendar">
+                    <i class="fa-regular fa-calendar-days"></i> 라이프 로그 달력
+                </a>
+                <a href="#" class="nav-item" data-tab="chat">
+                    <i class="fa-solid fa-comments"></i> AI 세션 대화
+                </a>
+            </nav>
+
+            <div class="system-status">
+                <div class="status-indicator online"></div>
+                <div class="status-info">
+                    <p class="status-title">Agent 24/7 Active</p>
+                    <p class="status-sub">Git Auto-Push On</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header Bar -->
+            <header class="top-header">
+                <div class="header-title">
+                    <h1 id="page-title">개인 대시보드</h1>
+                    <p id="page-subtitle">24시간 항상 작동하는 AI 라이프 로그 에이전트</p>
+                </div>
+                <div class="user-profile">
+                    <span class="badge">GitHub Connected</span>
+                    <i class="fa-brands fa-github avatar"></i>
+                </div>
+            </header>
+
+            <!-- Dashboard View -->
+            <div id="dashboard-tab" class="tab-content active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon purple"><i class="fa-solid fa-book-journal-whills"></i></div>
+                        <div class="stat-data">
+                            <h3>이번 달 기록 수</h3>
+                            <p class="stat-value" id="log-count">12개</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon green"><i class="fa-solid fa-code-commit"></i></div>
+                        <div class="stat-data">
+                            <h3>Git Push 상태</h3>
+                            <p class="stat-value" id="git-status">정상 (Synced)</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon blue"><i class="fa-solid fa-message"></i></div>
+                        <div class="stat-data">
+                            <h3>활성 세션</h3>
+                            <p class="stat-value" id="session-count">3개</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Action & Chat Box -->
+                <div class="quick-chat-section">
+                    <div class="section-header">
+                        <h2><i class="fa-solid fa-paper-plane"></i> 빠른 라이프 로그 입력</h2>
+                        <span class="subtitle">입력한 내용이 AI에 의해 정리되어 GitHub에 커밋됩니다.</span>
+                    </div>
+
+                    <div class="chat-input-box">
+                        <textarea id="quick-input" placeholder="오늘 어떤 일이 있었나요? (예: 오늘 저녁 7시 한강에서 5km 러닝 완주함!)"></textarea>
+                        <div class="input-actions">
+                            <select id="category-select">
+                                <option value="Daily Notes & Diary">📝 Daily Notes & Diary</option>
+                                <option value="Workout & Health">🏋️ Workout & Health</option>
+                                <option value="Ideas & Thoughts">💡 Ideas & Thoughts</option>
+                            </select>
+                            <button id="send-btn" class="btn-primary">
+                                <i class="fa-solid fa-arrow-up-from-bracket"></i> 로그 저장 및 깃 푸시
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="result-toast" class="result-toast hidden">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span id="toast-msg">기록이 성공적으로 저장 및 푸시되었습니다.</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
