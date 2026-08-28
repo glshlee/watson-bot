@@ -25,12 +25,12 @@ Phase 5: 통합 QA, 24시간 서버 배포 및 자동 재시작(systemd/Docker) 
 - [x] 기술 아키텍처 ADR (`docs/adr/ADR-001-architecture-design.md`) 작성
 - [x] 로드맵 문서 (`docs/roadmap.md`) 작성
 
-### Phase 2: 코어 파이썬 백엔드 & Git 서비스
-- [ ] 파이썬 프로젝트 구조 (`app/`, `config.py`, `requirements.txt`) 세팅
-- [ ] 세션 및 대화 컨텍스트 영속성 모듈 (`app/services/session_service.py` & SQLite DB) 구현
-- [ ] Git 자동화 모듈 (`app/services/git_service.py`) 작성: pull, commit, push, conflict handling
-- [ ] AI 마크다운 파서 및 템플릿 생성기 (`app/services/agent_service.py`) 구현
-- [ ] 기본 Pytest 단위 테스트 모듈 작성 및 통과 검증
+### Phase 2: 코어 파이썬 백엔드 & Git 서비스 (Done)
+- [x] 파이썬 프로젝트 구조 (`app/`, `config.py`, `requirements.txt`) 세팅
+- [x] 세션 및 대화 컨텍스트 영속성 모듈 (`app/services/session_service.py` & SQLite DB) 구현
+- [x] Git 자동화 모듈 (`app/services/git_service.py`) 작성: pull, commit, push, conflict handling
+- [x] AI 마크다운 파서 및 템플릿 생성기 (`app/services/agent_service.py`) 구현
+- [x] 기본 Pytest 단위 테스트 모듈 작성 및 통과 검증
 
 ### Phase 3: 텔레그램 봇 연동 모듈
 - [ ] Telegram Bot API 수신 및 사용자 화이트리스트 검증 모듈 (`app/bot/telegram_bot.py`)
