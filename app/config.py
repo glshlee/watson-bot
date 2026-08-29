@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     
     # LLM Configuration (Gemini / OpenAI / Custom)
     LLM_API_KEY: str = ""
-    LLM_MODEL: str = "gemini-2.5-flash"
+    LLM_MODEL: str = "gemini-1.5-flash"
     
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
