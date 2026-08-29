@@ -10,7 +10,7 @@ from app.services.supervisor_service import SupervisorService
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
-class LogRequest(BaseModel):
+class ChatRequest(BaseModel):
     session_id: str = "web_default_session"
     message: str
     category: str = "Daily Notes & Diary"
@@ -20,8 +20,8 @@ class LogRequest(BaseModel):
 def read_root(request: Request):
     return templates.TemplateResponse(request=request, name="index.html")
 
-@router.post("/api/log")
-def create_log(payload: LogRequest, db: Session = Depends(get_db)):  # noqa: B008
+@router.post("/api/chat")
+def chat_with_agent(payload: ChatRequest, db: Session = Depends(get_db)):  # noqa: B008
     if not payload.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
@@ -34,3 +34,15 @@ def create_log(payload: LogRequest, db: Session = Depends(get_db)):  # noqa: B00
         auto_push=payload.auto_push
     )
     return result
+
+@router.get("/api/sessions")
+def get_sessions(db: Session = Depends(get_db)):  # noqa: B008
+    supervisor = SupervisorService(db=db)
+    sessions = supervisor.list_sessions()
+    return [{"id": s.id, "title": s.title, "channel": s.channel, "updated_at": s.updated_at.isoformat()} for s in sessions]
+
+@router.get("/api/sessions/{session_id}/history")
+def get_session_history(session_id: str, db: Session = Depends(get_db)):  # noqa: B008
+    supervisor = SupervisorService(db=db)
+    history = supervisor.get_session_history(session_id)
+    return {"session_id": session_id, "history": history}

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.services.agent_service import AgentService
 from app.services.git_service import GitService
+from app.services.llm_provider import LLMProvider
 from app.services.session_service import SessionService
 
 
@@ -13,6 +14,7 @@ class SupervisorService:
         self.session_service = SessionService(db)
         self.agent_service = AgentService(base_dir=base_dir)
         self.git_service = GitService(repo_path=base_dir)
+        self.llm_provider = LLMProvider()
 
     def process_user_request(
         self,
@@ -20,7 +22,7 @@ class SupervisorService:
         user_message: str,
         category: str = "Daily Notes & Diary",
         channel: str = "web",
-        auto_push: bool = True
+        auto_push: bool = True,
     ) -> dict[str, Any]:
         # 1. Session Context Retrieval
         self.session_service.get_or_create_session(session_id=session_id, channel=channel)
@@ -31,11 +33,11 @@ class SupervisorService:
         filepath = self.agent_service.append_or_update_lifelog(
             content=user_message,
             category=category,
-            date_obj=datetime.now(timezone.utc)
+            date_obj=datetime.now(timezone.utc),
         )
 
-        # 3. AI Assistant Response Generation (Mock/Rule or LLM prompt)
-        ai_response = f"기록이 정상적으로 '{filepath}'에 반영되었습니다.\n(작성 내용: {user_message})"
+        # 3. AI Assistant Response Generation (via LLM Provider / AGY)
+        ai_response = self.llm_provider.generate_response(prompt=user_message, history=history)
         self.session_service.add_message(session_id=session_id, role="assistant", content=ai_response)
 
         # 4. Git Push Execution
@@ -49,5 +51,11 @@ class SupervisorService:
             "filepath": filepath,
             "ai_response": ai_response,
             "git_pushed": push_success,
-            "history_count": len(history) + 1
+            "history": self.session_service.get_session_history(session_id=session_id)
         }
+
+    def get_session_history(self, session_id: str) -> list[dict[str, str]]:
+        return self.session_service.get_session_history(session_id=session_id)
+
+    def list_sessions(self) -> list[Any]:
+        return self.session_service.list_sessions()

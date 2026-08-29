@@ -35,6 +35,6 @@ def test_supervisor_pipeline(db_session):
 
         assert res["session_id"] == "telegram:12345"
         assert os.path.exists(res["filepath"])
-        assert "기록이 정상적으로" in res["ai_response"]
+        assert "왓슨 AI 에이전트가" in res["ai_response"]
     finally:
         shutil.rmtree(temp_dir)
