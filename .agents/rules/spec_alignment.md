@@ -11,5 +11,5 @@
 2. **추적성 매트릭스 동기화 (Traceability)**
    - 요구사항 ID(FR-01, FR-02 등)와 구현 파일(`app/services/...`) 간 1:1 연결을 `docs/requirements.md` 하단 매트릭스에 항상 유지한다.
 
-3. **자가 검증 루프 (Self-Verification)**
-   - 코드 작성 완료 후 `pytest`, `mypy .`, `ruff check .`를 직접 실행하여 단 1개의 검증 에러도 없음을 증명한다.
+3. **자가 검증 루프 (Self-Verification & Live Curl Testing)**
+   - 코드 작성 완료 후 `pytest`, `mypy .`, `ruff check .`뿐만 아니라 **실제 라이브 서버 cURL 검증 스크립트 (`./scripts/smoke_test.sh`)**를 직접 실행하여 단 1개의 500 에러나 수신 오류도 없음을 증명한다.

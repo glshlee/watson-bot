@@ -12,6 +12,7 @@
 * **의존성 설치**: `pip install -r requirements.txt` (또는 `poetry install`)
 * **개발 서버 실행**: `python app.py` (또는 `uvicorn app.main:app --reload`)
 * **단위 및 스모크 테스트**: `pytest`
+* **cURL 라이브 API 검증 (필수)**: `./scripts/smoke_test.sh` (또는 `curl -X POST "http://localhost:8000/api/chat" ...`)
 * **타입 검사 및 코드 린트**: `mypy . && ruff check .`
 
 ### 2. Multi-Agent & Skill System (.agents/)
@@ -26,11 +27,12 @@
   * `markdown-lifelog/SKILL.md`: 마크다운 템플릿 변환 및 Append/Edit 스킬
 * **하네스 진화 및 동기화 규칙 (`.agents/rules/`)**:
   * `evolution.md`: 💡 실행 실패 시 ADR 작성 및 하네스/스킬 자동 업그레이드 규칙
-  * `spec_alignment.md`: 기획-코드 100% 동기화 및 검증 루프 규칙
+  * `spec_alignment.md`: 기획-코드 100% 동기화 및 cURL 검증 루프 규칙
 
 ### 3. Hard Constraints (필수 준수 규칙)
 * **Spec-Code Alignment**: 모든 기획 문서(`docs/PRD.md`, `docs/requirements.md`, `docs/roadmap.md`)와 구현 코드는 100% 일치할 것.
-* **Self-Verification & Evolution Loop**: 코드 변경 시 `pytest`/`mypy`/`ruff` 검증 후 실패 시 `evolution.md` 지침에 따라 하네스 자가 진화 집행.
+* **Curl-Based Live Verification (필수)**: 모든 코드 수정 후 반드시 `./scripts/smoke_test.sh` cURL 테스트를 실행하여 실제 라이브 API 수신 및 500 에러 부재를 검증할 것.
+* **Self-Verification & Evolution Loop**: 코드 변경 시 `pytest`/`mypy`/`ruff` 및 cURL 검증 수행 후 실패 시 `evolution.md` 지침에 따라 하네스 자가 진화 집행.
 * **의사결정 기록 (ADR 필수)**: 유저 피드백 및 설계 변경 시 `docs/adr/ADR-xxx.md` 작성.
 
 ### 4. Progressive Disclosure (상세 문서 참조)
@@ -42,4 +44,4 @@
 ## 🛠 1. 기술 스택 & 프로젝트 구조 요약
 
 * **Tech Stack**: Python (v3.10+), FastAPI, SQLAlchemy, SQLite, Jinja2/HTML5/CSS3/JS, pytest, mypy, ruff
-* **Project Structure**: `.agents/`, `app/` (`models/`, `services/`, `routers/`, `templates/`, `static/`), `tests/`, `docs/`
+* **Project Structure**: `.agents/`, `app/` (`models/`, `services/`, `routers/`, `templates/`, `static/`), `scripts/`, `tests/`, `docs/`
