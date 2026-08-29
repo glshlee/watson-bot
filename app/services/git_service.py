@@ -18,22 +18,25 @@ class GitService:
             return False
 
         try:
-            # 1. Pull latest rebase
-            origin = self.repo.remotes[settings.GIT_REMOTE_NAME]
-            origin.pull(rebase=True)
-
-            # 2. Add file
+            # 1. Add file
             if file_path:
                 self.repo.index.add([file_path])
             else:
                 self.repo.git.add(A=True)
 
-            # 3. Commit if there are changes
+            # 2. Commit if there are changes
             if self.repo.is_dirty(untracked_files=True):
                 self.repo.index.commit(commit_message)
 
-            # 4. Push
-            origin.push()
+            # 3. Pull & Push if origin remote exists
+            if settings.GIT_REMOTE_NAME in self.repo.remotes:
+                origin = self.repo.remotes[settings.GIT_REMOTE_NAME]
+                try:
+                    origin.pull(rebase=True)
+                    origin.push()
+                except GitError as re:
+                    print(f"[Git Remote Sync Warning]: {re}")
+            
             return True
         except GitError as e:
             print(f"[GitService Error]: {e}")
