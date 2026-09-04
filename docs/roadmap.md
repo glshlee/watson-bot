@@ -37,11 +37,13 @@ Phase 5: 통합 QA, 24시간 서버 배포 및 자동 재시작(systemd/Docker) 
 - [ ] 텍스트/이미지 메시지 ➔ AI 에이전트 연동 ➔ Git Push 자동 연동
 - [ ] 텔레그램 명령어 (`/start`, `/log`, `/status`, `/help`) 파싱 구현
 
-### Phase 4: 웹 대시보드 (Watson Web Dashboard)
-- [ ] FastAPI 기반 라우터 및 HTML Jinja2/Vanilla CSS 템플릿 구성
-- [ ] 라이프 로그 캘린더 뷰 및 마크다운 랜더링 페이지 구현
-- [ ] 웹 대시보드 내 대화형 AI Agent 인터페이스 개발
-- [ ] 모바일/대형 화면 반응형 Glassmorphism UI 구현
+### Phase 4: 웹 대시보드 (Watson Web Dashboard) - ✅ 완료
+- [x] FastAPI 기반 라우터 및 HTML Jinja2/Vanilla CSS 템플릿 구성
+- [x] 라이프 로그 캘린더 뷰 및 대화 세션 조회 페이지 구현
+- [x] 웹 대시보드 내 대화형 AI Agent 콘솔 인터페이스 개발 (`POST /api/chat`)
+- [x] 모바일/대형 화면 반응형 Glassmorphism UI 구현
+- [x] AGY AI 에이전트 브릿지 및 지능형 챗봇 엔진 결합 (`ADR-003`)
+- [x] cURL 실서버 라이브 스모크 테스트 스크립트 (`scripts/smoke_test.sh`) 구축
 
 ### Phase 5: 서버 배포 및 24/7 상시가동 안정화
 - [ ] `.env.example` 및 환경변수 설정 가이드 작성

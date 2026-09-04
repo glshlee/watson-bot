@@ -52,5 +52,5 @@
 | **FR-01** | `app/services/agent_service.py` | Pytest 단위 테스트 |
 | **FR-02** | `app/services/git_service.py` | Git mock & 실제 push 테스트 |
 | **FR-03** | `app/routers/telegram_router.py` | 텔레그램 Webhook / Polling 테스트 |
-| **FR-04** | `app/routers/web_router.py` | 스모크 및 브라우저 UI 검증 |
-| **FR-05** | `app/services/session_service.py` | Pytest 대화 맥락 유지/복원 테스트 |
+| **FR-04** | `app/routers/web_router.py`, `app/templates/index.html` | `./scripts/smoke_test.sh` cURL 스모크 및 브라우저 UI 검증 |
+| **FR-05** | `app/services/session_service.py`, `app/services/llm_provider.py` | Pytest 대화 맥락 유지/복원 & Conversational AI 테스트 |
