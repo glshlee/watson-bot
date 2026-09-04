@@ -13,10 +13,11 @@
 1. **Anytime, Anywhere Access (어디서나 접근성)**
    * 모바일에서는 텔레그램 봇으로 메시지/사진/음성 메모 송신 ➔ AI가 라이프로그 정제 후 GitHub 즉시 반영.
    * PC/모바일 브라우저에서는 웹 대시보드(Watson)로 월별/일별 라이프 로그 시각화 및 AI 대화형 편집.
-2. **Seamless Git Automation (투명한 Git 자동화)**
-   * 에이전트가 MD 파일 생성/수정 완료 시 별도의 수동 명령어 없이 `git commit` & `git push` 자동 집행.
-   * 커밋 충돌 방지 및 히스토리 관리.
-3. **Structured & Beautiful Markdown (정제된 마크다운 라이프로그)**
+2. **Seamless Git Automation (투명한 Git 자동화 & 1기록 1커밋 - ADR-004)**
+   * 단순 잡담/질의는 커밋하지 않으며, 비서가 감지/제안하여 사용자가 승인했거나 직접 기록한 유의미한 라이프로그에 한해 즉시 `git commit` & `git push` 자동 집행.
+   * 다중 세션(텔레그램, 웹) 간 데이터 정합성을 위해 확정된 기록 즉시 안전하게 원격 반영.
+3. **Smart Lifelog Butler (비서형 상호작용 & 마크다운 구조화)**
+   * 수동 명령어 없이도 대화 중 운동, 미팅, 생각 등 가치 있는 일과를 비서가 감지하여 자연스럽게 기록을 제안(Proactive Suggestion).
    * 무작위 메모도 AI가 템플릿(일기, 운동 기록, 감상평, 캘린더 등)에 맞춰 일관성 있게 구조화된 MD로 작성.
 
 ---
@@ -24,10 +25,13 @@
 ## 3. 주요 기능 명세 (Key Features)
 
 ### 3.1. 🤖 AI 에이전트 코어 (Agent Core Engine)
+* **Smart Lifelog Butler & Intent Router (지능형 비서 및 의도 분리기)**:
+  * 대화 입력 시 [단순 잡담/질의], [일과 감지 및 기록 제안], [제안 승인], [직접 명령]을 자동 판별.
+  * 제안된 후보(`pending_log`)를 세션 맥락에 보관하고, 승인 시 마크다운 반영 및 Git 커밋 파이프라인 트리거.
 * **LifeLog Generator**: 입력된 메시지/데이터를 날짜별(`YYYY-MM-DD.md` 또는 `year/month/day.md`) 양식에 맞춰 변환/업데이트.
-* **Git Operations Worker**: 백그라운드에서 repository pull ➔ MD 파일 변경 ➔ commit (`feat: Add lifelog for 2026-08-02`) ➔ push 수행.
+* **Git Operations Worker**: 백그라운드에서 repository pull ➔ MD 파일 변경 ➔ commit (`docs(lifelog): [카테고리] 요약 - YYYY-MM-DD`) ➔ push 수행.
 * **Session & Context Management (다중 세션 대화 맥락 관리)**: 
-  * 세션 ID 기반 대화 히스토리 및 맥락(Context Memory) 영속적 유지.
+  * 세션 ID 기반 대화 히스토리 및 맥락(Context Memory), 임시 기록 후보(`pending_log`) 영속적 유지.
   * 동일 세션 내 이전 대화 내용 및 대상 MD 파일 상태를 AI가 인지하여 자연스러운 연속 대화 및 덧붙이기(Append/Edit) 수행.
   * 텔레그램 채널별/웹 대시보드 대화방별 멀티 세션 독립 관리.
 

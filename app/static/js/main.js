@@ -77,11 +77,29 @@ document.addEventListener("DOMContentLoaded", () => {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    // Send Message Handler
-    sendBtn.addEventListener("click", async () => {
-        const text = chatInput.value.trim();
-        if (!text) return;
+    function appendQuickActions() {
+        const actionDiv = document.createElement("div");
+        actionDiv.className = "quick-actions-container";
+        actionDiv.innerHTML = `
+            <button class="btn-quick approve" id="btn-quick-approve"><i class="fa-solid fa-check"></i> 응, 기록해줘</button>
+            <button class="btn-quick reject" id="btn-quick-reject"><i class="fa-solid fa-xmark"></i> 아니야</button>
+        `;
+        chatMessages.appendChild(actionDiv);
+        scrollToBottom();
 
+        document.getElementById("btn-quick-approve")?.addEventListener("click", () => {
+            actionDiv.remove();
+            sendTextMessage("응 좋아");
+        });
+
+        document.getElementById("btn-quick-reject")?.addEventListener("click", () => {
+            actionDiv.remove();
+            sendTextMessage("아니 괜찮아");
+        });
+    }
+
+    async function sendTextMessage(text) {
+        if (!text) return;
         appendMessage("user", text);
         chatInput.value = "";
 
@@ -102,8 +120,11 @@ document.addEventListener("DOMContentLoaded", () => {
             if (res.ok) {
                 const data = await res.json();
                 appendMessage("assistant", data.ai_response);
+                if (data.intent === "log_suggest") {
+                    appendQuickActions();
+                }
                 if (data.git_pushed) {
-                    appendMessage("assistant", `✅ [Git Push 완료] ${data.filepath} 저장됨.`);
+                    appendMessage("assistant", `✅ [Git 커밋 완료] ${data.filepath} 저장됨.`);
                 }
                 await loadSessions();
             } else {
@@ -115,6 +136,14 @@ document.addEventListener("DOMContentLoaded", () => {
         } finally {
             sendBtn.disabled = false;
             sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> 전송';
+        }
+    }
+
+    // Send Message Handler
+    sendBtn.addEventListener("click", () => {
+        const text = chatInput.value.trim();
+        if (text) {
+            sendTextMessage(text);
         }
     });
 

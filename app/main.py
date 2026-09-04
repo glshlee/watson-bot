@@ -3,11 +3,11 @@ import os
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app.db.database import Base, engine
+from app.db.database import init_db
 from app.routers import web_router
 
-# Create DB tables
-Base.metadata.create_all(bind=engine)
+# Create DB tables and migrate
+init_db()
 
 app = FastAPI(title="Watson GitHub LifeLog AI Agent", version="1.0.0")
 
