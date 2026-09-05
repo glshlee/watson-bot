@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  watson:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: watson-agent
+    restart: always
+    ports:
+      - "${PORT:-8000}:8000"
+    env_file:
+      - .env
+    volumes:
+      # 1. SQLite 세션 DB 파일 영속화
+      - ./app.db:/app/app.db
+      # 2. 마크다운 라이프로그 저장소 영속화
+      - ./lifelogs:/app/lifelogs
+      # 3. 호스트 Git 설정 및 SSH 키 안전 공유 (Git Push 자동화용)
+      - ~/.gitconfig:/root/.gitconfig:ro
+      - ~/.ssh:/root/.ssh:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/sessions"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

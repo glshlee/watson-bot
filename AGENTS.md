@@ -39,7 +39,7 @@
 
 ### 4. Progressive Disclosure (상세 문서 참조)
 * **제품 기획서 개요**: `docs/PRD.md` | **기능 요구사항**: `docs/requirements.md`
-* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-004)
+* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-005)
 
 ---
 

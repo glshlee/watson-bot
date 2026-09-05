@@ -1,0 +1,19 @@
+[Unit]
+Description=Watson 24/7 GitHub LifeLog AI Agent Service
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/watson
+EnvironmentFile=/home/ubuntu/watson/.env
+ExecStart=/home/ubuntu/watson/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5s
+
+# 표준 출력 및 에러 로깅
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
