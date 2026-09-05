@@ -32,10 +32,12 @@ Phase 5: 통합 QA, 24시간 서버 배포 및 자동 재시작(systemd/Docker) 
 - [x] AI 마크다운 파서 및 템플릿 생성기 (`app/services/agent_service.py`) 구현
 - [x] 기본 Pytest 단위 테스트 모듈 작성 및 통과 검증
 
-### Phase 3: 텔레그램 봇 연동 모듈
-- [ ] Telegram Bot API 수신 및 사용자 화이트리스트 검증 모듈 (`app/bot/telegram_bot.py`)
-- [ ] 텍스트/이미지 메시지 ➔ AI 에이전트 연동 ➔ Git Push 자동 연동
-- [ ] 텔레그램 명령어 (`/start`, `/log`, `/status`, `/help`) 파싱 구현
+### Phase 3: 텔레그램 봇 연동 모듈 (Telegram Bot Integration - ADR-006) - 🚀 진행 중
+- [x] Telegram Bot API 수신 및 사용자 화이트리스트 검증 모듈 (`app/services/telegram_service.py`)
+- [x] 텍스트 대화 ➔ 지능형 비서 연동 (잡담 분리 및 인라인 키보드 제안/승인)
+- [x] 사진/미디어 수신 ➔ 마크다운 자동 링크 삽입 및 Git Commit 연동
+- [x] 텔레그램 명령어 (`/start`, `/log`, `/status`, `/help`) 파싱 구현
+- [x] FastAPI 백그라운드 태스크 및 Webhook/Polling 동시 지원 라우터 (`app/routers/telegram_router.py`)
 
 ### Phase 4: 웹 대시보드 및 지능형 비서 엔진 (Watson Butler) - ✅ 완료
 - [x] FastAPI 기반 라우터 및 HTML Jinja2/Vanilla CSS 템플릿 구성

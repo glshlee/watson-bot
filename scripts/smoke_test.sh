@@ -77,6 +77,15 @@ else
     exit 1
 fi
 
+echo "4. Testing GET /api/telegram/status (ADR-006 Telegram Router)..."
+TG_STATUS=$(curl -s "$SERVER_URL/api/telegram/status")
+if echo "$TG_STATUS" | grep -q '"configured"'; then
+    echo "✅ GET /api/telegram/status Passed (Telegram Router Active)"
+else
+    echo "❌ GET /api/telegram/status Failed. Response: $TG_STATUS"
+    exit 1
+fi
+
 if [ "$TRAP_EXIT" = "1" ] && [ -n "$SERVER_PID" ]; then
     echo "Cleaning up temporary test server (PID: $SERVER_PID)..."
     kill "$SERVER_PID" || true
