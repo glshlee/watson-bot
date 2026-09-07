@@ -11,21 +11,36 @@
 
 ---
 
+## 📑 목차 (Table of Contents)
+
+1. [🌟 핵심 특징](#-핵심-특징-key-features)
+2. [🏗️ 시스템 아키텍처](#️-시스템-아키텍처)
+3. [📋 사전 준비 사항](#-사전-준비-사항-prerequisites)
+4. [🐳 Docker 기반 완전 설치 & 24/7 배포 가이드 (메인 매뉴얼)](#-docker-기반-완전-설치--247-배포-가이드-메인-매뉴얼)
+5. [💻 방법 2: 파이썬 가상환경 직접 실행 (개발/로컬용)](#-방법-2-파이썬-가상환경-직접-실행-개발로컬용)
+6. [📱 실전 사용 매뉴얼 (User Manual)](#-실전-사용-매뉴얼-user-manual)
+7. [📁 마크다운 라이프로그 저장 구조](#-마크다운-라이프로그-저장-구조)
+8. [🧪 테스트 및 품질 검증](#-테스트-및-품질-검증)
+9. [🛠️ 프로젝트 디렉토리 구조](#️-프로젝트-디렉토리-구조)
+10. [📄 라이선스](#-라이선스-license)
+
+---
+
 ## 🌟 핵심 특징 (Key Features)
 
 - 🧠 **지능형 비서 & 능동 제안 (Smart Butler)**
   - 단순 잡담/인사는 세션에만 보관하고 Git을 어지럽히지 않습니다.
-  - 운동, 업무, 할 일 등 기록할 가치가 있는 일과를 감지하면 비서가 먼저 **"라이프로그에 기록할까요?"**라고 인라인 버튼으로 제안합니다.
+  - 운동, 업무, 생각 등 기록할 가치가 있는 일과를 감지하면 비서가 먼저 **"라이프로그에 기록할까요?"**라고 인라인 버튼으로 제안합니다.
 - 📝 **1기록 1커밋 & 마크다운 영속화 (Git-Backed LifeLog)**
   - 사용자가 승인(`[✅ 응, 기록해줘]`)하거나 직접 명령(`/log`)한 확정된 기록만 `lifelogs/YYYY/MM/YYYY-MM-DD.md`에 카테고리별로 정돈되어 즉시 Git 커밋/푸시됩니다.
 - 📱 **모바일 텔레그램 봇 연동 (Zero-Config Mobile Bot)**
-  - 복잡한 도메인/SSL 없이 토큰만으로 즉시 구동되는 **비동기 롱 폴링(Long Polling)** 모드 지원.
-  - 비인가 접근을 원천 차단하는 **화이트리스트 보안** 및 버튼 한 번으로 기록을 확정하는 **인라인 키보드** 지원.
+  - 도메인/SSL 설정 없이 봇 토큰만으로 즉시 구동되는 **비동기 롱 폴링(Long Polling)** 모드 지원.
+  - 비인가 접근을 차단하는 **화이트리스트 보안** 및 원클릭 기록 확정 **인라인 키보드** 지원.
   - 사진과 일과 메모를 함께 전송하면 자동으로 첨부파일을 다운로드하고 마크다운에 연동.
 - 🖥️ **올인원 웹 대시보드 (Web Dashboard)**
   - 실시간 웹 채팅, 날짜/채널별 세션 기록 조회, 오늘 작성된 마크다운 라이프로그 실시간 렌더링 뷰어 제공.
-- 🐳 **24/7 원클릭 서버 배포 (Docker & Docker Compose)**
-  - Oracle Cloud, AWS, GCP, 홈 서버 등 어디서든 명령어 한 줄(`docker compose up -d`)로 24시간 무중단 가동.
+- 🐳 **24/7 원클릭 Docker 컨테이너 패키징**
+  - Oracle Cloud, AWS, GCP, 개인 서버 등에서 도커로 데이터 유실 없이 24시간 365일 안전하게 무중단 구동.
 
 ---
 
@@ -38,26 +53,28 @@ flowchart LR
         WEB["웹 대시보드 (브라우저)"]
     end
 
-    subgraph Server["🚀 Watson Core Engine (FastAPI)"]
+    subgraph Docker["🐳 Docker Container (watson-agent)"]
         Router["Telegram & Web Router"]
         Supervisor["Supervisor (오케스트레이터)"]
         LLM["AI Engine (Gemini 1.5 Flash / AGY)"]
-        SessionDB[("SQLite 세션 DB")]
+        SessionDB[("SQLite 세션 DB (Volume)")]
         GitWorker["Git & Markdown Service"]
     end
 
     subgraph Storage["📦 영속화 및 버전 관리"]
-        LocalMD["lifelogs/*.md 마크다운"]
+        LocalMD["lifelogs/*.md 마크다운 (Volume)"]
+        HostSSH["~/.ssh & ~/.gitconfig (Volume)"]
         GitHub["GitHub 원격 저장소 (Remote Repo)"]
     end
 
     TG <-->|Long Polling| Router
-    WEB <-->|HTTP / REST| Router
+    WEB <-->|HTTP / REST (포트 8000)| Router
     Router --> Supervisor
     Supervisor <--> LLM
     Supervisor <--> SessionDB
     Supervisor -->|승인 시 1기록 1커밋| GitWorker
     GitWorker --> LocalMD
+    GitWorker -.->|인증 참조| HostSSH
     GitWorker -->|git push| GitHub
 ```
 
@@ -65,45 +82,79 @@ flowchart LR
 
 ## 📋 사전 준비 사항 (Prerequisites)
 
-1. **Google Gemini API Key**:
-   - [Google AI Studio](https://aistudio.google.com/)에서 무료로 발급받을 수 있습니다.
-2. **텔레그램 봇 토큰 (모바일 사용 시)**:
-   - 텔레그램 앱에서 [@BotFather](https://t.me/botfather)를 검색하고 `/newbot` 명령어로 봇을 생성하여 토큰을 발급받습니다.
-   - 자신의 Chat ID 확인: [@userinfobot](https://t.me/userinfobot)에게 아무 메시지를 보내 `Id` 숫자를 확인합니다.
-3. **GitHub SSH Deploy Key (원격 저장소 자동 푸시용)**:
-   - 서버에서 GitHub로 마크다운을 자동 푸시하기 위해 저장소 쓰기 권한이 필요합니다.
+1. **Google Gemini API Key (무료)**:
+   - [Google AI Studio](https://aistudio.google.com/)에서 무료로 즉시 발급받을 수 있습니다.
+2. **텔레그램 봇 토큰 및 본인 Chat ID (모바일 연동 시)**:
+   - 텔레그램 앱에서 [@BotFather](https://t.me/botfather) 검색 ➔ `/newbot` 입력하여 봇 생성 후 **HTTP API Token** 복사.
+   - 본인의 Chat ID 확인: [@userinfobot](https://t.me/userinfobot)에게 아무 메시지를 보내 `Id` 번호 확인.
+3. **GitHub SSH 배포 키(Deploy Key)**:
+   - 원격 서버 컨테이너가 라이프로그를 자동으로 커밋하고 푸시할 수 있도록 저장소 쓰기 권한이 필요합니다.
 
 ---
 
-## 🚀 빠른 시작 가이드 (Quick Start)
+## 🐳 Docker 기반 완전 설치 & 24/7 배포 가이드 (메인 매뉴얼)
 
-### 1. 저장소 복제 (Clone)
+본 서비스는 **Docker Compose를 통한 24/7 상시 가동**을 기본 표준으로 설계되었습니다.  
+새로운 원격 서버(Oracle Cloud, Ubuntu, Debian 등)에 처음 설치할 때 아래 순서대로 진행하시면 5분 안에 배포가 완료됩니다.
+
+### Step 1. 서버에 Docker 및 Docker Compose 설치
+
+이미 서버에 도커가 설치되어 있다면 **Step 2**로 넘어가세요.  
+설치되어 있지 않다면 공식 원클릭 스크립트로 즉시 설치합니다:
 
 ```bash
+# 1. 도커 공식 자동 설치 스크립트 실행
+curl -fsSL https://get.docker.com | sh
+
+# 2. 현재 로그인 계정에 도커 실행 권한 부여 (sudo 없이 실행하기 위함)
+sudo usermod -aG docker $USER
+
+# 3. 변경된 그룹 권한 적용을 위해 재로그인 (또는 터미널 재접속)
+newgrp docker
+
+# 4. 설치 확인 (Docker 및 Docker Compose 버전 출력 확인)
+docker --version
+docker compose version
+```
+
+---
+
+### Step 2. Watson 저장소 클론
+
+```bash
+# 왓슨 프로젝트 복제 및 디렉토리 이동
 git clone https://github.com/glshlee/watson-bot.git
 cd watson-bot
 ```
 
-### 2. 환경 변수 설정 (`.env`)
+---
 
-제공된 템플릿(`.env.example`)을 복사하여 `.env` 파일을 생성하고 필요한 값을 입력합니다:
+### Step 3. 환경 변수 설정 (`.env`)
+
+템플릿(`.env.example`)을 복사하여 `.env` 파일을 생성하고 본인의 키 값을 입력합니다:
 
 ```bash
 cp .env.example .env
-nano .env  # 또는 원하는 에디터로 편집
+nano .env  # 또는 vim .env
 ```
 
+**.env 파일 필수 설정 내용:**
+
 ```ini
-# [필수] Gemini API 키
-GEMINI_API_KEY=your_actual_gemini_api_key_here
+# ==============================================================================
+# Watson 24/7 AI Agent Environment Configuration
+# ==============================================================================
+
+# [필수] Google Gemini API 키
+GEMINI_API_KEY=AIzaSy...실제_발급받은_키_입력...
 LLM_MODEL=gemini-1.5-flash
 
-# [선택] 텔레그램 봇 설정 (모바일 연동 시 필수)
+# [선택] 텔레그램 봇 연동 (모바일에서 사용하려면 반드시 입력)
 TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
-# 본인의 텔레그램 Chat ID (쉼표로 구분하여 여러 명 등록 가능, 비워두면 모두 허용)
+# 본인의 텔레그램 Chat ID (인가된 사용자만 봇을 사용할 수 있도록 제한, 쉼표로 다중 등록 가능)
 TELEGRAM_ALLOWED_CHAT_IDS=123456789
 
-# [서버 기본 설정]
+# [서버 및 Git 기본 설정]
 PORT=8000
 ENV=production
 DATABASE_URL=sqlite:///./app.db
@@ -114,31 +165,100 @@ GIT_BRANCH=main
 
 ---
 
-## 🐳 실행 방법 (Run Manual)
+### Step 4. 원격 서버 GitHub SSH 배포 키(Deploy Key) 설정 (필수 ⭐)
 
-### 방법 1: Docker Compose로 실행 (권장 ⭐ 24/7 상시 가동)
-
-도커가 설치된 원격 서버나 로컬에서 가장 안정적으로 24시간 가동하는 방법입니다:
+왓슨 도커 컨테이너는 호스트 서버의 `~/.ssh` 키를 안전하게 마운트하여 마크다운 기록 발생 시 GitHub로 자동 `git push`합니다.  
+서버에서 SSH 키를 1회 생성하고 GitHub에 등록해야 합니다:
 
 ```bash
-# 1. 백그라운드 빌드 및 실행
-docker compose up -d --build
+# 1. 서버 호스트에서 SSH 키 생성 (엔터 3번 입력)
+ssh-keygen -t ed25519 -C "watson-agent" -f ~/.ssh/id_ed25519 -N ""
 
-# 2. 실행 상태 확인
-docker compose ps
-
-# 3. 실시간 로그 확인
-docker compose logs -f
+# 2. 생성된 공개키 내용 복사
+cat ~/.ssh/id_ed25519.pub
 ```
 
-* **서버 중지**: `docker compose down`
-* **웹 대시보드 접속**: 브라우저에서 `http://localhost:8000` (원격 서버는 `http://[서버IP]:8000`)
+1. 웹 브라우저에서 본인의 GitHub 저장소 (`https://github.com/glshlee/watson-bot`) 접속
+2. **Settings** ➔ **Deploy keys** ➔ **Add deploy key** 클릭
+3. **Title**: `Watson Server Key` 입력
+4. **Key**: 터미널에서 복사한 `ssh-ed25519 AAAA...` 공개키 붙여넣기
+5. ⚠️ **"Allow write access" (쓰기 권한 허용) 체크박스를 반드시 체크**한 후 **Add key** 클릭
+6. 서버 터미널로 돌아와 저장소 원격 주소를 SSH 주소로 변경:
+   ```bash
+   git remote set-url origin git@github.com:glshlee/watson-bot.git
+
+   # SSH 연결 및 인증 확인 (성공 시 Hi glshlee/watson-bot! 안내 메시지 출력)
+   ssh -T git@github.com
+   ```
 
 ---
 
-### 방법 2: 파이썬 로컬 환경에서 직접 실행 (개발 및 테스트용)
+### Step 5. Docker Compose로 24/7 무중단 백그라운드 구동
 
-파이썬 가상환경을 생성하여 직접 실행할 수도 있습니다:
+이제 모든 준비가 끝났습니다! 도커 컨테이너를 빌드하고 실행합니다:
+
+```bash
+# 컨테이너 빌드 및 백그라운드 구동
+docker compose up -d --build
+```
+
+**실행 상태 및 로그 확인:**
+
+```bash
+# 1. 실행 중인 컨테이너 상태 확인 (STATUS가 Up인지 확인)
+docker compose ps
+
+# 2. 실시간 로그 스트리밍 확인 (Ctrl + C 로 빠져나올 수 있음)
+docker compose logs -f
+```
+
+로그에 다음과 같이 출력되면 정상 가동 중입니다:
+```text
+watson-agent | INFO:watson.main:🚀 Starting Watson Telegram Bot Polling task in background...
+watson-agent | INFO: Application startup complete.
+watson-agent | INFO: Uvicorn running on http://0.0.0.0:8000
+```
+
+> **💾 데이터 보존 안내 (Docker Volumes):**  
+> `docker-compose.yml` 설정에 의해 세션 DB(`app.db`)와 마크다운 파일(`lifelogs/`)이 호스트 디렉토리에 실시간 영속화됩니다. 컨테이너를 종료하거나 재빌드해도 데이터가 절대 유실되지 않습니다.
+
+---
+
+### Step 6. 오라클 클라우드(OCI) 등 외부 방화벽 포트(8000) 개방
+
+웹 대시보드(`http://[서버IP]:8000`)에 외부에서 접속하려면 서버 인스턴스의 8000번 포트를 열어주어야 합니다:
+
+1. **오라클 클라우드 웹 콘솔 설정**:
+   - 인스턴스 ➔ 연결된 **Virtual Cloud Network (VCN)** 클릭 ➔ **Security Lists** 클릭
+   - **Ingress Rules** ➔ **Add Ingress Rules**
+   - Source CIDR: `0.0.0.0/0`, IP Protocol: `TCP`, Destination Port Range: `8000` 추가
+2. **리눅스 OS 내부 방화벽(iptables) 허용**:
+   ```bash
+   sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 8000 -j ACCEPT
+   sudo netfilter-persistent save  # 설정 영구 저장
+   ```
+
+---
+
+### Step 7. 유용한 Docker 관리 명령어
+
+```bash
+# 컨테이너 중지
+docker compose down
+
+# 컨테이너 재시작
+docker compose restart
+
+# 코드 업데이트 후 재배포 (Git 최신 코드 수신 및 무중단 재빌드)
+git pull origin main
+docker compose up -d --build
+```
+
+---
+
+## 💻 방법 2: 파이썬 가상환경 직접 실행 (개발/로컬용)
+
+Docker 없이 개발용 PC나 로컬 환경에서 테스트할 때 사용하는 방법입니다:
 
 ```bash
 # 1. 가상환경 생성 및 활성화 (Python 3.10 이상)
@@ -148,30 +268,14 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 # 2. 의존성 패키지 설치
 pip install -r requirements.txt
 
-# 3. 개발 서버 실행
+# 3. 환경 변수 파일 생성 (.env)
+cp .env.example .env
+# .env 파일에 GEMINI_API_KEY, TELEGRAM_BOT_TOKEN 등 입력
+
+# 4. 서버 실행
 python app.py
 # 또는 uvicorn app.main:app --reload --port 8000
 ```
-
----
-
-## 🔑 GitHub SSH 배포 키(Deploy Key) 설정 (원격 서버 필수)
-
-왓슨이 원격 서버에서 기록을 작성한 후 GitHub로 자동 `git push`할 수 있도록 1회 설정이 필요합니다:
-
-1. **서버에서 SSH 키 생성**:
-   ```bash
-   ssh-keygen -t ed25519 -C "watson-agent" -f ~/.ssh/id_ed25519 -N ""
-   cat ~/.ssh/id_ed25519.pub
-   ```
-2. **GitHub 저장소에 배포 키 등록**:
-   - GitHub 저장소 (`watson-bot`) ➔ **Settings** ➔ **Deploy keys** ➔ **Add deploy key**
-   - 위에서 출력된 공개키 붙여넣기
-   - **`Allow write access` (쓰기 권한 허용) 체크박스를 반드시 체크**하고 저장!
-3. **저장소 원격 주소를 SSH로 설정**:
-   ```bash
-   git remote set-url origin git@github.com:glshlee/watson-bot.git
-   ```
 
 ---
 
@@ -179,7 +283,7 @@ python app.py
 
 ### 1. 모바일 텔레그램 봇으로 사용하기
 
-왓슨 봇과의 대화방에서 일상 속 생각이나 일과를 편하게 남기세요:
+스마트폰 텔레그램 앱에서 왓슨 봇에게 편안하게 말을 걸어보세요:
 
 | 상황 | 사용자 입력 예시 | 왓슨 AI 반응 및 동작 |
 | :--- | :--- | :--- |
@@ -194,12 +298,11 @@ python app.py
 
 ### 2. 웹 대시보드 사용하기
 
-웹 브라우저를 통해 시각적으로 라이프로그를 검토하고 대화할 수 있습니다:
+브라우저(`http://localhost:8000` 또는 `http://[서버-공인-IP]:8000`)로 접속하여 시각적으로 라이프로그를 검토하고 대화할 수 있습니다:
 
-1. **브라우저 접속**: `http://localhost:8000`
-2. **좌측 사이드바**: 날짜별/채널별(`web`, `telegram:xxxxx`) 대화 세션 히스토리 목록 탐색.
-3. **중앙 채팅창**: 왓슨과 실시간 대화 및 라이프로그 제안 승인/반려.
-4. **우측 뷰어**: 오늘 날짜의 마크다운 라이프로그 실시간 렌더링 확인.
+1. **좌측 사이드바**: 날짜별/채널별(`web`, `telegram:xxxxx`) 대화 세션 히스토리 목록 탐색.
+2. **중앙 채팅창**: 왓슨과 실시간 대화 및 라이프로그 제안 승인/반려.
+3. **우측 뷰어**: 오늘 날짜의 마크다운 라이프로그 실시간 렌더링 확인.
 
 ---
 
