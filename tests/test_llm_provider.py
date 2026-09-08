@@ -51,3 +51,16 @@ def test_llm_provider_repo_push():
     res_pushup = provider.analyze_and_respond("오늘 헬스장에서 푸시업 100개 완료")
     assert res_pushup.intent == "log_suggest"
     assert res_pushup.category == "Workout & Health"
+
+
+def test_llm_provider_conversational_directive_resolution():
+    provider = LLMProvider()
+    history = [
+        {"role": "user", "content": "오늘은 내가 카카오페이에 처음 왔을 때 나의 버디였던 고든이 퇴사하는 날이야. 고마웠는데 아쉽네."},
+        {"role": "assistant", "content": "첫 버디의 퇴사라니 참 섭섭하고 허전하시겠습니다."},
+    ]
+    for prompt in ["응 오늘 로그에 기록해줘", "응 로그에 기록해줘", "오늘 로그에 기록해줘", "이 내용 오늘 일기에 적어줘"]:
+        res = provider.analyze_and_respond(prompt, history=history)
+        assert res.intent == "log_explicit", f"Failed for {prompt}"
+        assert "고든이 퇴사하는 날" in res.log_content, f"Content mismatch for {prompt}: {res.log_content}"
+

@@ -183,4 +183,36 @@ def test_supervisor_repo_push_workflow(db_session):
         shutil.rmtree(temp_dir)
 
 
+def test_supervisor_pure_directive_logging_workflow(db_session):
+    temp_dir = tempfile.mkdtemp()
+    try:
+        supervisor = SupervisorService(db=db_session, base_dir=temp_dir)
+        session_id = "gordon_session"
+
+        # 1. 고든 퇴사 이야기
+        supervisor.process_user_request(
+            session_id=session_id,
+            user_message="오늘은 첫 버디였던 고든이 퇴사하는 날이야. 아쉽고 고마운 마음이 크네.",
+            channel="telegram",
+            auto_push=False,
+        )
+
+        # 2. "응 오늘 로그에 기록해줘" 지시
+        res = supervisor.process_user_request(
+            session_id=session_id,
+            user_message="응 오늘 로그에 기록해줘",
+            channel="telegram",
+            auto_push=False,
+        )
+        assert res["intent"] == "log_explicit"
+        assert res["filepath"] is not None
+        with open(res["filepath"], encoding="utf-8") as f:
+            content = f.read()
+            assert "고든이 퇴사하는 날" in content
+            assert "응 오늘 로그에" not in content
+    finally:
+        shutil.rmtree(temp_dir)
+
+
+
 

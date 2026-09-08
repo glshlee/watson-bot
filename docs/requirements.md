@@ -53,6 +53,10 @@
 - **FR-10.2**: 작업 트리에 언스테이징/수정 중인 파일이 있더라도 `autostash`를 통해 안전하게 rebase 병합 후 푸시를 집행해야 한다.
 - **FR-10.3**: AGY CLI headless 모드에서 `--dangerously-skip-permissions` 플래그를 적용하여 도구 권한 거부 오류와 엉뚱한 폴백 표출을 방지해야 한다.
 
+### FR-11: 테스트 샌드박스 격리 및 대화형 지시어 문맥 역추적 (Test Sandbox & Directive Resolution - ADR-012)
+- **FR-11.1**: 스모크 테스트 실행 시 임시 GTD 샌드박스를 사용하여 실제 사용자 데이터 저장소에 테스트 더미 데이터가 유입되지 않도록 격리해야 한다.
+- **FR-11.2**: "응 오늘 로그에 기록해줘" 등 지시어만 포함된 요청 수신 시 지시어 텍스트를 본문으로 오인하지 않고 세션 히스토리에서 직전 사연을 역추적하여 기록해야 한다.
+
 ---
 
 ## 2. 비기능 요구사항 (Non-Functional Requirements)
@@ -85,3 +89,5 @@
 | **FR-08** | `app/services/git_service.py`, `app/services/supervisor_service.py` | Pytest GTD Pull/동기화 테스트 & cURL 검증 |
 | **FR-09** | `app/services/llm_provider.py`, `app/services/supervisor_service.py` | Pytest 맥락 참조 기록 & AGY 경량화 테스트 |
 | **FR-10** | `app/services/git_service.py`, `app/services/llm_provider.py`, `app/services/supervisor_service.py` | Pytest 푸시 인텐트/실행 테스트 & cURL 검증 |
+| **FR-11** | `app/services/llm_provider.py`, `scripts/smoke_test.sh` | Pytest 지시어 역추적 테스트 & sandboxed cURL 검증 |
+

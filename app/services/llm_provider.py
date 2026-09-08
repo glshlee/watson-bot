@@ -102,27 +102,45 @@ class LLMProvider:
                 category=cat,
             )
 
-        # 2-1. 이전 대화 맥락 참조 기록 ("아까 말한 내용도 기록해줘", "방금 이야기 일기에 적어줘" 등)
-        context_ref_triggers = ["아까 말한", "아까 한", "방금 말한", "방금 한", "이전 이야기", "앞서 말한", "이전 대화", "지난 이야기", "아까 이야기", "방금 이야기", "이전 내용"]
-        record_action_triggers = ["기록해", "적어줘", "남겨줘", "올려줘", "저장해", "써줘", "일기에", "로그에"]
+        # 2-1. 이전 대화 맥락 참조 기록 ("아까 말한 내용도 기록해줘", "응 오늘 로그에 기록해줘", "방금 이야기 일기에 적어줘" 등 - ADR-010 & ADR-012)
+        record_action_triggers = ["기록해", "적어줘", "남겨줘", "올려줘", "저장해", "써줘", "일기에", "로그에", "메모해"]
+        context_ref_triggers = [
+            "아까 말한", "아까 한", "방금 말한", "방금 한", "이전 이야기", "앞서 말한", "이전 대화",
+            "지난 이야기", "아까 이야기", "방금 이야기", "이전 내용", "이 내용", "그 내용", "이 이야기", "그 이야기"
+        ]
 
-        has_context_ref = any(crt in prompt_clean for crt in context_ref_triggers) or (
+        has_explicit_context_ref = any(crt in prompt_clean for crt in context_ref_triggers) or (
             any(k in prompt_clean for k in ["아까", "방금", "이전", "앞서"]) and any(k in prompt_clean for k in ["말", "이야기", "내용"])
         )
         has_record_action = any(rat in prompt_clean for rat in record_action_triggers)
 
-        if has_context_ref and has_record_action and history:
-            # history에서 가장 최근의 유의미한 사용자 발화 역추적
+        # "응 오늘 로그에 기록해줘", "오늘 일기에 적어줘", "응 기록해줘"처럼 지시어/접두어만 있고 본문이 없는 경우 감지 (ADR-012)
+        stripped_directive = prompt_clean
+        stripped_directive = re.sub(r"^(응|어|네|예|그래|좋아|좋아요|오케이|ok|yes)\s*", "", stripped_directive, flags=re.IGNORECASE)
+        stripped_directive = re.sub(r"(오늘|오늘자|오늘의|내일|어제)?\s*(라이프\s*로그|로그|일기|다이어리|수집함|인박스)?\s*(?:에|로|을|를)?\s*", "", stripped_directive)
+        stripped_directive = re.sub(r"(기록|적어|남겨|올려|저장|써|메모)\s*(해줘|줘|주세요|부탁해|해|달라)?\s*", "", stripped_directive)
+        stripped_directive = re.sub(r"(이|그)?\s*(내용|이야기|글|것|거|말)?\s*(?:도|은|는|이|가)?\s*", "", stripped_directive)
+        is_pure_directive = has_record_action and len(stripped_directive.strip()) <= 2
+
+        if (has_explicit_context_ref or is_pure_directive) and has_record_action and history:
+            command_phrases = ["기록해", "푸시", "확인", "동기화", "pull", "push", "sync", "/", "응"]
             previous_user_msg = next(
-                (h["content"].strip() for h in reversed(history) if h.get("role") == "user" and len(h.get("content", "").strip()) > 5),
+                (
+                    h["content"].strip()
+                    for h in reversed(history)
+                    if h.get("role") == "user"
+                    and len(h.get("content", "").strip()) > 8
+                    and not any(h.get("content", "").strip().startswith(cp) for cp in command_phrases)
+                ),
                 None,
             )
             if previous_user_msg:
                 log_body = previous_user_msg
                 cat = self._detect_category(f"{prompt_clean} {log_body}")
+                snippet = log_body[:25] + "..." if len(log_body) > 25 else log_body
                 return IntentResult(
                     intent="log_explicit",
-                    ai_response=f"아까 말씀해 주신 내용과 마음을 오늘 자 라이프로그 **[{cat}]**에 소중히 기록하고 GitHub에 커밋했습니다! 🕯️📝",
+                    ai_response=f"나누어 주신 소중한 이야기('{snippet}')를 오늘 자 라이프로그 **[{cat}]**에 기록하고 GitHub에 커밋했습니다! 🕯️📝",
                     log_content=log_body,
                     category=cat,
                 )
@@ -152,7 +170,9 @@ class LLMProvider:
         if explicit_match:
             main_part = explicit_match.group(1).strip()
             extra_part = explicit_match.group(2).strip()
-            if len(main_part) > 1 and not any(w in main_part for w in ["아까", "방금", "이전"]):
+            cleaned_main = re.sub(r"^(응|어|네|예|그래|좋아|좋아요)\s*", "", main_part)
+            cleaned_main = re.sub(r"^(오늘|오늘자|라이프로그|로그|일기)?\s*(?:에|로)?\s*", "", cleaned_main).strip()
+            if len(cleaned_main) > 2 and not any(w in main_part for w in ["아까", "방금", "이전"]):
                 log_body = f"{main_part} {extra_part}".strip() if extra_part else main_part
                 cat = self._detect_category(log_body)
                 return IntentResult(
