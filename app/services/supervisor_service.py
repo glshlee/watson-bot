@@ -94,6 +94,13 @@ class SupervisorService:
             else:
                 final_response = f"⚠️ **동기화 주의**: {sync_msg}\n\n{briefing}"
 
+        elif intent_res.intent == "repo_push":
+            # (D-4) GTD 레포 원격 푸시 (ADR-011)
+            success, push_msg = self.git_service.push()
+            icon = "🚀" if success else "⚠️"
+            final_response = f"{icon} **GitHub 푸시 결과**\n{push_msg}"
+            push_success = success
+
         elif intent_res.intent == "task_briefing":
             # (D-3) GTD 일정 및 할 일 종합 브리핑 (ADR-008 & ADR-009 자동 동기화)
             self.git_service.pull()

@@ -48,6 +48,11 @@
 - **FR-09.2**: 줄바꿈이나 복합 설명문이 포함된 입력에서도 명령어를 유연하게 분리 파싱해야 한다.
 - **FR-09.3**: AI 호출 시 이전 어시스턴트의 긴 응답을 경량 요약 슬라이싱하여 AGY CLI 프롬프트 비대화를 방지하고 타임아웃 오류를 차단해야 한다.
 
+### FR-10: 결정론적 Git 원격 푸시 및 AGY Headless 무중단 실행 (Repo Push - ADR-011)
+- **FR-10.1**: 사용자의 명시적 푸시 및 확인 요청("푸시해줘", "푸시도 해줘", "깃 푸시", "/push", "푸시가 안됐는데 다시 확인해줘" 등)을 감지하여 LLM 환각 응답을 차단하고 `GitService.push()`를 실행해야 한다.
+- **FR-10.2**: 작업 트리에 언스테이징/수정 중인 파일이 있더라도 `autostash`를 통해 안전하게 rebase 병합 후 푸시를 집행해야 한다.
+- **FR-10.3**: AGY CLI headless 모드에서 `--dangerously-skip-permissions` 플래그를 적용하여 도구 권한 거부 오류와 엉뚱한 폴백 표출을 방지해야 한다.
+
 ---
 
 ## 2. 비기능 요구사항 (Non-Functional Requirements)
@@ -79,3 +84,4 @@
 | **FR-07** | `app/services/agent_service.py`, `app/services/supervisor_service.py` | Pytest GTD 브리핑 테스트 & cURL 검증 |
 | **FR-08** | `app/services/git_service.py`, `app/services/supervisor_service.py` | Pytest GTD Pull/동기화 테스트 & cURL 검증 |
 | **FR-09** | `app/services/llm_provider.py`, `app/services/supervisor_service.py` | Pytest 맥락 참조 기록 & AGY 경량화 테스트 |
+| **FR-10** | `app/services/git_service.py`, `app/services/llm_provider.py`, `app/services/supervisor_service.py` | Pytest 푸시 인텐트/실행 테스트 & cURL 검증 |

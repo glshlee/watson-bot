@@ -167,4 +167,20 @@ def test_supervisor_context_aware_logging_workflow(db_session):
         shutil.rmtree(temp_dir)
 
 
+def test_supervisor_repo_push_workflow(db_session):
+    temp_dir = tempfile.mkdtemp()
+    try:
+        supervisor = SupervisorService(db=db_session, base_dir=temp_dir)
+        res_push = supervisor.process_user_request(
+            session_id="push_session",
+            user_message="푸시해줘",
+            channel="telegram",
+            auto_push=False,
+        )
+        assert res_push["intent"] == "repo_push"
+        assert "GitHub 푸시 결과" in res_push["ai_response"]
+    finally:
+        shutil.rmtree(temp_dir)
+
+
 

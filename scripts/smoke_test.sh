@@ -99,6 +99,17 @@ else
     exit 1
 fi
 
+echo "  3-7. Testing Repo Push (푸시해줘 - ADR-011)..."
+CHAT_RES7=$(curl -s -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_butler_session", "message": "푸시해줘", "auto_push": false}')
+if echo "$CHAT_RES7" | grep -q '"intent":"repo_push"'; then
+    echo "  ✅ 3-7. Repo Push Passed (intent=repo_push)"
+else
+    echo "  ❌ 3-7. Repo Push Failed. Response: $CHAT_RES7"
+    exit 1
+fi
+
 
 echo "4. Testing GET /api/telegram/status (ADR-006 Telegram Router)..."
 TG_STATUS=$(curl -s "$SERVER_URL/api/telegram/status")

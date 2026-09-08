@@ -39,3 +39,15 @@ def test_llm_provider_explicit_command():
     res = provider.analyze_and_respond("/log 내일 아침 10시 미팅 준비")
     assert res.intent == "log_explicit"
     assert "미팅 준비" in res.log_content
+
+
+def test_llm_provider_repo_push():
+    provider = LLMProvider()
+    for prompt in ["푸시해줘", "푸시도 해줘", "푸시가 안됐는데 다시 확인해줘", "/push", "깃 푸시"]:
+        res = provider.analyze_and_respond(prompt)
+        assert res.intent == "repo_push", f"Failed for {prompt}"
+
+    # "푸시업"은 운동 제안으로 가야 함
+    res_pushup = provider.analyze_and_respond("오늘 헬스장에서 푸시업 100개 완료")
+    assert res_pushup.intent == "log_suggest"
+    assert res_pushup.category == "Workout & Health"

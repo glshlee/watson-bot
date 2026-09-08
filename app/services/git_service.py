@@ -56,14 +56,19 @@ class GitService:
                     if settings.GIT_REMOTE_NAME in self.repo.remotes
                     else self.repo.remotes[0].name
                 )
-                remote = self.repo.remotes[remote_name]
+                branch = self.repo.active_branch.name
+                # (3-1) Pull with rebase & autostash to handle untracked/unstaged changes safely
                 try:
-                    branch = self.repo.active_branch.name
-                    remote.pull(branch, rebase=True)
-                    remote.push(branch)
+                    self.repo.git.pull(remote_name, branch, rebase=True, autostash=True)
+                except (GitError, TypeError, OSError) as pe:
+                    logger.warning(f"[Git Remote Pull Warning in sync]: {pe}")
+
+                # (3-2) Push to remote
+                try:
+                    self.repo.git.push(remote_name, branch)
                     logger.info(f"Pushed branch '{branch}' to remote '{remote_name}' in {self.repo_path}")
-                except (GitError, TypeError) as re:
-                    logger.warning(f"[Git Remote Sync Warning]: {re}")
+                except (GitError, TypeError, OSError) as psh_err:
+                    logger.error(f"[Git Remote Push Error in sync]: {psh_err}")
 
             return True
         except GitError as e:
@@ -97,4 +102,47 @@ class GitService:
         except (GitError, TypeError) as e:
             logger.warning(f"[GitService Pull Warning]: {e}")
             return False, f"Git 동기화 중 오류 발생: {e}"
+
+    def push(self) -> tuple[bool, str]:
+        """
+        원격 저장소(GitHub)로 로컬 커밋들을 안전하게 푸시합니다 (ADR-011).
+        푸시 전 autostash를 적용한 pull로 원격 변경사항을 통합한 후 푸시합니다.
+        """
+        if not self.repo:
+            return False, f"지정된 디렉토리({self.repo_path})가 Git 저장소가 아닙니다."
+        if not self.repo.remotes:
+            return False, "연결된 원격 저장소(remote)가 없습니다."
+
+        try:
+            remote_name = (
+                settings.GIT_REMOTE_NAME
+                if settings.GIT_REMOTE_NAME in self.repo.remotes
+                else self.repo.remotes[0].name
+            )
+            branch = self.repo.active_branch.name
+
+            # 1. 푸시 전 원격 변경사항 안전하게 동기화 (rebase + autostash)
+            try:
+                self.repo.git.pull(remote_name, branch, rebase=True, autostash=True)
+            except (GitError, TypeError, OSError) as pe:
+                logger.warning(f"[Git Push Pre-Pull Warning]: {pe}")
+
+            # 2. 로컬과 원격 간의 푸시 대상 커밋 개수 확인
+            ahead_count = 0
+            try:
+                ahead_output = self.repo.git.rev_list("--count", f"{remote_name}/{branch}..{branch}").strip()
+                ahead_count = int(ahead_output)
+            except (GitError, ValueError):
+                ahead_count = 0
+
+            # 3. Push 실행
+            self.repo.git.push(remote_name, branch)
+            logger.info(f"Pushed branch '{branch}' to remote '{remote_name}' in {self.repo_path}")
+
+            if ahead_count > 0:
+                return True, f"원격 저장소(`{remote_name}/{branch}`)로 {ahead_count}개의 로컬 커밋을 성공적으로 푸시했습니다! 🚀📦"
+            return True, f"원격 저장소(`{remote_name}/{branch}`)와 이미 모든 커밋이 최신으로 동기화(푸시)되어 있습니다. ✅"
+        except (GitError, TypeError) as e:
+            logger.error(f"[GitService Push Error]: {e}")
+            return False, f"GitHub 푸시 중 오류 발생: {e}"
 

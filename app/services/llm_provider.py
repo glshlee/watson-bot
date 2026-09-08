@@ -164,7 +164,30 @@ class LLMProvider:
 
 
         # -------------------------------------------------------------
-        # 3. GTD 레포 원격 동기화 및 최신화 (repo_sync / repo_sync_and_briefing - ADR-009)
+        # 3. GTD 레포 원격 푸시 (repo_push - ADR-011)
+        # -------------------------------------------------------------
+        is_pushup = any(w in prompt_clean.lower() for w in ["푸시업", "pushup", "push-up", "push up"])
+        is_explicit_push = prompt_clean.lower() in [
+            "/push", "push", "푸시", "푸시해", "푸시해줘", "푸시도 해줘", "푸시 부탁", "푸시 부탁해",
+            "깃 푸시", "깃 푸시해줘", "git push", "깃푸시", "푸시 확인", "푸시 확인해줘", "푸시 다시 해줘"
+        ]
+        push_action_patterns = [
+            r"(?:깃|git|원격|github|저장소|gtd|커밋|로그|내용|기록)?\s*(?:푸시|push)\s*(?:해줘|해|줘|주세요|부탁|확인|다시|진행)",
+            r"(?:푸시|push)\s*(?:가|도|를|은)?\s*(?:안\s*됐|실패|누락|확인|다시|됐어|해줘|부탁)",
+            r"(?:원격|깃허브|github)\s*(?:저장소)?(?:에|로)?\s*(?:올려줘|푸시해줘|반영해줘|보내줘)",
+        ]
+        has_push_action = any(re.search(pat, prompt_clean, re.IGNORECASE) for pat in push_action_patterns)
+
+        if not is_pushup and (is_explicit_push or has_push_action):
+            return IntentResult(
+                intent="repo_push",
+                ai_response="",
+                log_content=None,
+                category="Git",
+            )
+
+        # -------------------------------------------------------------
+        # 4. GTD 레포 원격 동기화 및 최신화 (repo_sync / repo_sync_and_briefing - ADR-009)
         # -------------------------------------------------------------
         sync_triggers = ["최신화", "동기화", "pull", "sync", "가져와", "업데이트"]
         has_sync = any(st in prompt_clean.lower() for st in sync_triggers)
@@ -309,6 +332,7 @@ class LLMProvider:
                 full_prompt = (
                     "너는 사용자의 24시간 개인 라이프로그 및 GTD AI 비서 왓슨(Watson)이다.\n"
                     "친절하고 다정하며 센스 있게 한국어로 대화해라. 이전 대화 맥락이 있다면 자연스럽게 이어가라.\n"
+                    "주의: 코드 블록 실행이나 실제 Git 명령을 시뮬레이션하지 말고, 사용자와의 진솔하고 따뜻한 대화 및 조언에 집중하라.\n"
                     "절대로 '이야기 잘 들었습니다' 같은 기계적이고 판에 박힌 앵무새 답변을 하지 마라. "
                     "사용자의 질문이나 대화에 귀기울이고 구체적이고 도움이 되는 답변을 정성껏 제공해라.\n\n"
                 )
@@ -320,7 +344,7 @@ class LLMProvider:
                 env["PATH"] = "/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin:" + env.get("PATH", "")
 
                 res = subprocess.run(
-                    [agy_bin, "-p", full_prompt],
+                    [agy_bin, "-p", full_prompt, "--dangerously-skip-permissions"],
                     capture_output=True,
                     text=True,
                     timeout=50,
@@ -343,8 +367,12 @@ class LLMProvider:
         if any(w in prompt for w in ["날씨", "시간"]):
             return "오늘도 활기차고 좋은 하루 보내시길 바랍니다! 궁금한 점이 있으시거나 나누고 싶은 이야기가 있다면 언제든 말씀해 주세요. ☀️"
 
-        # 이전 대화가 진행 중일 때 맥락을 인지하는 폴백 (ADR-010)
+        # 이전 대화가 진행 중일 때 맥락을 인지하는 폴백 (ADR-010 & ADR-011)
         if history and len(history) > 0:
+            if any(k in prompt for k in ["푸시", "커밋", "동기화", "확인", "깃", "오류", "에러", "실행", "명령"]):
+                return (
+                    "요청하신 작업 상태를 확인하고 있습니다. `/status`, `/sync`, `/push` 명령어로 저장소 상태를 직접 점검 및 실행하실 수 있습니다. 🤖"
+                )
             return (
                 "말씀해 주신 깊은 마음과 생각 잘 헤아리고 있습니다. 곁에서 언제나 든든한 버팀목이 되어 드릴 테니, "
                 "필요하신 점이나 덧붙이고 싶은 일과가 있다면 편하게 이어서 말씀해 주세요. 🕯️"

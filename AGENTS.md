@@ -37,13 +37,14 @@
 * **GTD 지능형 브리핑 & AGY CLI 자동 감지 (ADR-008)**: 할 일/일정 정리 요청 시 연결된 GTD 저장소에서 데일리 로그 및 Next Actions를 종합 브리핑하며, Linux 서버 환경에서도 AGY 바이너리를 동적 탐색하여 살아있는 비서 대화를 제공할 것.
 * **GTD 원격 동기화 & 온디맨드 최신화 (ADR-009)**: "gtd 최신화", "레포 최신화", "/sync" 요청 시 원격 GitHub로부터 git pull(--autostash)을 수행하고, 브리핑 요청 시에도 최신 상태를 자동 반영하여 다중 기기 환경의 일관성을 보장할 것.
 * **대화 맥락 참조 기록 & 고탄력 AI (ADR-010)**: "아까 말한 내용 기록해줘" 등 이전 대화 참조 시 히스토리 역추적으로 원문을 추출해 즉시 기록하고, AGY 프롬프트 경량 요약 및 50초 타임아웃으로 맥락 단절을 방지할 것.
+* **결정론적 원격 푸시 & Headless 무중단 실행 (ADR-011)**: "푸시해줘", "/push" 등 푸시 명령 시 LLM 환각을 차단하고 백엔드 Git Push를 실행하며, autostash로 병합 충돌 방지 및 AGY headless 권한 오류를 원천 차단할 것.
 * **Explicit User Commit Trigger Only (에이전트 코드 커밋 수칙)**: 코드 수정 및 기능 구현 후 Git 커밋(`git commit`)은 에이전트가 임의로 자동 실행하지 않으며, 오직 **사용자가 명시적으로 "커밋해" 지시를 내렸을 때만** 수행할 것.
 * **Curl-Based Live Verification (필수)**: 모든 코드 수정 후 반드시 `./scripts/smoke_test.sh` cURL 테스트를 실행하여 실제 라이브 API 수신 및 500 에러 부재를 검증할 것.
 * **Self-Verification & Evolution Loop**: 코드 변경 시 `pytest`/`mypy`/`ruff` 및 cURL 검증 수행 후 실패 시 `evolution.md` 지침에 따라 하네스 자가 진화 집행.
 
 ### 4. Progressive Disclosure (상세 문서 참조)
 * **제품 기획서 개요**: `docs/PRD.md` | **기능 요구사항**: `docs/requirements.md`
-* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-010)
+* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-011)
 
 ---
 
