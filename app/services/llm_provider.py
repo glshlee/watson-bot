@@ -225,6 +225,9 @@ class LLMProvider:
 
     def _detect_category(self, text: str) -> str:
         """텍스트 내용을 분석하여 적합한 마크다운 카테고리를 추론합니다."""
+        gtd_keywords = ["할일", "할 일", "구매", "장보기", "투두", "todo", "task", "구입", "사야", "주문", "inbox", "수집함"]
+        if any(k in text.lower() for k in gtd_keywords):
+            return "GTD Inbox"
         workout_keywords = ["운동", "헬스", "러닝", "달리기", "벤치", "스쿼트", "풀업", "pt", "산책", "수영", "요가", "만보"]
         if any(k in text for k in workout_keywords):
             return "Workout & Health"

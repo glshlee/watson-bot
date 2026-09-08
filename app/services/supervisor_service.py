@@ -7,13 +7,16 @@ from app.services.agent_service import AgentService
 from app.services.git_service import GitService
 from app.services.llm_provider import LLMProvider
 from app.services.session_service import SessionService
+from app.services.settings_service import SettingsService
 
 
 class SupervisorService:
-    def __init__(self, db: Session, base_dir: str = "."):
+    def __init__(self, db: Session, base_dir: str | None = None):
         self.session_service = SessionService(db)
-        self.agent_service = AgentService(base_dir=base_dir)
-        self.git_service = GitService(repo_path=base_dir)
+        self.settings_service = SettingsService()
+        self.base_dir = base_dir or self.settings_service.get_gtd_path()
+        self.agent_service = AgentService(base_dir=self.base_dir)
+        self.git_service = GitService(repo_path=self.base_dir)
         self.llm_provider = LLMProvider()
 
     def process_user_request(
@@ -46,7 +49,7 @@ class SupervisorService:
         if intent_res.intent in ["log_confirm", "log_explicit"]:
             # (A) 승인되었거나 직접 요청된 유의미한 라이프로그 -> 마크다운 기록 & Git 커밋 (옵션 A)
             content_to_log = intent_res.log_content or user_message
-            target_cat = intent_res.category or category
+            target_cat = category if category != "Daily Notes & Diary" else (intent_res.category or category)
 
             filepath = self.agent_service.append_or_update_lifelog(
                 content=content_to_log,

@@ -86,6 +86,26 @@ else
     exit 1
 fi
 
+echo "5. Testing /api/settings/gtd-path (ADR-007 GTD Directory Isolation)..."
+GTD_STATUS=$(curl -s "$SERVER_URL/api/settings/gtd-path")
+if echo "$GTD_STATUS" | grep -q '"gtd_path"'; then
+    echo "  ✅ 5-1. GET /api/settings/gtd-path Passed"
+else
+    echo "  ❌ 5-1. GET /api/settings/gtd-path Failed. Response: $GTD_STATUS"
+    exit 1
+fi
+
+# Test updating GTD path
+POST_GTD_RES=$(curl -s -X POST "$SERVER_URL/api/settings/gtd-path" \
+  -H "Content-Type: application/json" \
+  -d '{"path": "/home/ubuntu/workspace/life_log", "create_if_missing": false}')
+if echo "$POST_GTD_RES" | grep -q '"success":true'; then
+    echo "  ✅ 5-2. POST /api/settings/gtd-path Passed (Connected to life_log repo)"
+else
+    echo "  ❌ 5-2. POST /api/settings/gtd-path Failed. Response: $POST_GTD_RES"
+    exit 1
+fi
+
 if [ "$TRAP_EXIT" = "1" ] && [ -n "$SERVER_PID" ]; then
     echo "Cleaning up temporary test server (PID: $SERVER_PID)..."
     kill "$SERVER_PID" || true

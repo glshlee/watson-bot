@@ -1,7 +1,10 @@
 __pycache__/
 *.pyc
 venv/
-.env
+.env*
 *.db
 lifelogs/
 .pytest_cache/
+config/*.json
+!config/gtd_config.json.example
+

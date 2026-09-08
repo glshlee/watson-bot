@@ -29,6 +29,11 @@
 - **FR-05.3**: 텔레그램(유저/대화방 단위) 및 웹 대시보드(대화방 생성/전환 단위)에서 멀티 세션을 독립적으로 조회/전환할 수 있어야 한다.
 - **FR-05.4 (ADR-004)**: 비서가 제안한 라이프로그 후보(`pending_log`)를 세션에 임시 보관하고, 승인/거절 인터랙션에 따라 상태를 안전하게 처리/초기화해야 한다.
 
+### FR-06: GTD 저장소 격리 및 동적 오케스트레이션 (GTD Directory Isolation & Orchestration - ADR-007)
+- **FR-06.1**: GTD/라이프로그 저장 대상 디렉토리 경로를 웹 대시보드 UI 및 REST API (`GET/POST /api/settings/gtd-path`)를 통해 동적으로 설정하고 검증할 수 있어야 한다.
+- **FR-06.2**: 설정된 GTD 디렉토리에 `.git`이 존재하는 경우 소스코드 레포가 아닌 해당 GTD 레포지토리로 독립 커밋/푸시를 집행하고, Git이 없으면 로컬 파일로만 안전하게 보관해야 한다.
+- **FR-06.3**: 대상 저장소에 기정의된 GTD 체계(`gtd/inbox.md`, `logs/daily/` 등)를 자동 감지하여 왓슨이 기존 체계를 그대로 존중하며 오케스트레이션해야 한다.
+
 ---
 
 ## 2. 비기능 요구사항 (Non-Functional Requirements)
@@ -56,3 +61,4 @@
 | **FR-03** | `app/routers/telegram_router.py` | 텔레그램 Webhook / Polling 테스트 |
 | **FR-04** | `app/routers/web_router.py`, `app/templates/index.html` | `./scripts/smoke_test.sh` cURL 스모크 및 브라우저 UI 검증 |
 | **FR-05** | `app/services/session_service.py`, `app/services/llm_provider.py` | Pytest 대화 맥락 유지/복원 & Conversational AI 테스트 |
+| **FR-06** | `app/services/settings_service.py`, `app/routers/settings_router.py` | Pytest GTD 설정/오케스트레이션 테스트 & cURL 검증 |

@@ -6,8 +6,9 @@ class Settings(BaseSettings):
     ENV: str = "development"
     DATABASE_URL: str = "sqlite:///./app.db"
     
-    # Git Configuration
+    # Git & GTD Storage Configuration
     REPO_PATH: str = "."
+    GTD_PATH: str = ""  # Dedicated external GTD/lifelog directory (ADR-007)
     GIT_REMOTE_NAME: str = "origin"
     GIT_BRANCH: str = "main"
     

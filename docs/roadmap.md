@@ -11,7 +11,9 @@ Phase 3: 텔레그램 봇 연동 & 24/7 백그라운드 봇 서비스 구현
   ↓
 Phase 4: 웹 대시보드 UI (Watson Web Interface) & 마크다운 렌더러/에디터 구축
   ↓
-Phase 5: 통합 QA, 24시간 서버 배포 및 자동 재시작(systemd/Docker) 구축
+Phase 5: 통합 QA, 24시간 서버 배포 및 자동 재시작(systemd/Docker) 구축 -> ✅ 완료
+  ↓
+Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-007) - 🚀 진행 중
 ```
 
 ---
@@ -32,7 +34,7 @@ Phase 5: 통합 QA, 24시간 서버 배포 및 자동 재시작(systemd/Docker) 
 - [x] AI 마크다운 파서 및 템플릿 생성기 (`app/services/agent_service.py`) 구현
 - [x] 기본 Pytest 단위 테스트 모듈 작성 및 통과 검증
 
-### Phase 3: 텔레그램 봇 연동 모듈 (Telegram Bot Integration - ADR-006) - 🚀 진행 중
+### Phase 3: 텔레그램 봇 연동 모듈 (Telegram Bot Integration - ADR-006) - ✅ 완료
 - [x] Telegram Bot API 수신 및 사용자 화이트리스트 검증 모듈 (`app/services/telegram_service.py`)
 - [x] 텍스트 대화 ➔ 지능형 비서 연동 (잡담 분리 및 인라인 키보드 제안/승인)
 - [x] 사진/미디어 수신 ➔ 마크다운 자동 링크 삽입 및 Git Commit 연동
@@ -49,9 +51,17 @@ Phase 5: 통합 QA, 24시간 서버 배포 및 자동 재시작(systemd/Docker) 
 - [x] 세션 상태 머신 기반 `pending_log` 후보 관리 및 승인 시 1기록 1커밋 자동 파이프라인
 - [x] cURL 실서버 라이브 스모크 테스트 스크립트 (`scripts/smoke_test.sh`) 구축
 
-### Phase 5: 서버 배포 및 24/7 상시가동 안정화 (ADR-005) - 🚀 진행 중
+### Phase 5: 서버 배포 및 24/7 상시가동 안정화 (ADR-005) - ✅ 완료
 - [x] `.env.example` 및 환경변수 설정 템플릿 작성
 - [x] 경량 멀티아키텍처 `Dockerfile` 및 `docker-compose.yml` 패키징
 - [x] SQLite DB 및 마크다운 라이프로그 볼륨 영속화 구성
 - [x] systemd 서비스 유닛 파일 (`systemd/watson.service`) 제공
 - [x] 원격 서버 배포 및 실행 가이드 문서 작성 (`docs/deployment_guide.md`)
+
+### Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-007) - 🚀 진행 중
+- [ ] GTD 작업 디렉토리 동적 설정 관리자 (`app/services/settings_service.py`) 구현
+- [ ] REST API 엔드포인트 (`GET/POST /api/settings/gtd-path`) 구현
+- [ ] 대상 저장소 내 기정의된 GTD 체계(`gtd/inbox.md`, `logs/daily/` 등) 자동 감지 및 오케스트레이션 연동
+- [ ] GTD 전용 레포지토리 독립 Git 커밋/푸시 격리 파이프라인 연동
+- [ ] 웹 대시보드 UI 상단 GTD 경로 조회 및 동적 변경 모달 인터페이스 구현
+- [ ] 단위 테스트 및 cURL 스모크 테스트 업데이트

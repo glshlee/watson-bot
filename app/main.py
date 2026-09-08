@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from app.db.database import init_db
-from app.routers import telegram_router, web_router
+from app.routers import settings_router, telegram_router, web_router
 from app.services.telegram_service import TelegramService
 
 logging.basicConfig(level=logging.INFO)
@@ -49,6 +49,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 # Include Routers
 app.include_router(web_router.router)
 app.include_router(telegram_router.router)
+app.include_router(settings_router.router)
 
 if __name__ == "__main__":
     import uvicorn

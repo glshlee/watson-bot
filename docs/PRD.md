@@ -46,12 +46,18 @@
 * **MD 라이프 로그 뷰어 & 에디터**: 렌더링된 마크다운 보기 및 실시간 수동 수정 기능.
 * **에이전트 대화창**: 웹상에서 AI 에이전트와 직접 상호작용하며 라이프 로그 추가/질의응답/재정리 요청.
 
+### 3.4. 📁 GTD 저장소 격리 및 동적 오케스트레이션 (GTD Directory Orchestration - ADR-007)
+* **저장소-엔진 관심사 분리**: 왓슨 봇 소스코드 저장소와 개인 GTD/라이프로그 데이터를 완전히 분리.
+* **동적 디렉토리 지정**: 웹 대시보드 UI 및 REST API(`GET/POST /api/settings/gtd-path`)를 통해 작업 GTD 디렉토리를 동적으로 변경/연결.
+* **외부 GTD 체계 적응 및 오케스트레이션**: 연결된 레포지토리의 GTD 구조(`gtd/inbox.md`, `logs/daily/` 등)를 자동 감지하고 수집함 및 일일 로그에 맞춰 지능적 캡처/기록 오케스트레이션 수행.
+* **독립 Git 격리**: 연결된 GTD 디렉토리가 독립 Git 레포지토리일 경우 해당 레포로만 커밋/푸시하고, 일반 디렉토리일 경우 로컬 파일로 안전하게 관리.
+
 ---
 
 ## 4. 시스템 아키텍처 개요 (System Architecture Overview)
 
 ```text
-[ 모바일 텔레그램 앱 ]      [ 모바일 / PC 웹 브라우저 ]
+[ 모바일 텔레그램 앱 ]      [ 모바일 / PC 웹 브라우저 (GTD 경로 동적 설정) ]
           │                           │
           ▼                           ▼
   [ Telegram Bot API ]     [ FastAPI Web Dashboard ]
@@ -59,14 +65,11 @@
           └─────────────┬─────────────┘
                         ▼
             [ Watson Agent Core Engine ]
-         (AI Processing & MD Template Manager)
+         (AI Intent / Multi-Session / GTD Orchestrator)
                         │
                         ▼
-            [ Git Automation Engine ]
-        (Git Pull/Commit/Push to GitHub)
-                        │
-                        ▼
-             [ GitHub Repository ]
+      [ Isolated GTD Storage / Dedicated Git Repo ]
+       (gtd/inbox.md, logs/daily/YYYY-MM-DD.md etc.)
 ```
 
 ---

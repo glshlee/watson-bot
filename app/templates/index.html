@@ -44,10 +44,36 @@
                     <p id="chat-subtitle">웹상에서 AI와 직접 대화하며 마크다운 기록 및 GitHub 자동 푸시</p>
                 </div>
                 <div class="user-profile">
+                    <div id="gtd-storage-badge" class="badge gtd-badge" title="클릭하여 GTD 작업 디렉토리 설정">
+                        <i class="fa-solid fa-folder-tree"></i> <span id="gtd-path-text">GTD: 로딩 중...</span>
+                        <button id="change-gtd-btn" class="gtd-edit-btn" title="GTD 저장소 변경"><i class="fa-solid fa-gear"></i></button>
+                    </div>
                     <span class="badge">AGY / LLM Engine</span>
                     <i class="fa-brands fa-github avatar"></i>
                 </div>
             </header>
+
+            <!-- GTD Directory Settings Modal (ADR-007) -->
+            <div id="gtd-modal" class="modal hidden">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fa-solid fa-folder-gear"></i> GTD 관리 디렉토리 설정 (ADR-007)</h3>
+                        <button id="close-gtd-modal-btn" class="close-btn">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="modal-desc">왓슨 봇 엔진과 분리하여 GTD/라이프로그를 관리할 외부 디렉토리 또는 Git 저장소 경로를 지정합니다.</p>
+                        <div class="form-group">
+                            <label for="gtd-path-input">디렉토리 경로 (절대/상대 경로):</label>
+                            <input type="text" id="gtd-path-input" placeholder="/home/ubuntu/workspace/life_log" />
+                        </div>
+                        <div id="gtd-modal-status" class="gtd-status-box"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="cancel-gtd-btn" class="btn-secondary">취소</button>
+                        <button id="save-gtd-btn" class="btn-primary">저장 및 적용</button>
+                    </div>
+                </div>
+            </div>
 
             <!-- Chat Console Area -->
             <div class="chat-console-wrapper">
@@ -66,6 +92,7 @@
                     <div class="category-bar">
                         <label><i class="fa-solid fa-tag"></i> 로그 범주:</label>
                         <select id="category-select">
+                            <option value="GTD Inbox">📥 GTD Inbox (할일/수집함)</option>
                             <option value="Daily Notes & Diary">📝 Daily Notes & Diary</option>
                             <option value="Workout & Health">🏋️ Workout & Health</option>
                             <option value="Ideas & Thoughts">💡 Ideas & Thoughts</option>

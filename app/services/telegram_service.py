@@ -11,6 +11,7 @@ from app.config import settings
 from app.db.database import SessionLocal
 from app.services.agent_service import AgentService
 from app.services.git_service import GitService
+from app.services.settings_service import SettingsService
 from app.services.supervisor_service import SupervisorService
 
 logger = logging.getLogger("watson.telegram")
@@ -196,16 +197,32 @@ class TelegramService:
             return
 
         if text.startswith("/status"):
-            git_service = GitService(repo_path=".")
+            settings_service = SettingsService()
+            gtd_status = settings_service.get_status()
+            git_service = GitService(repo_path=gtd_status["gtd_path"])
             status_text = (
                 "🤖 **Watson Agent 시스템 상태**\n\n"
                 f"• 서버 상태: 정상 가동 중 (Online 24/7)\n"
                 f"• 세션 ID: `telegram:{chat_id}`\n"
-                f"• Git 브랜치: `{settings.GIT_BRANCH}`\n"
-                f"• Git 원격 저장소: `{settings.GIT_REMOTE_NAME}`\n"
+                f"• GTD 작업 경로: `{gtd_status['gtd_path']}`\n"
+                f"• Git 격리 연동: {'✅ 전용 레포 활성' if gtd_status['is_git_repo'] else '📁 로컬 보관 전용'}\n"
                 f"• 최근 동기화 시간: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC"
             )
             await self.send_message(chat_id, status_text)
+            return
+
+        if text.startswith("/gtd"):
+            settings_service = SettingsService()
+            status = settings_service.get_status()
+            gtd_msg = (
+                "📁 **Watson GTD 저장소 상태**\n\n"
+                f"• 작업 경로: `{status['gtd_path']}`\n"
+                f"• 격리 모드: {'외부 저장소 (External)' if status['is_external'] else '로컬 봇 기본 (Default)'}\n"
+                f"• Git 버전 관리: {'✅ 활성화 (Git Active)' if status['is_git_repo'] else '📁 로컬 파일 전용 (Local Only)'}\n"
+                f"• GTD 체계 감지: `{status['structure_type']}` (Inbox: {'있음' if status['has_inbox'] else '없음'})\n\n"
+                "💡 웹 대시보드(설정)에서 GTD 작업 경로를 언제든 변경하실 수 있습니다."
+            )
+            await self.send_message(chat_id, gtd_msg)
             return
 
         # 2-2. 사진(Photo) 수신 처리
@@ -219,14 +236,23 @@ class TelegramService:
             year_str = now.strftime("%Y")
             month_str = now.strftime("%m")
             filename = f"tg_{int(now.timestamp())}_{file_id[:8]}.jpg"
-            rel_path = f"static/images/{year_str}/{month_str}/{filename}"
-            abs_path = os.path.join(settings.REPO_PATH, "app", rel_path)
+
+            settings_service = SettingsService()
+            gtd_path = settings_service.get_gtd_path()
+
+            # GTD 저장소 내 attachments 또는 web static 경로에 저장
+            if os.path.exists(os.path.join(gtd_path, "attachments")):
+                rel_path = f"attachments/{year_str}/{month_str}/{filename}"
+                abs_path = os.path.join(gtd_path, rel_path)
+            else:
+                rel_path = f"static/images/{year_str}/{month_str}/{filename}"
+                abs_path = os.path.join(settings.REPO_PATH, "app", rel_path)
 
             success = await self.download_file(file_id, abs_path)
             if success:
                 # 마크다운 라이프로그에 이미지 링크 추가
-                agent_service = AgentService(base_dir=settings.REPO_PATH)
-                git_service = GitService(repo_path=settings.REPO_PATH)
+                agent_service = AgentService(base_dir=gtd_path)
+                git_service = GitService(repo_path=gtd_path)
                 img_md = f"![{caption}](/{rel_path})\n  > {caption}"
                 filepath = agent_service.append_or_update_lifelog(
                     content=img_md,
