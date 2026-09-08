@@ -64,3 +64,20 @@ def test_llm_provider_conversational_directive_resolution():
         assert res.intent == "log_explicit", f"Failed for {prompt}"
         assert "고든이 퇴사하는 날" in res.log_content, f"Content mismatch for {prompt}: {res.log_content}"
 
+
+def test_llm_provider_dual_logging_and_task_extraction():
+    provider = LLMProvider()
+    prompt = (
+        "회사에서 리조트를 신청할 수 있거든? 와이프와 가려고 부여리조트를 신청했는데 떨어졌어. "
+        "그래서 그냥 서산쪽으로 여행을 가보려구. 용현집이라고 어죽을 파는 곳을 좋아했거든? "
+        "그래서 거기를 가보고싶고, 또간집에 나온 게국지 집에도 가보고싶대. 로그와 gtd에 기록해줘."
+    )
+    res = provider.analyze_and_respond(prompt)
+    assert res.intent == "log_dual"
+    assert res.is_dual_log is True
+    assert "로그와 gtd에" not in res.log_content
+    assert not res.log_content.endswith(".")
+    assert "서산" in res.gtd_task_content
+    assert "여행" in res.gtd_task_content
+    assert "용현집" in res.gtd_task_content
+

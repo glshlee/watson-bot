@@ -62,6 +62,12 @@
 - **FR-12.2**: UTC 입력 또는 naive datetime 입력에 관계없이 일관된 KST 변환 및 자정 경계(Midnight Boundary) 일자 처리가 보장되어야 한다.
 - **FR-12.3**: `SettingsService` 상태 조회 API를 통해 현재 활성화된 타임존 문자열을 반환해야 한다.
 
+### FR-13: 복합 의도 감지 및 GTD 태스크 정제 (Compound Intent & Task Formulation - ADR-014)
+- **FR-13.1**: "로그와 gtd에 기록해줘", "일기랑 할일에 적어줘" 등 단일 요청에서 일기 기록과 GTD 태스크 수집이 동시에 지시된 경우, 복합 인텐트(`log_dual`)로 자동 분류되어야 한다.
+- **FR-13.2**: 발화 끝의 지시어("로그와 gtd에 기록해줘") 및 불필요한 구두점을 완벽히 절삭하여 데일리 로그에 순수한 일상 서사만 기록해야 한다.
+- **FR-13.3**: 비정형 일기 텍스트에서 여행/맛집/업무 등의 실행 키워드를 추출하여 행동 지향적 태스크 포맷으로 합성하고, GTD 인박스의 적합한 섹션(`## 🧘 개인 생활 & 건강` 등)에 배치해야 한다.
+- **FR-13.4**: 데일리 로그와 GTD 인박스 두 변경 사항을 원자적(atomic)으로 Git 커밋 및 동기화해야 한다.
+
 ---
 
 
@@ -97,4 +103,5 @@
 | **FR-10** | `app/services/git_service.py`, `app/services/llm_provider.py`, `app/services/supervisor_service.py` | Pytest 푸시 인텐트/실행 테스트 & cURL 검증 |
 | **FR-11** | `app/services/llm_provider.py`, `scripts/smoke_test.sh` | Pytest 지시어 역추적 테스트 & sandboxed cURL 검증 |
 | **FR-12** | `app/config.py`, `app/services/agent_service.py` | Pytest 타임존 변환/롤오버 단위 테스트 & cURL 검증 |
+| **FR-13** | `app/services/llm_provider.py`, `app/services/agent_service.py`, `app/services/supervisor_service.py` | Pytest 듀얼 로깅/태스크 정제 단위 테스트 & cURL 검증 |
 

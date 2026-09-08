@@ -75,3 +75,32 @@ def test_timezone_date_rollover_utc_to_kst():
         assert "- [05:00] 새벽 기상 메모" in content
     finally:
         shutil.rmtree(temp_dir)
+
+
+def test_append_to_gtd_inbox_smart_section_routing():
+    temp_dir = tempfile.mkdtemp()
+    try:
+        gtd_dir = os.path.join(temp_dir, "gtd")
+        os.makedirs(gtd_dir, exist_ok=True)
+        inbox_file = os.path.join(gtd_dir, "inbox.md")
+        with open(inbox_file, "w", encoding="utf-8") as f:
+            f.write(
+                "# 📥 GTD Inbox\n\n"
+                "## 🏢 회사 업무 (01_work)\n"
+                "- [ ] 기존 업무\n\n"
+                "## 🧘 개인 생활 & 건강 (02_personal)\n"
+                "- [ ] 기존 개인 일과\n"
+            )
+
+        service = AgentService(base_dir=temp_dir)
+        service.append_to_gtd_inbox("서산 여행 계획 및 맛집 방문 (용현집, 어죽) 🚗🍲")
+
+        with open(inbox_file, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+
+        # Check that the task was inserted under personal section
+        personal_idx = next(i for i, l in enumerate(lines) if "개인 생활" in l)
+        assert "- [ ] 서산 여행 계획 및 맛집 방문 (용현집, 어죽) 🚗🍲\n" == lines[personal_idx + 1]
+    finally:
+        shutil.rmtree(temp_dir)
+

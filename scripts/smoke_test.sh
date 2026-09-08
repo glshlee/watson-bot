@@ -143,6 +143,17 @@ else
     exit 1
 fi
 
+echo "  3-8. Testing Compound Intent (로그와 GTD 동시 기록 - ADR-014)..."
+CHAT_RES8=$(curl -s -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_butler_session", "message": "주말에 서산 여행을 가보려구. 용현집 어죽 먹고 게국지도 먹고싶대. 로그와 gtd에 기록해줘.", "auto_push": false}')
+if echo "$CHAT_RES8" | grep -q '"intent":"log_dual"'; then
+    echo "  ✅ 3-8. Compound Intent Passed (intent=log_dual, Daily Log + GTD Inbox Written)"
+else
+    echo "  ❌ 3-8. Compound Intent Failed. Response: $CHAT_RES8"
+    exit 1
+fi
+
 
 echo "4. Testing GET /api/telegram/status (ADR-006 Telegram Router)..."
 TG_STATUS=$(curl -s "$SERVER_URL/api/telegram/status")

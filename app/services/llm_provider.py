@@ -13,10 +13,12 @@ logger = logging.getLogger("watson.llm")
 class IntentResult:
     """비서 에이전트의 의도 분석 및 응답 결과 데이터클래스."""
 
-    intent: str  # "chat_only", "log_suggest", "log_confirm", "log_reject", "log_explicit", "task_briefing"
+    intent: str  # "chat_only", "log_suggest", "log_confirm", "log_reject", "log_explicit", "log_dual", "task_briefing"
     ai_response: str
     log_content: str | None = None
     category: str | None = None
+    gtd_task_content: str | None = None  # GTD inbox에 등록할 액션 태스크 (ADR-014)
+    is_dual_log: bool = False  # 데일리 로그 + GTD 인박스 동시 기록 여부
 
 
 class LLMProvider:
@@ -145,23 +147,56 @@ class LLMProvider:
                     category=cat,
                 )
 
-        # 2-2. 멀티라인 및 후미 기록 명령 (e.g. "[긴 일화]\n\n이 내용 오늘 로그에 기록해줘")
-        multiline_match = re.search(
-            r"^(.*?)(?:\n+|\s+)(?:이\s*내용|이\s*이야기|이\s*글)?\s*(?:오늘\s*)?(?:라이프\s*로그에|로그에|일기에)?\s*(?:기록해줘|적어줘|남겨줘|기록해|메모해줘)\s*$",
-            prompt_clean,
-            re.DOTALL,
-        )
-        if multiline_match and len(multiline_match.group(1).strip()) > 5:
-            log_body = multiline_match.group(1).strip()
-            cat = self._detect_category(log_body)
-            return IntentResult(
-                intent="log_explicit",
-                ai_response=f"보내주신 소중한 일과와 감정을 오늘 자 라이프로그 **[{cat}]**에 즉시 기록하고 GitHub에 커밋했습니다! 📝✨",
-                log_content=log_body,
-                category=cat,
-            )
+        # 2-2. 복합 기록 지시 (데일리 로그 + GTD 인박스 동시 기록 - ADR-014)
+        # 예: "회사에서 리조트를 신청할 수 있거든? ... 로그와 gtd에 기록해줘."
+        dual_pattern = r"[\s,.]*(?:이\s*내용|이\s*이야기|이\s*글|이거|이것도)?\s*(?:오늘\s*)?(?:자\s*)?(?:데일리\s*)?(?:라이프\s*)?(?:로그\s*와|로그\s*랑|일기\s*와|일기\s*랑|다이어리\s*와|다이어리\s*랑)\s*(?:gtd\s*에?|할일\s*(?:에|에?도)?|인박스\s*에?|수집함\s*에?)\s*(?:둘\s*다|모두|함께|동시에)?\s*(?:에|로|을|를|도)?\s*(?:기록해줘|적어줘|남겨줘|넣어줘|추가해줘|올려줘|등록해줘|기록해|메모해줘)[\.\!\?\s]*$"
+        dual_reverse_pattern = r"[\s,.]*(?:이\s*내용|이\s*이야기|이\s*글|이거|이것도)?\s*(?:오늘\s*)?(?:자\s*)?(?:gtd\s*와|gtd\s*랑|할일\s*과|할일\s*이랑|인박스\s*와|인박스\s*랑)\s*(?:데일리\s*)?(?:라이프\s*)?(?:로그\s*에?|일기\s*에?|다이어리\s*에?)\s*(?:둘\s*다|모두|함께|동시에)?\s*(?:에|로|을|를|도)?\s*(?:기록해줘|적어줘|남겨줘|넣어줘|추가해줘|올려줘|등록해줘|기록해|메모해줘)[\.\!\?\s]*$"
 
-        # 2-3. 단일 문장 직접 기록 (e.g. "헬스장 1시간 운동 기록해줘. 뿌듯함")
+        dual_match = re.search(dual_pattern, prompt_clean, re.IGNORECASE) or re.search(dual_reverse_pattern, prompt_clean, re.IGNORECASE)
+        if dual_match:
+            cleaned_story = prompt_clean[:dual_match.start()].strip()
+            cleaned_story = re.sub(r"^(응|어|네|예|그래|좋아|좋아요)\s*", "", cleaned_story).strip()
+            if len(cleaned_story) > 3:
+                gtd_task = self._extract_actionable_task(cleaned_story)
+                cat = "Daily Notes & Diary"
+                return IntentResult(
+                    intent="log_dual",
+                    ai_response=(
+                        f"소중한 일상 이야기는 오늘 자 **[{cat}]**에 기록하고, "
+                        f"실행 태스크(`- [ ] {gtd_task}`)는 **GTD 수집함(inbox.md)**에 등록했습니다! 📝📥✨"
+                    ),
+                    log_content=cleaned_story,
+                    category=cat,
+                    gtd_task_content=gtd_task,
+                    is_dual_log=True,
+                )
+
+        # 2-3. 단일 후미 기록 명령 (e.g. "[긴 일화]... 오늘 로그에 기록해줘", "미팅 아젠다 정리... gtd에 추가해줘")
+        single_end_pattern = r"[\s,.]*(?:이\s*내용|이\s*이야기|이\s*글|이거|이것도)?\s*(?:오늘\s*)?(?:자\s*)?(?:데일리\s*)?(?:라이프\s*)?(?:로그|일기|다이어리|gtd|인박스|수집함|할일)?\s*(?:에|로|을|를|도)?\s*(?:기록해줘|적어줘|남겨줘|넣어줘|추가해줘|올려줘|등록해줘|기록해|메모해줘)[\.\!\?\s]*$"
+        single_end_match = re.search(single_end_pattern, prompt_clean, re.IGNORECASE)
+        if single_end_match and len(prompt_clean[:single_end_match.start()].strip()) > 3:
+            cleaned_body = prompt_clean[:single_end_match.start()].strip()
+            cleaned_body = re.sub(r"^(응|어|네|예|그래|좋아|좋아요)\s*", "", cleaned_body).strip()
+            matched_suffix = single_end_match.group(0).lower()
+
+            if any(k in matched_suffix for k in ["gtd", "인박스", "inbox", "수집함", "할일"]):
+                gtd_task = self._extract_actionable_task(cleaned_body)
+                return IntentResult(
+                    intent="log_explicit",
+                    ai_response=f"요청하신 태스크(`- [ ] {gtd_task}`)를 **GTD 수집함(inbox.md)**에 등록하고 GitHub에 커밋했습니다! 📥🚀",
+                    log_content=f"- [ ] {gtd_task}",
+                    category="GTD Inbox",
+                )
+            else:
+                cat = self._detect_category(cleaned_body)
+                return IntentResult(
+                    intent="log_explicit",
+                    ai_response=f"보내주신 소중한 일과와 감정을 오늘 자 라이프로그 **[{cat}]**에 즉시 기록하고 GitHub에 커밋했습니다! 📝✨",
+                    log_content=cleaned_body,
+                    category=cat,
+                )
+
+        # 2-4. 문장 중간 기록 지시어 처리 (e.g. "헬스장 1시간 운동 기록해줘. 뿌듯함")
         explicit_match = re.search(
             r"(.*?)(?:을|를)?\s*(?:기록해줘|일기에\s*적어줘|로그에\s*남겨줘|기록해)(.*)",
             prompt_clean,
@@ -408,7 +443,7 @@ class LLMProvider:
 
     def _detect_category(self, text: str) -> str:
         """텍스트 내용을 분석하여 적합한 마크다운 카테고리를 추론합니다."""
-        gtd_keywords = ["할일", "할 일", "구매", "장보기", "투두", "todo", "task", "구입", "사야", "주문", "inbox", "수집함"]
+        gtd_keywords = ["gtd", "할일", "할 일", "구매", "장보기", "투두", "todo", "task", "구입", "사야", "주문", "inbox", "수집함"]
         if any(k in text.lower() for k in gtd_keywords):
             return "GTD Inbox"
         workout_keywords = ["운동", "헬스", "러닝", "달리기", "벤치", "스쿼트", "풀업", "pt", "산책", "수영", "요가", "만보"]
@@ -418,4 +453,54 @@ class LLMProvider:
         if any(k in text for k in idea_keywords):
             return "Ideas & Thoughts"
         return "Daily Notes & Diary"
+
+    def _extract_actionable_task(self, text: str) -> str:
+        """
+        비정형 일상 텍스트에서 실행 가능한 GTD 액션 태스크를 간결하고 명확하게 추출합니다 (ADR-014).
+        """
+        cleaned = text.strip()
+
+        # 1. 구매 / 장보기 패턴
+        buy_match = re.search(r"([가-힣A-Za-z0-9\s,]+?)(?:을|를|도)?\s*(?:사야|구매|구입|주문|장보기|결제)", cleaned)
+        if buy_match and len(buy_match.group(1).strip()) > 1:
+            items = [w.strip() for w in re.split(r"[,랑와과\s]+", buy_match.group(1)) if len(w.strip()) > 1]
+            if items:
+                return f"{' / '.join(items[:3])} 구매 🛒"
+
+        # 2. 여행 / 나들이 / 방문 / 휴가 패턴
+        travel_match = re.search(r"([가-힣A-Za-z0-9]+(?:쪽|으로|에)?)\s*(?:여행|방문|나들이|휴가|가보려)", cleaned)
+        if travel_match:
+            raw_dest = travel_match.group(1)
+            dest = re.sub(r"(쪽으로|으로|쪽|에)$", "", raw_dest).strip()
+            spots = []
+            for word in ["용현집", "어죽", "게국지", "맛집", "식당", "카페", "리조트", "호텔", "숙소", "펜션", "또간집"]:
+                if word in cleaned and word not in spots:
+                    spots.append(word)
+            spots_str = f" ({', '.join(spots[:3])})" if spots else ""
+            if dest:
+                return f"{dest} 여행 계획 및 맛집 방문{spots_str} 🚗🍲"
+            elif spots:
+                return f"{spots[0]} 방문 및 여행 계획 🚗🍲"
+
+        # 3. 병원 / 건강 / 검진
+        health_match = re.search(r"([가-힣A-Za-z0-9\s]+?(?:병원|검진|초음파|진료|치료|재검))", cleaned)
+        if health_match:
+            h_item = health_match.group(1).strip()
+            return f"{h_item} 방문 및 확인 🏥"
+
+        # 4. 업무 / 회의 / 프로젝트 / 문서
+        work_match = re.search(r"([가-힣A-Za-z0-9\s]+?(?:회의|미팅|보고|프로젝트|기획|개발|배포|가이드라인|문서|정리))", cleaned)
+        if work_match and len(work_match.group(1).strip()) > 3:
+            w_item = work_match.group(1).strip()
+            return f"{w_item} 진행 📊"
+
+        # 5. 문장의 핵심 어절 추출
+        sentences = [s.strip() for s in re.split(r"[\n.!?]", cleaned) if len(s.strip()) > 3]
+        if sentences:
+            candidate = sentences[-1]
+            candidate = re.sub(r"(로그|gtd|일기|인박스|할일|기록|남겨|적어).*$", "", candidate).strip()
+            if len(candidate) > 4:
+                return f"{candidate} 📌"
+
+        return f"{cleaned[:25].strip()} 📌"
 

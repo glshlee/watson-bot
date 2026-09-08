@@ -46,8 +46,28 @@ class SupervisorService:
         push_success = False
 
         # 4. 의도별 분기 처리
-        if intent_res.intent in ["log_confirm", "log_explicit"]:
-            # (A) 승인되었거나 직접 요청된 유의미한 라이프로그 -> 마크다운 기록 & Git 커밋 (옵션 A)
+        if intent_res.intent == "log_dual" or intent_res.is_dual_log:
+            # (A-1) 복합 기록 (데일리 로그 + GTD 인박스 동시 반영 - ADR-014)
+            content_to_log = intent_res.log_content or user_message
+            target_cat = "Daily Notes & Diary"
+            daily_filepath = self.agent_service.append_or_update_lifelog(
+                content=content_to_log,
+                category=target_cat,
+                date_obj=get_now(),
+            )
+            gtd_task = intent_res.gtd_task_content or f"- [ ] {content_to_log[:30]}"
+            self.agent_service.append_to_gtd_inbox(content=gtd_task)
+            filepath = daily_filepath
+
+            if auto_push:
+                date_str = get_now().strftime("%Y-%m-%d")
+                commit_msg = f"docs(lifelog & gtd): [{target_cat}] {content_to_log[:25]} ({date_str}) [{session_id}]"
+                push_success = self.git_service.sync_and_commit_push(commit_message=commit_msg, file_path=None)
+
+            self.session_service.clear_pending_log(session_id=session_id)
+
+        elif intent_res.intent in ["log_confirm", "log_explicit"]:
+            # (A-2) 승인되었거나 직접 요청된 유의미한 라이프로그 -> 마크다운 기록 & Git 커밋 (옵션 A)
             content_to_log = intent_res.log_content or user_message
             target_cat = category if category != "Daily Notes & Diary" else (intent_res.category or category)
 

@@ -1,3 +1,4 @@
+import os
 import shutil
 import tempfile
 
@@ -212,6 +213,59 @@ def test_supervisor_pure_directive_logging_workflow(db_session):
             assert "응 오늘 로그에" not in content
     finally:
         shutil.rmtree(temp_dir)
+
+
+def test_supervisor_dual_logging_workflow(db_session):
+    temp_dir = tempfile.mkdtemp()
+    try:
+        # Create inbox and logs/daily structure
+        gtd_dir = os.path.join(temp_dir, "gtd")
+        daily_dir = os.path.join(temp_dir, "logs", "daily")
+        os.makedirs(gtd_dir, exist_ok=True)
+        os.makedirs(daily_dir, exist_ok=True)
+
+        inbox_file = os.path.join(gtd_dir, "inbox.md")
+        with open(inbox_file, "w", encoding="utf-8") as f:
+            f.write(
+                "# 📥 GTD Inbox\n\n"
+                "## 🏢 회사 업무 (01_work)\n\n"
+                "## 🧘 개인 생활 & 건강 (02_personal)\n"
+            )
+
+        supervisor = SupervisorService(db=db_session, base_dir=temp_dir)
+        session_id = "dual_log_session"
+
+        prompt = (
+            "회사에서 리조트를 신청할 수 있거든? 와이프와 가려고 부여리조트를 신청했는데 떨어졌어. "
+            "그래서 그냥 서산쪽으로 여행을 가보려구. 용현집이라고 어죽을 파는 곳을 좋아했거든? "
+            "그래서 거기를 가보고싶고, 또간집에 나온 게국지 집에도 가보고싶대. 로그와 gtd에 기록해줘."
+        )
+
+        res = supervisor.process_user_request(
+            session_id=session_id,
+            user_message=prompt,
+            channel="telegram",
+            auto_push=False,
+        )
+
+        assert res["intent"] == "log_dual"
+        assert res["filepath"] is not None
+
+        # Verify daily log
+        with open(res["filepath"], encoding="utf-8") as f:
+            daily_content = f.read()
+            assert "서산쪽으로 여행" in daily_content
+            assert "로그와 gtd에" not in daily_content
+
+        # Verify GTD inbox
+        with open(inbox_file, encoding="utf-8") as f:
+            inbox_content = f.read()
+            assert "서산" in inbox_content
+            assert "여행" in inbox_content
+            assert "용현집" in inbox_content
+    finally:
+        shutil.rmtree(temp_dir)
+
 
 
 

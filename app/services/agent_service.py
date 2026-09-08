@@ -58,28 +58,65 @@ class AgentService:
         with open(filepath, "r", encoding="utf-8") as f:
             lines = f.readlines()
 
-        # Target section header
-        target_headers = [
-            "## 💬 빠른 메모 / 캡처",
-            "## 📥 GTD Inbox",
-            "## 빠른 메모",
-            "## Inbox",
-        ]
+        content_lower = content.lower()
         target_idx = -1
-        for i, line in enumerate(lines):
-            for th in target_headers:
-                if th.lower() in line.lower():
+
+        # 1. 문맥 맞춤형 섹션 우선 탐색 (ADR-014)
+        # (1-1) 개인 생활 / 건강 / 여행 / 맛집 / 구매
+        if any(k in content_lower for k in ["여행", "맛집", "어죽", "게국지", "와이프", "가족", "개인", "생활", "건강", "병원", "초음파", "구매", "장보기", "휴지", "원두", "모래", "독서", "은퇴", "교육", "personal"]):
+            for i, line in enumerate(lines):
+                if re.search(r"^##\s*.*?(개인|생활|건강|personal)", line, re.IGNORECASE):
                     target_idx = i
                     break
-            if target_idx != -1:
-                break
 
-        # Check if item already starts with task format
+        # (1-2) 회사 업무 / 프로젝트 / 회의
+        if target_idx == -1 and any(k in content_lower for k in ["회사", "업무", "회의", "보고", "아젠다", "가이드라인", "배포", "기획", "개발", "work"]):
+            for i, line in enumerate(lines):
+                if re.search(r"^##\s*.*?(회사|업무|work)", line, re.IGNORECASE):
+                    target_idx = i
+                    break
+
+        # (1-3) 인프라 및 시스템
+        if target_idx == -1 and any(k in content_lower for k in ["인프라", "토큰", "oauth", "서버", "infra"]):
+            for i, line in enumerate(lines):
+                if re.search(r"^##\s*.*?(인프라|infra|시스템)", line, re.IGNORECASE):
+                    target_idx = i
+                    break
+
+        # (1-4) 사이드 프로젝트
+        if target_idx == -1 and any(k in content_lower for k in ["사이드", "브이로그", "숏폼", "펭귄", "캐릭터", "side"]):
+            for i, line in enumerate(lines):
+                if re.search(r"^##\s*.*?(사이드|side)", line, re.IGNORECASE):
+                    target_idx = i
+                    break
+
+        # 2. 일반 빠른 메모 / Inbox 섹션 폴백
+        if target_idx == -1:
+            target_headers = [
+                "## 💬 빠른 메모 / 캡처",
+                "## 📥 GTD Inbox",
+                "## 빠른 메모",
+                "## Inbox",
+                "## 수집함",
+            ]
+            for i, line in enumerate(lines):
+                for th in target_headers:
+                    if th.lower() in line.lower():
+                        target_idx = i
+                        break
+                if target_idx != -1:
+                    break
+
+        # 태스크 포맷팅 정제
         task_item = content.strip()
         if not task_item.startswith("- ["):
-            task_item = f"- [ ] {task_item} *(Watson 캡처)*\n"
-        else:
-            task_item = f"{task_item}\n"
+            task_item = f"- [ ] {task_item}"
+
+        # 캡처 뱃지 부여 (순수 텍스트 캡처 시 *(Watson 캡처)* 부여, 이미 이모지/포맷팅 포함 시 유지)
+        if not any(marker in task_item for marker in ["*(Watson 캡처)*", "🚗", "🍲", "✈️", "🛒", "💊", "🏥", "🏢", "💻", "🚨"]):
+            task_item = f"{task_item} *(Watson 캡처)*"
+
+        task_item = f"{task_item.strip()}\n"
 
         if target_idx != -1:
             lines.insert(target_idx + 1, task_item)
@@ -91,6 +128,7 @@ class AgentService:
 
         logger.info(f"Appended task to GTD inbox: {filepath}")
         return filepath
+
 
     def _normalize_datetime(self, date_obj: datetime | None = None) -> datetime:
         """
