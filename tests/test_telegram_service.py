@@ -77,7 +77,7 @@ async def test_telegram_text_workflow_suggestion(db_session):
 
 
 @pytest.mark.anyio
-async def test_telegram_callback_confirm(db_session):
+async def test_telegram_callback_confirm(db_session, tmp_path):
     service = TelegramService(token="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz")
     service.allowed_chat_ids = []
 
@@ -96,6 +96,7 @@ async def test_telegram_callback_confirm(db_session):
     }
 
     with (
+        patch("app.services.settings_service.SettingsService.get_gtd_path", return_value=str(tmp_path)),
         patch("app.services.git_service.GitService.sync_and_commit_push", return_value=True),
         patch.object(service, "answer_callback_query", new_callable=AsyncMock) as mock_ans,
         patch.object(service, "send_message", new_callable=AsyncMock) as mock_send,
@@ -125,6 +126,7 @@ async def test_telegram_photo_message(db_session, tmp_path):
     }
 
     with (
+        patch("app.services.settings_service.SettingsService.get_gtd_path", return_value=str(tmp_path)),
         patch.object(service, "download_file", new_callable=AsyncMock) as mock_dl,
         patch("app.services.git_service.GitService.sync_and_commit_push", return_value=True),
         patch.object(service, "send_message", new_callable=AsyncMock) as mock_send,
