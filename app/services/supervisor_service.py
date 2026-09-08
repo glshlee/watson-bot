@@ -1,8 +1,8 @@
-from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.config import get_now
 from app.services.agent_service import AgentService
 from app.services.git_service import GitService
 from app.services.llm_provider import LLMProvider
@@ -54,11 +54,11 @@ class SupervisorService:
             filepath = self.agent_service.append_or_update_lifelog(
                 content=content_to_log,
                 category=target_cat,
-                date_obj=datetime.now(timezone.utc),
+                date_obj=get_now(),
             )
 
             if auto_push:
-                date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                date_str = get_now().strftime("%Y-%m-%d")
                 commit_msg = f"docs(lifelog): [{target_cat}] {content_to_log[:30]} ({date_str}) [{session_id}]"
                 push_success = self.git_service.sync_and_commit_push(commit_message=commit_msg, file_path=filepath)
 
@@ -88,7 +88,7 @@ class SupervisorService:
         elif intent_res.intent == "repo_sync_and_briefing":
             # (D-2) GTD 레포 동기화 후 즉시 브리핑 (ADR-009)
             success, sync_msg = self.git_service.pull()
-            briefing = self.agent_service.get_gtd_summary(date_obj=datetime.now(timezone.utc))
+            briefing = self.agent_service.get_gtd_summary(date_obj=get_now())
             if success:
                 final_response = f"🔄 **최신 GTD 저장소 동기화 완료** (`git pull`)\n\n{briefing}"
             else:
@@ -104,7 +104,7 @@ class SupervisorService:
         elif intent_res.intent == "task_briefing":
             # (D-3) GTD 일정 및 할 일 종합 브리핑 (ADR-008 & ADR-009 자동 동기화)
             self.git_service.pull()
-            final_response = self.agent_service.get_gtd_summary(date_obj=datetime.now(timezone.utc))
+            final_response = self.agent_service.get_gtd_summary(date_obj=get_now())
 
 
         # 5. AI 응답 DB 저장

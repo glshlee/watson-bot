@@ -1,8 +1,9 @@
 import os
 import shutil
 import subprocess
-from datetime import datetime, timezone
 from typing import Any
+
+from app.config import get_now
 
 
 class AGYRunner:
@@ -23,10 +24,10 @@ class AGYRunner:
         category: str = "Daily Notes & Diary",
         history: list[dict[str, str]] | None = None
     ) -> dict[str, Any]:
-        now_utc = datetime.now(timezone.utc)
-        current_date_str = now_utc.strftime("%Y-%m-%d")
-        year_str = now_utc.strftime("%Y")
-        month_str = now_utc.strftime("%m")
+        now_local = get_now()
+        current_date_str = now_local.strftime("%Y-%m-%d")
+        year_str = now_local.strftime("%Y")
+        month_str = now_local.strftime("%m")
         target_md_path = os.path.join("lifelogs", year_str, month_str, f"{current_date_str}.md")
 
         # 세션 대화 히스토리 문자열 구성

@@ -1,3 +1,6 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,6 +15,9 @@ class Settings(BaseSettings):
     GIT_REMOTE_NAME: str = "origin"
     GIT_BRANCH: str = "main"
     
+    # Timezone Configuration (ADR-013)
+    TIMEZONE: str = "Asia/Seoul"
+    
     # Telegram Configuration
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_ALLOWED_CHAT_IDS: str = ""  # Comma separated
@@ -23,3 +29,17 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 settings = Settings()
+
+
+def get_app_timezone() -> ZoneInfo:
+    """애플리케이션에 설정된 타임존 객체를 반환합니다 (기본값: Asia/Seoul)."""
+    try:
+        return ZoneInfo(settings.TIMEZONE)
+    except Exception:  # noqa: BLE001
+        return ZoneInfo("Asia/Seoul")
+
+
+def get_now(tz: ZoneInfo | None = None) -> datetime:
+    """애플리케이션 설정 타임존(기본값: Asia/Seoul, KST) 기준 현재 datetime을 반환합니다."""
+    return datetime.now(tz or get_app_timezone())
+

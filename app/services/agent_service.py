@@ -1,7 +1,9 @@
 import logging
 import os
 import re
-from datetime import datetime, timezone
+from datetime import datetime
+
+from app.config import get_app_timezone, get_now
 
 logger = logging.getLogger("watson.agent")
 
@@ -90,10 +92,21 @@ class AgentService:
         logger.info(f"Appended task to GTD inbox: {filepath}")
         return filepath
 
-    def get_lifelog_filepath(self, date_obj: datetime | None = None) -> str:
+    def _normalize_datetime(self, date_obj: datetime | None = None) -> datetime:
+        """
+        입력된 date_obj를 애플리케이션 설정 타임존(기본값: Asia/Seoul, KST)으로 정규화합니다 (ADR-013).
+        - None인 경우: get_now() 반환
+        - naive datetime인 경우: 설정 타임존으로 로컬라이징
+        - aware datetime인 경우: 설정 타임존으로 변환(astimezone)
+        """
         if date_obj is None:
-            date_obj = datetime.now(timezone.utc)
+            return get_now()
+        if date_obj.tzinfo is None:
+            return date_obj.replace(tzinfo=get_app_timezone())
+        return date_obj.astimezone(get_app_timezone())
 
+    def get_lifelog_filepath(self, date_obj: datetime | None = None) -> str:
+        date_obj = self._normalize_datetime(date_obj)
         filename = date_obj.strftime("%Y-%m-%d.md")
 
         # 1. logs/daily/ 구조가 존재하는 경우 해당 경로 우선 사용
@@ -115,14 +128,16 @@ class AgentService:
         category: str = "Daily Notes & Diary",
         date_obj: datetime | None = None,
     ) -> str:
+        date_obj = self._normalize_datetime(date_obj)
+
         # Check if this category represents a GTD Inbox task and repository has GTD structure
         gtd_task_categories = ["GTD Inbox", "GTD", "Task", "Todo", "Quick Capture", "할일"]
         if any(cat.lower() in category.lower() for cat in gtd_task_categories) and self.has_gtd_inbox():
             return self.append_to_gtd_inbox(content)
 
         filepath = self.get_lifelog_filepath(date_obj)
-        current_date_str = (date_obj or datetime.now(timezone.utc)).strftime("%Y-%m-%d")
-        time_str = (date_obj or datetime.now(timezone.utc)).strftime("%H:%M")
+        current_date_str = date_obj.strftime("%Y-%m-%d")
+        time_str = date_obj.strftime("%H:%M")
 
         if not os.path.exists(filepath):
             # Create new file with template based on structure
@@ -203,11 +218,9 @@ class AgentService:
     def get_gtd_summary(self, date_obj: datetime | None = None) -> str:
         """
         연결된 GTD 저장소에서 오늘의 일정, Next Actions, Inbox 항목을 종합 추출하여
-        비서 브리핑 메시지를 생성합니다 (ADR-008).
+        비서 브리핑 메시지를 생성합니다 (ADR-008, ADR-013).
         """
-        if date_obj is None:
-            date_obj = datetime.now(timezone.utc)
-
+        date_obj = self._normalize_datetime(date_obj)
         date_str = date_obj.strftime("%Y-%m-%d")
 
         schedule_items: list[str] = []

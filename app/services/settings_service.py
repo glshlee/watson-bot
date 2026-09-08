@@ -1,10 +1,9 @@
 import json
 import logging
 import os
-from datetime import datetime, timezone
 from typing import Any
 
-from app.config import settings
+from app.config import get_now, settings
 
 logger = logging.getLogger("watson.settings")
 
@@ -83,6 +82,7 @@ class SettingsService:
             "has_inbox": has_inbox,
             "has_daily_logs": has_daily_logs,
             "structure_type": structure_type,
+            "timezone": settings.TIMEZONE,
         }
 
     def set_gtd_path(self, new_path: str, create_if_missing: bool = True) -> dict[str, Any]:
@@ -113,7 +113,7 @@ class SettingsService:
         os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
         config_data = {
             "gtd_path": resolved_path,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": get_now().isoformat(),
         }
         with open(self.config_file, "w", encoding="utf-8") as f:
             json.dump(config_data, f, indent=2, ensure_ascii=False)

@@ -97,6 +97,14 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] 단일 문장 직접 기록 정규식 내 지시어 접두어 오인 필터링 방어막 구축
 - [x] 단위 테스트 및 샌드박스 cURL 스모크 테스트 검증
 
+### Phase 12: 한국 표준시(KST) 타임존 로컬라이제이션 (ADR-013) - ✅ 완료
+- [x] `Settings`에 `TIMEZONE: str = "Asia/Seoul"` 추가 및 `get_app_timezone`, `get_now` 유틸리티 구현
+- [x] `AgentService._normalize_datetime`을 통한 일일 로그 경로 및 타임스탬프(`[HH:MM]`) KST 정규화
+- [x] 자정 넘은 새벽 시간대(00:00~09:00 KST) 기록 시 익일 정상 반영 및 자정 경계 결함 해결
+- [x] 슈퍼바이저 커밋 일자, 텔레그램 동기화 시간 및 상태 API KST 반영
+- [x] 단위 테스트(`test_timezone_conversion_utc_to_kst`, `test_timezone_date_rollover_utc_to_kst`) 및 라이브 cURL 스모크 테스트 검증
+
+
 
 
 

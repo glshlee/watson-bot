@@ -57,7 +57,13 @@
 - **FR-11.1**: 스모크 테스트 실행 시 임시 GTD 샌드박스를 사용하여 실제 사용자 데이터 저장소에 테스트 더미 데이터가 유입되지 않도록 격리해야 한다.
 - **FR-11.2**: "응 오늘 로그에 기록해줘" 등 지시어만 포함된 요청 수신 시 지시어 텍스트를 본문으로 오인하지 않고 세션 히스토리에서 직전 사연을 역추적하여 기록해야 한다.
 
+### FR-12: 한국 표준시(KST) 타임존 로컬라이제이션 (Timezone Localization - ADR-013)
+- **FR-12.1**: 모든 일일 로그 파일 경로(`YYYY-MM-DD.md`), 타임스탬프(`[HH:MM]`), Git 커밋 일자, 텔레그램 상태 표시 시간은 기본적으로 한국 표준시(`Asia/Seoul`, UTC+9)로 정규화되어야 한다.
+- **FR-12.2**: UTC 입력 또는 naive datetime 입력에 관계없이 일관된 KST 변환 및 자정 경계(Midnight Boundary) 일자 처리가 보장되어야 한다.
+- **FR-12.3**: `SettingsService` 상태 조회 API를 통해 현재 활성화된 타임존 문자열을 반환해야 한다.
+
 ---
+
 
 ## 2. 비기능 요구사항 (Non-Functional Requirements)
 
@@ -90,4 +96,5 @@
 | **FR-09** | `app/services/llm_provider.py`, `app/services/supervisor_service.py` | Pytest 맥락 참조 기록 & AGY 경량화 테스트 |
 | **FR-10** | `app/services/git_service.py`, `app/services/llm_provider.py`, `app/services/supervisor_service.py` | Pytest 푸시 인텐트/실행 테스트 & cURL 검증 |
 | **FR-11** | `app/services/llm_provider.py`, `scripts/smoke_test.sh` | Pytest 지시어 역추적 테스트 & sandboxed cURL 검증 |
+| **FR-12** | `app/config.py`, `app/services/agent_service.py` | Pytest 타임존 변환/롤오버 단위 테스트 & cURL 검증 |
 

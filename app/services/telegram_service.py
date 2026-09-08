@@ -1,13 +1,12 @@
 import asyncio
 import logging
 import os
-from datetime import datetime, timezone
 from typing import Any
 
 import httpx
 from sqlalchemy.orm import Session
 
-from app.config import settings
+from app.config import get_now, settings
 from app.db.database import SessionLocal
 from app.services.agent_service import AgentService
 from app.services.git_service import GitService
@@ -211,7 +210,7 @@ class TelegramService:
                 f"• 세션 ID: `telegram:{chat_id}`\n"
                 f"• GTD 작업 경로: `{gtd_status['gtd_path']}`\n"
                 f"• Git 격리 연동: {'✅ 전용 레포 활성' if gtd_status['is_git_repo'] else '📁 로컬 보관 전용'}\n"
-                f"• 최근 동기화 시간: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC"
+                f"• 최근 동기화 시간: {get_now().strftime('%Y-%m-%d %H:%M:%S')} ({settings.TIMEZONE})"
             )
             await self.send_message(chat_id, status_text)
             return
@@ -237,7 +236,7 @@ class TelegramService:
             largest_photo = photos[-1]  # 가장 고화질 사진
             file_id = largest_photo["file_id"]
 
-            now = datetime.now(timezone.utc)
+            now = get_now()
             year_str = now.strftime("%Y")
             month_str = now.strftime("%m")
             filename = f"tg_{int(now.timestamp())}_{file_id[:8]}.jpg"

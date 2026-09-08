@@ -39,13 +39,14 @@
 * **대화 맥락 참조 기록 & 고탄력 AI (ADR-010)**: "아까 말한 내용 기록해줘" 등 이전 대화 참조 시 히스토리 역추적으로 원문을 추출해 즉시 기록하고, AGY 프롬프트 경량 요약 및 50초 타임아웃으로 맥락 단절을 방지할 것.
 * **결정론적 원격 푸시 & Headless 무중단 실행 (ADR-011)**: "푸시해줘", "/push" 등 푸시 명령 시 LLM 환각을 차단하고 백엔드 Git Push를 실행하며, autostash로 병합 충돌 방지 및 AGY headless 권한 오류를 원천 차단할 것.
 * **테스트 샌드박스 격리 & 지시어 문맥 역추적 (ADR-012)**: 스모크 테스트 실행 시 임시 GTD 샌드박스로 격리하여 사용자 저장소 오염을 원천 차단하고, "응 오늘 로그에 기록해줘" 등 순수 지시어 시 지시어 텍스트 오인을 방지하며 직전 사연을 역추적 기록할 것.
+* **KST 타임존 로컬라이제이션 (ADR-013)**: 일일 로그 경로(`YYYY-MM-DD.md`), 기록 타임스탬프(`[HH:MM]`), 커밋 일자 및 상태 표시는 기본 한국 표준시(`Asia/Seoul`)로 엄격 정규화하여 자정 경계 결함을 원천 차단할 것.
 * **Explicit User Commit Trigger Only (에이전트 코드 커밋 수칙)**: 코드 수정 및 기능 구현 후 Git 커밋(`git commit`)은 에이전트가 임의로 자동 실행하지 않으며, 오직 **사용자가 명시적으로 "커밋해" 지시를 내렸을 때만** 수행할 것.
 * **Curl-Based Live Verification (필수)**: 모든 코드 수정 후 반드시 `./scripts/smoke_test.sh` cURL 테스트를 실행하여 실제 라이브 API 수신 및 500 에러 부재를 검증할 것.
 * **Self-Verification & Evolution Loop**: 코드 변경 시 `pytest`/`mypy`/`ruff` 및 cURL 검증 수행 후 실패 시 `evolution.md` 지침에 따라 하네스 자가 진화 집행.
 
 ### 4. Progressive Disclosure (상세 문서 참조)
 * **제품 기획서 개요**: `docs/PRD.md` | **기능 요구사항**: `docs/requirements.md`
-* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-012)
+* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-013)
 
 ---
 
