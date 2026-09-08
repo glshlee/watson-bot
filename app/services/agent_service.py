@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from datetime import datetime, timezone
 
 logger = logging.getLogger("watson.agent")
@@ -198,3 +199,102 @@ class AgentService:
             f.writelines(file_lines)
 
         return filepath
+
+    def get_gtd_summary(self, date_obj: datetime | None = None) -> str:
+        """
+        연결된 GTD 저장소에서 오늘의 일정, Next Actions, Inbox 항목을 종합 추출하여
+        비서 브리핑 메시지를 생성합니다 (ADR-008).
+        """
+        if date_obj is None:
+            date_obj = datetime.now(timezone.utc)
+
+        date_str = date_obj.strftime("%Y-%m-%d")
+
+        schedule_items: list[str] = []
+        next_actions: list[str] = []
+        inbox_items: list[str] = []
+
+        # 1. 데일리 로그의 오늘 일정 (Schedule) 추출
+        daily_path = self.get_lifelog_filepath(date_obj)
+        if not os.path.exists(daily_path) and self.has_daily_logs_structure():
+            daily_dir = os.path.join(self.base_dir, "logs", "daily")
+            files = sorted([f for f in os.listdir(daily_dir) if f.endswith(".md")], reverse=True)
+            if files:
+                daily_path = os.path.join(daily_dir, files[0])
+
+        if os.path.exists(daily_path):
+            try:
+                with open(daily_path, "r", encoding="utf-8") as f:
+                    in_schedule = False
+                    for line in f:
+                        line_s = line.strip()
+                        if "주요 일정" in line_s or "Schedule" in line_s:
+                            in_schedule = True
+                            continue
+                        if in_schedule and line_s.startswith("## "):
+                            in_schedule = False
+                        if in_schedule and line_s.startswith(("- [", "- ")):
+                            item = re.sub(r"^-\s*(\[[ xX]\]\s*)?", "", line_s).strip()
+                            if item and not item.startswith("("):
+                                schedule_items.append(item)
+            except OSError as e:
+                logger.warning(f"Failed to read daily log: {e}")
+
+        # 2. Next Actions (다음 행동) 추출
+        next_actions_path = os.path.join(self.base_dir, "gtd", "next_actions.md")
+        if os.path.exists(next_actions_path):
+            try:
+                with open(next_actions_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line_s = line.strip()
+                        if line_s.startswith("- [ ]"):
+                            item = line_s[5:].strip()
+                            if item:
+                                next_actions.append(item)
+            except OSError as e:
+                logger.warning(f"Failed to read next_actions.md: {e}")
+
+        # 3. GTD Inbox (수집함 미처리 항목) 추출
+        inbox_path = self.get_gtd_inbox_filepath()
+        if os.path.exists(inbox_path):
+            try:
+                with open(inbox_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line_s = line.strip()
+                        if line_s.startswith("- [ ]"):
+                            item = line_s[5:].strip()
+                            if item and not item.startswith("("):
+                                inbox_items.append(item)
+            except OSError as e:
+                logger.warning(f"Failed to read inbox.md: {e}")
+
+        # 포맷팅 브리핑 메시지 구성
+        sections = [f"📋 **오늘의 일정 및 GTD 할 일 브리핑 ({date_str})** ☀️\n"]
+
+        if schedule_items:
+            sections.append("📅 **오늘의 주요 일정:**")
+            for item in schedule_items[:5]:
+                sections.append(f"• {item}")
+            sections.append("")
+
+        if next_actions:
+            sections.append("⚡ **실행 대기 주요 작업 (Next Actions):**")
+            urgent = [a for a in next_actions if "🚨" in a or "오늘" in a or "마감" in a]
+            normal = [a for a in next_actions if a not in urgent]
+            ordered = urgent + normal
+            for item in ordered[:6]:
+                sections.append(f"• {item}")
+            sections.append("")
+
+        if inbox_items:
+            sections.append("📥 **수집함 미처리 메모 (Inbox):**")
+            for item in inbox_items[:3]:
+                sections.append(f"• {item}")
+            sections.append("")
+
+        if not schedule_items and not next_actions and not inbox_items:
+            sections.append("현재 등록된 미완료 할 일이나 일정이 없습니다. 가벼운 마음으로 오늘 하루를 시작해 보세요! ☕")
+        else:
+            sections.append("오늘도 보람찬 하루 되실 수 있도록 왓슨이 든든히 서포트하겠습니다! 무엇부터 함께 해볼까요? 💪✨")
+
+        return "\n".join(sections)

@@ -77,6 +77,17 @@ else
     exit 1
 fi
 
+echo "  3-5. Testing Task Briefing (오늘 해야할 일 정리해줘 - ADR-008)..."
+CHAT_RES5=$(curl -s -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_butler_session", "message": "오늘 해야할 일 정리해줘", "auto_push": false}')
+if echo "$CHAT_RES5" | grep -q '"intent":"task_briefing"'; then
+    echo "  ✅ 3-5. Task Briefing Passed (intent=task_briefing, Summary Returned)"
+else
+    echo "  ❌ 3-5. Task Briefing Failed. Response: $CHAT_RES5"
+    exit 1
+fi
+
 echo "4. Testing GET /api/telegram/status (ADR-006 Telegram Router)..."
 TG_STATUS=$(curl -s "$SERVER_URL/api/telegram/status")
 if echo "$TG_STATUS" | grep -q '"configured"'; then

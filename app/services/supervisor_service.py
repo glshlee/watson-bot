@@ -78,14 +78,19 @@ class SupervisorService:
             # (C) 사용자가 제안 거절 -> 보류 기록 초기화 (Git 커밋 X, 마크다운 수정 X)
             self.session_service.clear_pending_log(session_id=session_id)
 
+        final_response = intent_res.ai_response
+        if intent_res.intent == "task_briefing":
+            # (D) GTD 일정 및 할 일 종합 브리핑 (ADR-008)
+            final_response = self.agent_service.get_gtd_summary(date_obj=datetime.now(timezone.utc))
+
         # 5. AI 응답 DB 저장
-        self.session_service.add_message(session_id=session_id, role="assistant", content=intent_res.ai_response)
+        self.session_service.add_message(session_id=session_id, role="assistant", content=final_response)
 
         return {
             "session_id": session_id,
             "intent": intent_res.intent,
             "filepath": filepath,
-            "ai_response": intent_res.ai_response,
+            "ai_response": final_response,
             "git_pushed": push_success,
             "history": self.session_service.get_session_history(session_id=session_id),
             "pending_log": self.session_service.get_pending_log(session_id=session_id),

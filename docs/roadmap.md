@@ -58,10 +58,17 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] systemd 서비스 유닛 파일 (`systemd/watson.service`) 제공
 - [x] 원격 서버 배포 및 실행 가이드 문서 작성 (`docs/deployment_guide.md`)
 
-### Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-007) - 🚀 진행 중
-- [ ] GTD 작업 디렉토리 동적 설정 관리자 (`app/services/settings_service.py`) 구현
-- [ ] REST API 엔드포인트 (`GET/POST /api/settings/gtd-path`) 구현
-- [ ] 대상 저장소 내 기정의된 GTD 체계(`gtd/inbox.md`, `logs/daily/` 등) 자동 감지 및 오케스트레이션 연동
-- [ ] GTD 전용 레포지토리 독립 Git 커밋/푸시 격리 파이프라인 연동
-- [ ] 웹 대시보드 UI 상단 GTD 경로 조회 및 동적 변경 모달 인터페이스 구현
-- [ ] 단위 테스트 및 cURL 스모크 테스트 업데이트
+### Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-007) - ✅ 완료
+- [x] GTD 작업 디렉토리 동적 설정 관리자 (`app/services/settings_service.py`) 구현
+- [x] REST API 엔드포인트 (`GET/POST /api/settings/gtd-path`) 구현
+- [x] 대상 저장소 내 기정의된 GTD 체계(`gtd/inbox.md`, `logs/daily/` 등) 자동 감지 및 오케스트레이션 연동
+- [x] GTD 전용 레포지토리 독립 Git 커밋/푸시 격리 파이프라인 연동
+- [x] 웹 대시보드 UI 상단 GTD 경로 조회 및 동적 변경 모달 인터페이스 구현
+- [x] 단위 테스트 및 cURL 스모크 테스트 업데이트
+
+### Phase 7: GTD 지능형 브리핑 및 Linux AGY 엔진 브릿지 (ADR-008) - 🚀 진행 중
+- [ ] GTD 할 일/일정 브리핑 파이프라인 (`task_briefing`) 구현
+- [ ] Linux 환경 AGY CLI 동적 경로 탐색 및 systemd 환경변수 반영
+- [ ] 데일리 로그, Next Actions, Inbox 미처리 태스크 종합 요약 포맷팅
+- [ ] 단위 테스트 및 라이브 API 검증
+

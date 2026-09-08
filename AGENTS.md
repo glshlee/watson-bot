@@ -30,17 +30,18 @@
   * `spec_alignment.md`: 기획-코드 100% 동기화 및 cURL 검증 루프 규칙
 
 ### 3. Hard Constraints (필수 준수 규칙)
-* **Spec-Code Alignment**: 모든 기획 문서(`docs/PRD.md`, `docs/requirements.md`, `docs/roadmap.md`)와 구현 코드는 100% 일치할 것.
-* **3단계 문서화 의무화 (Mandatory Documentation Loop)**: 사용자 피드백이나 아키텍처/정책 변경 시 반드시 ① `docs/adr/ADR-xxx.md` 작성 ➔ ② PRD/요구사항/로드맵 동기화 ➔ ③ `AGENTS.md` 갱신을 완료한 후 코드를 작성할 것.
+* **Spec-Code & README Alignment**: 모든 기획 문서(`docs/PRD.md`, `docs/requirements.md`, `docs/roadmap.md`) 및 사용자 안내서(`README.md`)와 구현 코드는 100% 일치할 것.
+* **4단계 문서화 & README 상시 갱신 의무화 (Mandatory Documentation & README Loop)**: 사용자 피드백이나 아키텍처/기능/정책 변경 시 반드시 ① `docs/adr/ADR-xxx.md` 작성 ➔ ② PRD/요구사항/로드맵 동기화 ➔ ③ `README.md` 사용법/아키텍처/배포 가이드 갱신 ➔ ④ `AGENTS.md` 갱신을 완료할 것. 기능 추가나 변경 시 `README.md` 업데이트는 선택이 아닌 필수 의무임.
 * **스마트 비서 & 1기록 1커밋 정책 (ADR-004)**: 일반 대화(잡담/질문)는 세션에만 보관하고 Git 커밋하지 않음. 비서가 일과/기록 가치를 감지해 제안하고, 사용자가 승인("응", "좋아")하거나 직접 명령(`/log`)한 확정된 라이프로그에 한해서만 즉시 마크다운 반영 및 Git 커밋(1기록 1커밋)을 수행할 것.
 * **GTD 저장소 격리 및 외부 체계 오케스트레이션 (ADR-007)**: 왓슨 소스코드 레포와 개인 데이터(GTD/라이프로그)를 분리하고, 웹 UI/설정으로 지정된 GTD 경로의 기정의 체계(`inbox.md`, `logs/daily/` 등)를 존중하여 오케스트레이션하며 독립 Git 커밋 수행.
+* **GTD 지능형 브리핑 & AGY CLI 자동 감지 (ADR-008)**: 할 일/일정 정리 요청 시 연결된 GTD 저장소에서 데일리 로그 및 Next Actions를 종합 브리핑하며, Linux 서버 환경에서도 AGY 바이너리를 동적 탐색하여 살아있는 비서 대화를 제공할 것.
 * **Explicit User Commit Trigger Only (에이전트 코드 커밋 수칙)**: 코드 수정 및 기능 구현 후 Git 커밋(`git commit`)은 에이전트가 임의로 자동 실행하지 않으며, 오직 **사용자가 명시적으로 "커밋해" 지시를 내렸을 때만** 수행할 것.
 * **Curl-Based Live Verification (필수)**: 모든 코드 수정 후 반드시 `./scripts/smoke_test.sh` cURL 테스트를 실행하여 실제 라이브 API 수신 및 500 에러 부재를 검증할 것.
 * **Self-Verification & Evolution Loop**: 코드 변경 시 `pytest`/`mypy`/`ruff` 및 cURL 검증 수행 후 실패 시 `evolution.md` 지침에 따라 하네스 자가 진화 집행.
 
 ### 4. Progressive Disclosure (상세 문서 참조)
 * **제품 기획서 개요**: `docs/PRD.md` | **기능 요구사항**: `docs/requirements.md`
-* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-007)
+* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-008)
 
 ---
 

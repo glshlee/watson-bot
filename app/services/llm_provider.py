@@ -1,3 +1,4 @@
+import logging
 import os
 import random
 import re
@@ -5,11 +6,14 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 
+logger = logging.getLogger("watson.llm")
+
 
 @dataclass
 class IntentResult:
     """비서 에이전트의 의도 분석 및 응답 결과 데이터클래스."""
-    intent: str  # "chat_only", "log_suggest", "log_confirm", "log_reject", "log_explicit"
+
+    intent: str  # "chat_only", "log_suggest", "log_confirm", "log_reject", "log_explicit", "task_briefing"
     ai_response: str
     log_content: str | None = None
     category: str | None = None
@@ -17,16 +21,30 @@ class IntentResult:
 
 class LLMProvider:
     """
-    왓슨 지능형 비서(Watson Butler) 엔진 (ADR-003, ADR-004 준수).
+    왓슨 지능형 비서(Watson Butler) 엔진 (ADR-003, ADR-004, ADR-008 준수).
     AGY 엔진 및 대화 컨텍스트(History)를 기반으로 살아있는 지능형 대화를 나누며,
-    의미 있는 라이프로그 항목을 능동 제안 및 승인 시 커밋한다.
+    GTD 브리핑 및 라이프로그 항목을 능동 제안 및 승인 시 커밋한다.
     """
 
     def __init__(self):
-        # 로컬 agy CLI 경로 탐색
-        self.agy_path = shutil.which("agy") or "/Users/glshlee/.local/bin/agy"
-        if not os.path.exists(self.agy_path):
-            self.agy_path = None
+        self.agy_path = self._find_agy_path()
+
+    def _find_agy_path(self) -> str | None:
+        """멀티 플랫폼(Linux/Mac/Docker) agy CLI 바이너리 경로를 동적으로 탐색합니다."""
+        found = shutil.which("agy")
+        if found and os.path.exists(found):
+            return found
+        candidates = [
+            os.path.expanduser("~/.local/bin/agy"),
+            "/home/ubuntu/.local/bin/agy",
+            "/usr/local/bin/agy",
+            "/usr/bin/agy",
+            "/Users/glshlee/.local/bin/agy",
+        ]
+        for c in candidates:
+            if os.path.exists(c) and os.access(c, os.X_OK):
+                return c
+        return None
 
     def analyze_and_respond(
         self,
@@ -96,7 +114,26 @@ class LLMProvider:
             )
 
         # -------------------------------------------------------------
-        # 3. 일과/사건/생각 감지 및 능동적 기록 제안 (log_suggest)
+        # 3. GTD 할 일 / 일정 / 브리핑 요청 (task_briefing - ADR-008)
+        # -------------------------------------------------------------
+        briefing_triggers = [
+            "해야할 일", "해야 할 일", "할 일", "할일", "투두", "todo", "일정", "스케줄",
+            "gtd", "다음 행동", "수집함", "인박스", "태스크", "스케쥴"
+        ]
+        action_triggers = [
+            "정리", "알려", "보여", "뭐 있", "확인", "브리핑", "요약", "체크", "목록",
+            "리스트", "뭐 해야", "어떤 거", "어떻게 돼", "뭐할까", "뭐하지", "현황"
+        ]
+        if any(bt in prompt_clean.lower() for bt in briefing_triggers) and any(at in prompt_clean.lower() for at in action_triggers):
+            return IntentResult(
+                intent="task_briefing",
+                ai_response="",
+                log_content=None,
+                category="GTD",
+            )
+
+        # -------------------------------------------------------------
+        # 4. 일과/사건/생각 감지 및 능동적 기록 제안 (log_suggest)
         # -------------------------------------------------------------
         workout_keywords = ["운동", "헬스", "러닝", "달리기", "벤치", "스쿼트", "풀업", "pt", "산책", "수영", "요가", "만보", "몸무게", "식단"]
         if any(k in prompt_clean for k in workout_keywords):
@@ -129,7 +166,7 @@ class LLMProvider:
             )
 
         # -------------------------------------------------------------
-        # 4. 빠른 응답 패턴 (Fast-Path)
+        # 5. 빠른 응답 패턴 (Fast-Path)
         # -------------------------------------------------------------
         # 숫자 뽑기 / 랜덤
         if re.search(r"(\d+)\s*부터\s*(\d+)", prompt_clean) or ("숫자" in prompt_clean and "골라" in prompt_clean):
@@ -164,7 +201,7 @@ class LLMProvider:
             )
 
         # -------------------------------------------------------------
-        # 5. 지능형 AI 엔진 대화 (AGY / Gemini Bridge)
+        # 6. 지능형 AI 엔진 대화 (AGY / Gemini Bridge)
         # -------------------------------------------------------------
         ai_response = self._call_ai_engine(prompt=prompt_clean, history=history)
         return IntentResult(
@@ -174,7 +211,8 @@ class LLMProvider:
 
     def _call_ai_engine(self, prompt: str, history: list[dict[str, str]] | None = None) -> str:
         """AGY CLI 또는 지능형 AI 엔진을 호출하여 이전 대화 맥락 기반 답변을 생성합니다."""
-        if self.agy_path:
+        agy_bin = self._find_agy_path()
+        if agy_bin:
             try:
                 # 최근 4개 대화 맥락 추출
                 history_text = ""
@@ -185,38 +223,43 @@ class LLMProvider:
                         history_text += f"{role_name}: {h.get('content', '')}\n"
 
                 full_prompt = (
-                    "너는 사용자의 24시간 개인 라이프로그 AI 비서 왓슨(Watson)이다.\n"
+                    "너는 사용자의 24시간 개인 라이프로그 및 GTD AI 비서 왓슨(Watson)이다.\n"
                     "친절하고 다정하며 센스 있게 한국어로 대화해라. 이전 대화 맥락이 있다면 자연스럽게 이어가라.\n"
-                    "절대로 사용자의 질문을 기계적으로 복사하거나 '이야기 잘 들었습니다' 같은 앵무새 답변을 하지 마라.\n\n"
+                    "절대로 '이야기 잘 들었습니다' 같은 기계적이고 판에 박힌 앵무새 답변을 하지 마라. "
+                    "사용자의 질문이나 대화에 귀기울이고 구체적이고 도움이 되는 답변을 정성껏 제공해라.\n\n"
                 )
                 if history_text:
                     full_prompt += f"[이전 대화 내역]\n{history_text}\n"
                 full_prompt += f"[사용자 입력]\n{prompt}\n\n왓슨 비서로서 답변:"
 
+                env = os.environ.copy()
+                env["PATH"] = "/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin:" + env.get("PATH", "")
+
                 res = subprocess.run(
-                    [self.agy_path, "-p", full_prompt],
+                    [agy_bin, "-p", full_prompt],
                     capture_output=True,
                     text=True,
-                    timeout=12,
+                    timeout=30,
                     check=False,
+                    env=env,
                 )
                 if res.returncode == 0 and res.stdout.strip():
                     return res.stdout.strip()
-            except (subprocess.SubprocessError, OSError):
-                pass
+            except (subprocess.SubprocessError, OSError) as e:
+                logger.warning(f"AGY execution error: {e}")
 
         # 스마트 로컬 Fallback
         if any(w in prompt for w in ["누구", "왓슨"]):
             return (
-                "저는 24시간 사용자의 삶의 기록(Life Log)을 관리하고 대화를 나누는 **Watson AI 비서**입니다. 🤖\n"
-                "일상 대화부터 질문 답변, 그리고 소중한 일과와 생각을 GitHub 마크다운으로 깔끔하게 기록해 드립니다!"
+                "저는 24시간 사용자의 삶의 기록(Life Log)과 GTD를 관리하는 **Watson AI 비서**입니다. 🤖\n"
+                "일상 대화부터 오늘 해야 할 일 브리핑, 소중한 일과와 생각을 GitHub 마크다운으로 깔끔하게 기록해 드립니다!"
             )
         if any(w in prompt for w in ["안녕", "반가워", "하이"]):
             return "안녕하세요! 👋 왓슨 AI 비서입니다. 오늘 하루는 어떠셨나요? 편하게 이야기 들려주세요!"
         if any(w in prompt for w in ["날씨", "시간"]):
             return "오늘도 활기차고 좋은 하루 보내시길 바랍니다! 궁금한 점이 있으시거나 나누고 싶은 이야기가 있다면 언제든 말씀해 주세요. ☀️"
 
-        return "네, 말씀해 주신 내용 잘 새겨들었습니다! 😊 이와 관련해 더 나누고 싶은 생각이나 오늘 하루 있었던 일과가 있다면 편하게 말씀해 주세요."
+        return "네, 사용자님 말씀 잘 듣고 있습니다! 😊 오늘 하루 있었던 일과나 나누고 싶은 생각, 혹은 정리할 일정이 있다면 무엇이든 편하게 말씀해 주세요."
 
     def generate_response(self, prompt: str, history: list[dict[str, str]] | None = None) -> str:
         """기존 인터페이스 하위 호환용 메서드."""

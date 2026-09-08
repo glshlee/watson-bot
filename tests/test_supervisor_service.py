@@ -73,3 +73,28 @@ def test_supervisor_pipeline_butler_workflow(db_session):
         assert res_explicit["filepath"] is not None
     finally:
         shutil.rmtree(temp_dir)
+
+
+def test_supervisor_task_briefing_workflow(db_session):
+    temp_dir = tempfile.mkdtemp()
+    try:
+        import os
+        gtd_dir = os.path.join(temp_dir, "gtd")
+        os.makedirs(gtd_dir, exist_ok=True)
+        with open(os.path.join(gtd_dir, "next_actions.md"), "w", encoding="utf-8") as f:
+            f.write("# Next Actions\n- [ ] 중요한 계약서 검토 완료하기\n")
+
+        supervisor = SupervisorService(db=db_session, base_dir=temp_dir)
+        res = supervisor.process_user_request(
+            session_id="briefing_session",
+            user_message="오늘 해야할 일 정리해줘",
+            channel="telegram",
+            auto_push=False,
+        )
+
+        assert res["intent"] == "task_briefing"
+        assert res["filepath"] is None
+        assert "오늘의 일정 및 GTD 할 일 브리핑" in res["ai_response"]
+        assert "중요한 계약서 검토 완료하기" in res["ai_response"]
+    finally:
+        shutil.rmtree(temp_dir)
