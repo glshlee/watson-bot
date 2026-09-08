@@ -98,3 +98,73 @@ def test_supervisor_task_briefing_workflow(db_session):
         assert "중요한 계약서 검토 완료하기" in res["ai_response"]
     finally:
         shutil.rmtree(temp_dir)
+
+
+def test_supervisor_repo_sync_workflows(db_session):
+    temp_dir = tempfile.mkdtemp()
+    try:
+        import os
+        gtd_dir = os.path.join(temp_dir, "gtd")
+        os.makedirs(gtd_dir, exist_ok=True)
+        with open(os.path.join(gtd_dir, "next_actions.md"), "w", encoding="utf-8") as f:
+            f.write("# Next Actions\n- [ ] 새로운 기능 배포 점검\n")
+
+        supervisor = SupervisorService(db=db_session, base_dir=temp_dir)
+
+        # 1. 단독 최신화 요청
+        res_sync = supervisor.process_user_request(
+            session_id="sync_session",
+            user_message="gtd 레포 최신화해줘",
+            channel="telegram",
+            auto_push=False,
+        )
+        assert res_sync["intent"] == "repo_sync"
+        assert "GTD 저장소 동기화 결과" in res_sync["ai_response"]
+
+        # 2. 최신화 후 브리핑 복합 요청
+        res_sync_brief = supervisor.process_user_request(
+            session_id="sync_session",
+            user_message="gtd 레포 최신화하고 다시 알려줘",
+            channel="telegram",
+            auto_push=False,
+        )
+        assert res_sync_brief["intent"] == "repo_sync_and_briefing"
+        assert "동기화" in res_sync_brief["ai_response"]
+        assert "오늘의 일정 및 GTD 할 일 브리핑" in res_sync_brief["ai_response"]
+        assert "새로운 기능 배포 점검" in res_sync_brief["ai_response"]
+    finally:
+        shutil.rmtree(temp_dir)
+
+
+def test_supervisor_context_aware_logging_workflow(db_session):
+    temp_dir = tempfile.mkdtemp()
+    try:
+        supervisor = SupervisorService(db=db_session, base_dir=temp_dir)
+        session_id = "context_log_session"
+
+        # 1. 일상/감정 사연 대화
+        story = "지난 주말에 병원에서 가족 검진 결과를 듣고 왔는데 걱정이 많아. 잘 극복해야지."
+        res_story = supervisor.process_user_request(
+            session_id=session_id,
+            user_message=story,
+            channel="telegram",
+            auto_push=False,
+        )
+        assert res_story["intent"] in ["chat_only", "log_suggest"]
+
+        # 2. 맥락 참조 기록 요청 ("오늘 로그에 내가 아까 말한 내용도 기록해줘. 내 감정이니까")
+        res_context_log = supervisor.process_user_request(
+            session_id=session_id,
+            user_message="오늘 로그에 내가 아까 말한 내용도 기록해줘. 내 감정이니까",
+            channel="telegram",
+            auto_push=False,
+        )
+        assert res_context_log["intent"] == "log_explicit"
+        assert res_context_log["filepath"] is not None
+        with open(res_context_log["filepath"], encoding="utf-8") as f:
+            assert "가족 검진 결과" in f.read()
+    finally:
+        shutil.rmtree(temp_dir)
+
+
+

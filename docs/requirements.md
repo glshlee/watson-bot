@@ -38,6 +38,16 @@
 - **FR-07.1**: 사용자의 일정/할 일 조회 요청("오늘 해야 할 일 정리해줘", "투두리스트", "일정 알려줘" 등)을 감지하여 GTD 저장소에서 오늘 일정, Next Actions, Inbox 미처리 항목을 즉시 종합 브리핑해야 한다.
 - **FR-07.2**: Linux 서버 환경에서도 AGY CLI 바이너리 경로(`~/.local/bin/agy` 등)를 동적 탐색하여 유연한 비서 대화를 100% 보장해야 한다.
 
+### FR-08: GTD 저장소 원격 동기화 및 자동 Pull (Repo Sync - ADR-009)
+- **FR-08.1**: 사용자의 동기화 요청("gtd 레포 최신화하고 다시 알려줘", "레포 최신화", "/sync" 등)을 감지하여 원격 GitHub로부터 `git pull --rebase --autostash`를 통해 최신 커밋을 안전하게 동기화해야 한다.
+- **FR-08.2**: "최신화하고 알려줘"와 같은 복합 명령 시 원격 동기화(pull) 후 즉시 최신 상태의 GTD 종합 브리핑을 결합 제공해야 한다.
+- **FR-08.3**: `task_briefing` 실행 시 원격 저장소와 자동 사전 동기화를 수행하여 다중 기기에서의 편집 내역이 항상 최신으로 유지되도록 해야 한다.
+
+### FR-09: 세션 대화 맥락 참조 기록 및 탄력적 엔진 (Context-Aware Logging - ADR-010)
+- **FR-09.1**: 사용자가 "아까 말한 내용도 기록해줘", "방금 한 말 일기에 적어줘" 등 이전 대화 내용을 가리켜 기록을 요청할 경우, 세션 히스토리(`history`)를 역추적하여 직전 대화 원문을 감지하고 대상 마크다운 파일에 즉시 영속화해야 한다.
+- **FR-09.2**: 줄바꿈이나 복합 설명문이 포함된 입력에서도 명령어를 유연하게 분리 파싱해야 한다.
+- **FR-09.3**: AI 호출 시 이전 어시스턴트의 긴 응답을 경량 요약 슬라이싱하여 AGY CLI 프롬프트 비대화를 방지하고 타임아웃 오류를 차단해야 한다.
+
 ---
 
 ## 2. 비기능 요구사항 (Non-Functional Requirements)
@@ -66,3 +76,6 @@
 | **FR-04** | `app/routers/web_router.py`, `app/templates/index.html` | `./scripts/smoke_test.sh` cURL 스모크 및 브라우저 UI 검증 |
 | **FR-05** | `app/services/session_service.py`, `app/services/llm_provider.py` | Pytest 대화 맥락 유지/복원 & Conversational AI 테스트 |
 | **FR-06** | `app/services/settings_service.py`, `app/routers/settings_router.py` | Pytest GTD 설정/오케스트레이션 테스트 & cURL 검증 |
+| **FR-07** | `app/services/agent_service.py`, `app/services/supervisor_service.py` | Pytest GTD 브리핑 테스트 & cURL 검증 |
+| **FR-08** | `app/services/git_service.py`, `app/services/supervisor_service.py` | Pytest GTD Pull/동기화 테스트 & cURL 검증 |
+| **FR-09** | `app/services/llm_provider.py`, `app/services/supervisor_service.py` | Pytest 맥락 참조 기록 & AGY 경량화 테스트 |

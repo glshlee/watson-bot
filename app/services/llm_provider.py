@@ -90,7 +90,7 @@ class LLMProvider:
                     )
 
         # -------------------------------------------------------------
-        # 2. 명시적 직접 기록 요청 (log_explicit)
+        # 2. 명시적 직접 기록 및 맥락 참조 기록 요청 (log_explicit - ADR-010)
         # -------------------------------------------------------------
         if prompt_clean.startswith("/log "):
             log_body = prompt_clean[5:].strip()
@@ -102,28 +102,107 @@ class LLMProvider:
                 category=cat,
             )
 
-        explicit_match = re.search(r"^(.*?)(?:을|를)?\s*(?:기록해줘|일기에\s*적어줘|로그에\s*남겨줘|기록해)$", prompt_clean)
-        if explicit_match and len(explicit_match.group(1).strip()) > 1:
-            log_body = explicit_match.group(1).strip()
+        # 2-1. 이전 대화 맥락 참조 기록 ("아까 말한 내용도 기록해줘", "방금 이야기 일기에 적어줘" 등)
+        context_ref_triggers = ["아까 말한", "아까 한", "방금 말한", "방금 한", "이전 이야기", "앞서 말한", "이전 대화", "지난 이야기", "아까 이야기", "방금 이야기", "이전 내용"]
+        record_action_triggers = ["기록해", "적어줘", "남겨줘", "올려줘", "저장해", "써줘", "일기에", "로그에"]
+
+        has_context_ref = any(crt in prompt_clean for crt in context_ref_triggers) or (
+            any(k in prompt_clean for k in ["아까", "방금", "이전", "앞서"]) and any(k in prompt_clean for k in ["말", "이야기", "내용"])
+        )
+        has_record_action = any(rat in prompt_clean for rat in record_action_triggers)
+
+        if has_context_ref and has_record_action and history:
+            # history에서 가장 최근의 유의미한 사용자 발화 역추적
+            previous_user_msg = next(
+                (h["content"].strip() for h in reversed(history) if h.get("role") == "user" and len(h.get("content", "").strip()) > 5),
+                None,
+            )
+            if previous_user_msg:
+                log_body = previous_user_msg
+                cat = self._detect_category(f"{prompt_clean} {log_body}")
+                return IntentResult(
+                    intent="log_explicit",
+                    ai_response=f"아까 말씀해 주신 내용과 마음을 오늘 자 라이프로그 **[{cat}]**에 소중히 기록하고 GitHub에 커밋했습니다! 🕯️📝",
+                    log_content=log_body,
+                    category=cat,
+                )
+
+        # 2-2. 멀티라인 및 후미 기록 명령 (e.g. "[긴 일화]\n\n이 내용 오늘 로그에 기록해줘")
+        multiline_match = re.search(
+            r"^(.*?)(?:\n+|\s+)(?:이\s*내용|이\s*이야기|이\s*글)?\s*(?:오늘\s*)?(?:라이프\s*로그에|로그에|일기에)?\s*(?:기록해줘|적어줘|남겨줘|기록해|메모해줘)\s*$",
+            prompt_clean,
+            re.DOTALL,
+        )
+        if multiline_match and len(multiline_match.group(1).strip()) > 5:
+            log_body = multiline_match.group(1).strip()
             cat = self._detect_category(log_body)
             return IntentResult(
                 intent="log_explicit",
-                ai_response=f"요청하신 '{log_body}' 내용을 오늘 자 **[{cat}]**에 기록하고 GitHub에 커밋했습니다! 📄✨",
+                ai_response=f"보내주신 소중한 일과와 감정을 오늘 자 라이프로그 **[{cat}]**에 즉시 기록하고 GitHub에 커밋했습니다! 📝✨",
                 log_content=log_body,
                 category=cat,
             )
 
+        # 2-3. 단일 문장 직접 기록 (e.g. "헬스장 1시간 운동 기록해줘. 뿌듯함")
+        explicit_match = re.search(
+            r"(.*?)(?:을|를)?\s*(?:기록해줘|일기에\s*적어줘|로그에\s*남겨줘|기록해)(.*)",
+            prompt_clean,
+            re.DOTALL,
+        )
+        if explicit_match:
+            main_part = explicit_match.group(1).strip()
+            extra_part = explicit_match.group(2).strip()
+            if len(main_part) > 1 and not any(w in main_part for w in ["아까", "방금", "이전"]):
+                log_body = f"{main_part} {extra_part}".strip() if extra_part else main_part
+                cat = self._detect_category(log_body)
+                return IntentResult(
+                    intent="log_explicit",
+                    ai_response=f"요청하신 '{main_part}' 내용을 오늘 자 **[{cat}]**에 기록하고 GitHub에 커밋했습니다! 📄✨",
+                    log_content=log_body,
+                    category=cat,
+                )
+
+
         # -------------------------------------------------------------
-        # 3. GTD 할 일 / 일정 / 브리핑 요청 (task_briefing - ADR-008)
+        # 3. GTD 레포 원격 동기화 및 최신화 (repo_sync / repo_sync_and_briefing - ADR-009)
         # -------------------------------------------------------------
+        sync_triggers = ["최신화", "동기화", "pull", "sync", "가져와", "업데이트"]
+        has_sync = any(st in prompt_clean.lower() for st in sync_triggers)
+
         briefing_triggers = [
             "해야할 일", "해야 할 일", "할 일", "할일", "투두", "todo", "일정", "스케줄",
             "gtd", "다음 행동", "수집함", "인박스", "태스크", "스케쥴"
         ]
         action_triggers = [
             "정리", "알려", "보여", "뭐 있", "확인", "브리핑", "요약", "체크", "목록",
-            "리스트", "뭐 해야", "어떤 거", "어떻게 돼", "뭐할까", "뭐하지", "현황"
+            "리스트", "뭐 해야", "어떤 거", "어떻게 돼", "뭐할까", "뭐하지", "현황", "다시 알려"
         ]
+
+        briefing_request_triggers = [
+            "알려", "정리", "보여", "브리핑", "요약", "보고", "체크", "어때", "어떻게",
+            "해야할 일", "해야 할 일", "할 일", "할일", "투두", "일정", "스케줄", "다음 행동"
+        ]
+
+        if prompt_clean.lower() == "/sync" or (has_sync and any(k in prompt_clean.lower() for k in ["레포", "gtd", "저장소", "git", "깃"])):
+            # 동기화 + 브리핑 동시 요청 여부 확인 ("최신화하고 다시 알려줘", "동기화하고 일정 정리" 등)
+            if any(brt in prompt_clean.lower() for brt in briefing_request_triggers):
+                return IntentResult(
+                    intent="repo_sync_and_briefing",
+                    ai_response="",
+                    log_content=None,
+                    category="GTD",
+                )
+            return IntentResult(
+                intent="repo_sync",
+                ai_response="",
+                log_content=None,
+                category="GTD",
+            )
+
+
+        # -------------------------------------------------------------
+        # 4. GTD 할 일 / 일정 / 브리핑 요청 (task_briefing - ADR-008)
+        # -------------------------------------------------------------
         if any(bt in prompt_clean.lower() for bt in briefing_triggers) and any(at in prompt_clean.lower() for at in action_triggers):
             return IntentResult(
                 intent="task_briefing",
@@ -131,6 +210,7 @@ class LLMProvider:
                 log_content=None,
                 category="GTD",
             )
+
 
         # -------------------------------------------------------------
         # 4. 일과/사건/생각 감지 및 능동적 기록 제안 (log_suggest)
@@ -214,13 +294,17 @@ class LLMProvider:
         agy_bin = self._find_agy_path()
         if agy_bin:
             try:
-                # 최근 4개 대화 맥락 추출
+                # 최근 4개 대화 맥락 추출 및 긴 어시스턴트 메시지 슬라이싱 (ADR-010 프롬프트 다이어트)
                 history_text = ""
                 if history:
                     recent = history[-4:]
                     for h in recent:
                         role_name = "사용자" if h.get("role") == "user" else "왓슨"
-                        history_text += f"{role_name}: {h.get('content', '')}\n"
+                        content = str(h.get("content", "")).strip()
+                        # 어시스턴트의 긴 브리핑/답변(GTD 목록 등)은 250자로 축약
+                        if len(content) > 250:
+                            content = content[:250] + " ... (이하 요약 생략)"
+                        history_text += f"{role_name}: {content}\n"
 
                 full_prompt = (
                     "너는 사용자의 24시간 개인 라이프로그 및 GTD AI 비서 왓슨(Watson)이다.\n"
@@ -239,7 +323,7 @@ class LLMProvider:
                     [agy_bin, "-p", full_prompt],
                     capture_output=True,
                     text=True,
-                    timeout=30,
+                    timeout=50,
                     check=False,
                     env=env,
                 )
@@ -259,7 +343,15 @@ class LLMProvider:
         if any(w in prompt for w in ["날씨", "시간"]):
             return "오늘도 활기차고 좋은 하루 보내시길 바랍니다! 궁금한 점이 있으시거나 나누고 싶은 이야기가 있다면 언제든 말씀해 주세요. ☀️"
 
+        # 이전 대화가 진행 중일 때 맥락을 인지하는 폴백 (ADR-010)
+        if history and len(history) > 0:
+            return (
+                "말씀해 주신 깊은 마음과 생각 잘 헤아리고 있습니다. 곁에서 언제나 든든한 버팀목이 되어 드릴 테니, "
+                "필요하신 점이나 덧붙이고 싶은 일과가 있다면 편하게 이어서 말씀해 주세요. 🕯️"
+            )
+
         return "네, 사용자님 말씀 잘 듣고 있습니다! 😊 오늘 하루 있었던 일과나 나누고 싶은 생각, 혹은 정리할 일정이 있다면 무엇이든 편하게 말씀해 주세요."
+
 
     def generate_response(self, prompt: str, history: list[dict[str, str]] | None = None) -> str:
         """기존 인터페이스 하위 호환용 메서드."""
@@ -274,7 +366,8 @@ class LLMProvider:
         workout_keywords = ["운동", "헬스", "러닝", "달리기", "벤치", "스쿼트", "풀업", "pt", "산책", "수영", "요가", "만보"]
         if any(k in text for k in workout_keywords):
             return "Workout & Health"
-        idea_keywords = ["아이디어", "생각", "영감", "깨달음", "고민", "결심", "계획"]
+        idea_keywords = ["아이디어", "생각", "영감", "깨달음", "고민", "결심", "계획", "감정", "마음", "슬퍼", "걱정", "불안", "기분", "느낌"]
         if any(k in text for k in idea_keywords):
             return "Ideas & Thoughts"
         return "Daily Notes & Diary"
+

@@ -88,6 +88,18 @@ else
     exit 1
 fi
 
+echo "  3-6. Testing Repo Sync & Briefing (gtd 레포 최신화하고 다시 알려줘 - ADR-009)..."
+CHAT_RES6=$(curl -s -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_butler_session", "message": "gtd 레포 최신화하고 다시 알려줘", "auto_push": false}')
+if echo "$CHAT_RES6" | grep -q '"intent":"repo_sync_and_briefing"'; then
+    echo "  ✅ 3-6. Repo Sync & Briefing Passed (intent=repo_sync_and_briefing)"
+else
+    echo "  ❌ 3-6. Repo Sync & Briefing Failed. Response: $CHAT_RES6"
+    exit 1
+fi
+
+
 echo "4. Testing GET /api/telegram/status (ADR-006 Telegram Router)..."
 TG_STATUS=$(curl -s "$SERVER_URL/api/telegram/status")
 if echo "$TG_STATUS" | grep -q '"configured"'; then

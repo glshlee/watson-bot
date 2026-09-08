@@ -79,9 +79,26 @@ class SupervisorService:
             self.session_service.clear_pending_log(session_id=session_id)
 
         final_response = intent_res.ai_response
-        if intent_res.intent == "task_briefing":
-            # (D) GTD 일정 및 할 일 종합 브리핑 (ADR-008)
+        if intent_res.intent == "repo_sync":
+            # (D-1) GTD 레포 원격 동기화 (ADR-009)
+            success, sync_msg = self.git_service.pull()
+            icon = "✅" if success else "⚠️"
+            final_response = f"{icon} **GTD 저장소 동기화 결과**\n{sync_msg}"
+
+        elif intent_res.intent == "repo_sync_and_briefing":
+            # (D-2) GTD 레포 동기화 후 즉시 브리핑 (ADR-009)
+            success, sync_msg = self.git_service.pull()
+            briefing = self.agent_service.get_gtd_summary(date_obj=datetime.now(timezone.utc))
+            if success:
+                final_response = f"🔄 **최신 GTD 저장소 동기화 완료** (`git pull`)\n\n{briefing}"
+            else:
+                final_response = f"⚠️ **동기화 주의**: {sync_msg}\n\n{briefing}"
+
+        elif intent_res.intent == "task_briefing":
+            # (D-3) GTD 일정 및 할 일 종합 브리핑 (ADR-008 & ADR-009 자동 동기화)
+            self.git_service.pull()
             final_response = self.agent_service.get_gtd_summary(date_obj=datetime.now(timezone.utc))
+
 
         # 5. AI 응답 DB 저장
         self.session_service.add_message(session_id=session_id, role="assistant", content=final_response)

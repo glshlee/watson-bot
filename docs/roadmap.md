@@ -66,9 +66,23 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] 웹 대시보드 UI 상단 GTD 경로 조회 및 동적 변경 모달 인터페이스 구현
 - [x] 단위 테스트 및 cURL 스모크 테스트 업데이트
 
-### Phase 7: GTD 지능형 브리핑 및 Linux AGY 엔진 브릿지 (ADR-008) - 🚀 진행 중
-- [ ] GTD 할 일/일정 브리핑 파이프라인 (`task_briefing`) 구현
-- [ ] Linux 환경 AGY CLI 동적 경로 탐색 및 systemd 환경변수 반영
-- [ ] 데일리 로그, Next Actions, Inbox 미처리 태스크 종합 요약 포맷팅
-- [ ] 단위 테스트 및 라이브 API 검증
+### Phase 7: GTD 지능형 브리핑 및 Linux AGY 엔진 브릿지 (ADR-008) - ✅ 완료
+- [x] GTD 할 일/일정 브리핑 파이프라인 (`task_briefing`) 구현
+- [x] Linux 환경 AGY CLI 동적 경로 탐색 및 systemd 환경변수 반영
+- [x] 데일리 로그, Next Actions, Inbox 미처리 태스크 종합 요약 포맷팅
+- [x] 단위 테스트 및 라이브 API 검증
+
+### Phase 8: GTD 저장소 원격 동기화 및 자동 Pull 파이프라인 (ADR-009) - ✅ 완료
+- [x] `GitService.pull(autostash=True)` 안전 원격 동기화 메서드 구현
+- [x] `LLMProvider`에 `repo_sync` 인텐트 및 복합 브리핑(`sync_and_brief`) 분류기 추가
+- [x] `task_briefing` 실행 시 자동 사전 Git Pull 파이프라인 연동
+- [x] 단위 테스트 및 cURL 스모크 테스트 검증
+
+### Phase 9: 세션 대화 맥락 참조 기록 & AGY 프롬프트 경량화 (ADR-010) - 🚀 진행 중
+- [ ] 대화 맥락 참조 기록("아까 말한 내용 기록해줘") 히스토리 역추적 파이프라인 구현
+- [ ] 멀티라인 및 복합 기록 지시어 유연 파싱 로직 구현
+- [ ] AGY CLI 호출 시 히스토리 토큰 경량화 슬라이싱 및 타임아웃 50초 확장
+- [ ] 단위 테스트 및 라이브 API 스모크 검증
+
+
 

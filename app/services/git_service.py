@@ -69,3 +69,32 @@ class GitService:
         except GitError as e:
             logger.error(f"[GitService Error]: {e}")
             return False
+
+    def pull(self) -> tuple[bool, str]:
+        """
+        원격 저장소로부터 최신 커밋을 안전하게 가져옵니다 (ADR-009).
+        로컬 변경사항이 있어도 autostash를 통해 보존하며 충돌 없이 병합합니다.
+        """
+        if not self.repo:
+            return False, f"지정된 디렉토리({self.repo_path})가 Git 저장소가 아닙니다."
+        if not self.repo.remotes:
+            return False, "연결된 원격 저장소(remote)가 없습니다."
+
+        try:
+            remote_name = (
+                settings.GIT_REMOTE_NAME
+                if settings.GIT_REMOTE_NAME in self.repo.remotes
+                else self.repo.remotes[0].name
+            )
+            branch = self.repo.active_branch.name
+
+            pull_output = self.repo.git.pull(remote_name, branch, rebase=True, autostash=True)
+            logger.info(f"Pulled latest changes for {self.repo_path}: {pull_output}")
+
+            if "Already up to date" in pull_output:
+                return True, f"원격 저장소('{remote_name}/{branch}')와 이미 최신 상태입니다."
+            return True, f"원격 저장소('{remote_name}/{branch}')로부터 최신 변경사항을 성공적으로 동기화했습니다."
+        except (GitError, TypeError) as e:
+            logger.warning(f"[GitService Pull Warning]: {e}")
+            return False, f"Git 동기화 중 오류 발생: {e}"
+
