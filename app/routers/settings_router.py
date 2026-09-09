@@ -1,11 +1,12 @@
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from app.auth import verify_web_auth
 from app.services.settings_service import SettingsService
 
-router = APIRouter(prefix="/api/settings", tags=["settings"])
+router = APIRouter(prefix="/api/settings", tags=["settings"], dependencies=[Depends(verify_web_auth)])
 
 
 class GTDPathRequest(BaseModel):

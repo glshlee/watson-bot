@@ -112,6 +112,14 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] 데일리 로그 + GTD 인박스 단일 트랜잭션 동시 반영 및 원자적 Git 커밋/동기화
 - [x] 단위 테스트, 3-8 cURL 라이브 스모크 테스트 및 실사용 데이터 소급 정정 완료
 
+### Phase 14: 웹 콘솔 보안 인증 & Cloudflare Tunnel 외부 연동 (ADR-015) - ✅ 완료
+- [x] FastAPI `HTTPBasic` 기반 웹 콘솔/API 보안 인증 가드(`app/auth.py`) 구현
+- [x] `.env` 내 `WEB_AUTH_ENABLED`, `WEB_AUTH_USERNAME`, `WEB_AUTH_PASSWORD` 구성
+- [x] `cloudflared` 설치 및 무개방 HTTPS 터널 러너(`scripts/run_tunnel.sh`) 구현
+- [x] `systemd/watson-tunnel.service` 데몬 등록 및 24/7 상시 터널링 가동
+- [x] `tests/test_auth.py` 단위 테스트 및 `./scripts/smoke_test.sh` Auth Guard 실시간 검증 완료
+
+
 
 
 

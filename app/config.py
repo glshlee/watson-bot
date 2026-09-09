@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     # LLM Configuration (Gemini / OpenAI / Custom)
     LLM_API_KEY: str = ""
     LLM_MODEL: str = "gemini-1.5-flash"
+
+    # Web Authentication & Cloudflare Tunnel (ADR-015)
+    WEB_AUTH_ENABLED: bool = False
+    WEB_AUTH_USERNAME: str = "watson"
+    WEB_AUTH_PASSWORD: str = ""
+    CLOUDFLARE_TUNNEL_TOKEN: str = ""
     
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

@@ -68,6 +68,11 @@
 - **FR-13.3**: 비정형 일기 텍스트에서 여행/맛집/업무 등의 실행 키워드를 추출하여 행동 지향적 태스크 포맷으로 합성하고, GTD 인박스의 적합한 섹션(`## 🧘 개인 생활 & 건강` 등)에 배치해야 한다.
 - **FR-13.4**: 데일리 로그와 GTD 인박스 두 변경 사항을 원자적(atomic)으로 Git 커밋 및 동기화해야 한다.
 
+### FR-14: 웹 콘솔 보안 인증 및 Cloudflare Tunnel 외부 연동 (Web Auth & Tunnel - ADR-015)
+- **FR-14.1**: `WEB_AUTH_ENABLED=true` 활성화 시, 웹 대시보드(`/`) 및 모든 관리 API(`/api/chat`, `/api/sessions`, `/api/settings/*`)는 HTTP Basic 인증(`Authorization: Basic`)을 요구해야 하며, 미인증 시 401 Unauthorized와 `WWW-Authenticate` 헤더를 반환해야 한다.
+- **FR-14.2**: 인바운드 포트 개방 없이 Cloudflare Tunnel을 통해 안전한 HTTPS 외부 접속 경로를 제공해야 한다.
+- **FR-14.3**: `watson-tunnel.service` 데몬을 통해 24/7 상시 터널링 가동 및 토큰 기반 영구 도메인 연동을 지원해야 한다.
+
 ---
 
 
@@ -104,4 +109,5 @@
 | **FR-11** | `app/services/llm_provider.py`, `scripts/smoke_test.sh` | Pytest 지시어 역추적 테스트 & sandboxed cURL 검증 |
 | **FR-12** | `app/config.py`, `app/services/agent_service.py` | Pytest 타임존 변환/롤오버 단위 테스트 & cURL 검증 |
 | **FR-13** | `app/services/llm_provider.py`, `app/services/agent_service.py`, `app/services/supervisor_service.py` | Pytest 듀얼 로깅/태스크 정제 단위 테스트 & cURL 검증 |
+| **FR-14** | `app/auth.py`, `app/config.py`, `systemd/watson-tunnel.service` | Pytest 인증 단위 테스트(`tests/test_auth.py`) & cURL Auth Guard 검증 |
 

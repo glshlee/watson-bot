@@ -59,6 +59,10 @@
   - *"로그와 gtd에 기록해줘"*, *"일기랑 할일에 적어줘"* 요청 시, 서사적 일기는 데일리 로그(`logs/daily/YYYY-MM-DD.md`)에, 실행 가능한 할 일은 GTD 인박스(`gtd/inbox.md`)에 단일 트랜잭션으로 누락 없이 동시 기록합니다.
   - 문장 끝의 지시어 수식구("로그와 gtd에 기록해줘") 및 불필요한 구두점을 완벽히 절삭하여 깔끔한 일기 본문을 보존합니다.
   - 비정형 사연에서 여행/맛집/업무 등의 핵심 요소를 추출하여 행동 지향적 태스크(`- [ ] 서산 여행 계획 및 맛집 방문 (용현집 어죽, 또간집 게국지) 🚗🍲`)로 합성하고, 인박스의 대주제 섹션(`## 🧘 개인 생활 & 건강`)에 자동 정렬합니다.
+- 🔐 **웹 콘솔 보안 인증 & Cloudflare Tunnel 외부 연동 (Web Auth & Tunnel - ADR-015)**
+  - 클라우드 방화벽 인바운드 포트(8000 등)를 외부에 열지 않고, **Cloudflare Tunnel (`cloudflared`)**을 통해 어디서나 무료 HTTPS 암호화 접속을 지원합니다.
+  - 웹 대시보드(`/`) 및 모든 관리 API에 **HTTP Basic 보안 인증**을 적용하여 브라우저 로그인 창(ID/PW)을 강제하며, 비인가자의 개인 일기 및 GTD 열람/조작을 원천 차단합니다.
+  - `watson-tunnel.service` 데몬을 통해 24/7 무중단 백그라운드 구동되며, 전용 도메인 토큰 연동까지 완벽 지원합니다.
 
 - 📁 **GTD 저장소 격리 및 외부 체계 오케스트레이션 (GTD Repo Isolation - ADR-007)**
   - 왓슨 봇 소스코드 저장소와 개인 데이터(GTD/라이프로그) 저장소를 물리적으로 완벽히 분리합니다.
@@ -289,12 +293,13 @@ watson-bot/
 │   ├── templates/           # Jinja2 HTML 대시보드 및 설정 템플릿
 │   └── main.py              # FastAPI 진입점 및 Lifespan 관리
 ├── docs/
-│   ├── adr/                 # 아키텍처 결정 기록 (ADR-001 ~ ADR-014)
+│   ├── adr/                 # 아키텍처 결정 기록 (ADR-001 ~ ADR-015)
 │   ├── PRD.md               # 제품 기획서
 │   ├── requirements.md      # 기능 명세서
 │   └── roadmap.md           # 개발 로드맵
 ├── systemd/
-│   └── watson.service       # 24/7 Linux OS 서비스 유닛 파일
+│   ├── watson.service       # 24/7 Linux OS 서비스 유닛 파일
+│   └── watson-tunnel.service # 24/7 Cloudflare Tunnel 서비스 유닛 파일
 ├── scripts/                 # 스모크 테스트 및 유틸리티
 ├── tests/                   # pytest 테스트 스위트
 ├── docker-compose.yml       # 컨테이너 배포 명세

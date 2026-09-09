@@ -7,4 +7,7 @@ lifelogs/
 .pytest_cache/
 config/*.json
 !config/gtd_config.json.example
+tunnel.log
+tunnel_url.txt
+
 

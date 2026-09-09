@@ -1,0 +1,15 @@
+[Unit]
+Description=Cloudflare Tunnel for Watson AI Agent
+After=network.target watson.service
+Wants=watson.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/workspace/watson-bot
+ExecStart=/bin/bash /home/ubuntu/workspace/watson-bot/scripts/run_tunnel.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

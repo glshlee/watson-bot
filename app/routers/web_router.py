@@ -4,10 +4,11 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.auth import verify_web_auth
 from app.db.database import get_db
 from app.services.supervisor_service import SupervisorService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(verify_web_auth)])
 templates = Jinja2Templates(directory="app/templates")
 
 class ChatRequest(BaseModel):
