@@ -43,13 +43,15 @@
 * **복합 의도 감지 & GTD 태스크 정제 (ADR-014)**: "로그와 gtd에 기록해줘" 등 복합 요청 시 데일리 로그(서사 일기)와 GTD 인박스(정제된 액션 태스크)에 동시 기록하며, 지시어 접미사 누출을 차단하고 1회 원자적 Git 커밋을 집행할 것.
 * **웹 보안 인증 & Cloudflare Tunnel (ADR-015)**: 외부 접속 시 HTTP Basic 인증으로 일기/GTD 무단 접근을 원천 차단하고, 포트 개방 없는 Cloudflare Tunnel(자동 HTTPS)로 안전한 무중단 터널링을 보장할 것.
 * **모바일 퍼스트 반응형 웹 UX (ADR-016)**: 스마트폰 화면(<=768px)에서 사이드바를 오프캔버스 슬라이드 드로어로 자동 전환하고, 100dvh 뷰포트, iOS Safe Area, 사파리 줌 방지(16px) 및 터치 친화적 액션 컴포넌트를 보장할 것.
+* **웹 세션 관리 고도화 & 스마트 네이밍 (ADR-017)**: 웹 콘솔에서 세션 실시간 검색 및 채널 필터(`전체`/`웹`/`텔레그램`), 제목 변경/삭제/비우기 CRUD, 활성 세션 삭제 시 인접 세션 안전 폴백 및 첫 발화 기반 스마트 자동 네이밍을 보장할 것.
+* **에이전트 허브 포털 & 개발 에이전트 분리 (ADR-018)**: 루트 경로(`/`)에 에이전트 허브 대시보드를 제공하고, 왓슨 비서(`/watson`)와 개발 전담 DevBot(`/dev`)을 독립 라우팅 및 `agent_type` 세션 격리로 분리 운영할 것.
 * **Explicit User Commit Trigger Only (에이전트 코드 커밋 수칙)**: 코드 수정 및 기능 구현 후 Git 커밋(`git commit`)은 에이전트가 임의로 자동 실행하지 않으며, 오직 **사용자가 명시적으로 "커밋해" 지시를 내렸을 때만** 수행할 것.
 * **Curl-Based Live Verification (필수)**: 모든 코드 수정 후 반드시 `./scripts/smoke_test.sh` cURL 테스트를 실행하여 실제 라이브 API 수신 및 500 에러 부재를 검증할 것.
 * **Self-Verification & Evolution Loop**: 코드 변경 시 `pytest`/`mypy`/`ruff` 및 cURL 검증 수행 후 실패 시 `evolution.md` 지침에 따라 하네스 자가 진화 집행.
 
 ### 4. Progressive Disclosure (상세 문서 참조)
 * **제품 기획서 개요**: `docs/PRD.md` | **기능 요구사항**: `docs/requirements.md`
-* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-016)
+* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-018)
 
 ---
 

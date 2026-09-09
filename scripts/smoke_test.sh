@@ -22,12 +22,21 @@ run_curl() {
     curl -s "${AUTH_FLAGS[@]}" "$@"
 }
 
-if ! run_curl "$SERVER_URL/" > /dev/null; then
+SERVER_READY=0
+for i in {1..10}; do
+    if curl -s -o /dev/null "$SERVER_URL/"; then
+        SERVER_READY=1
+        break
+    fi
+    sleep 1
+done
+
+if [ "$SERVER_READY" -eq 0 ]; then
     echo "⚠️ Server is not running on port 8000. Launching temporary test server..."
     source venv/bin/activate
     python -m uvicorn app.main:app --port 8000 &
     SERVER_PID=$!
-    sleep 2
+    sleep 3
     TRAP_EXIT=1
 fi
 
@@ -41,13 +50,24 @@ if [ "$AUTH_TEST" -eq 1 ]; then
     echo "✅ Auth Guard Passed (401 Unauthorized without credentials)"
 fi
 
-echo "1. Testing GET / (HTML Dashboard with Auth)..."
+echo "1. Testing GET / (Agent Hub Portal with Auth - ADR-018)..."
 RESPONSE_CODE=$(run_curl -o /dev/null -w "%{http_code}" "$SERVER_URL/")
 if [ "$RESPONSE_CODE" -ne 200 ]; then
     echo "❌ GET / failed with status $RESPONSE_CODE"
     exit 1
 fi
-echo "✅ GET / Passed (200 OK)"
+echo "✅ GET / Passed (200 OK - Agent Hub Portal)"
+
+echo "1-1. Testing GET /watson & GET /dev & GET /api/hub/status..."
+W_CODE=$(run_curl -o /dev/null -w "%{http_code}" "$SERVER_URL/watson")
+D_CODE=$(run_curl -o /dev/null -w "%{http_code}" "$SERVER_URL/dev")
+HUB_STATUS=$(run_curl "$SERVER_URL/api/hub/status")
+if [ "$W_CODE" -eq 200 ] && [ "$D_CODE" -eq 200 ] && echo "$HUB_STATUS" | grep -q '"total_agents":2'; then
+    echo "✅ Agent Hub & Dev Routes Passed (200 OK)"
+else
+    echo "❌ Agent Hub Routes Failed: watson=$W_CODE, dev=$D_CODE"
+    exit 1
+fi
 
 echo "2. Testing GET /api/sessions..."
 RESPONSE_CODE=$(run_curl -o /dev/null -w "%{http_code}" "$SERVER_URL/api/sessions")
@@ -80,6 +100,9 @@ cleanup() {
       -H "Content-Type: application/json" \
       -d "{\"path\": \"$ORIGINAL_GTD_PATH\", \"create_if_missing\": false}" > /dev/null || true
   fi
+  # Clean up smoke test session so it doesn't pollute user UI
+  run_curl -X DELETE "$SERVER_URL/api/sessions/smoke_butler_session" > /dev/null 2>&1 || true
+  run_curl -X DELETE "$SERVER_URL/api/sessions/smoke_dev_session" > /dev/null 2>&1 || true
   if [ -n "$TMP_TEST_GTD" ] && [ -d "$TMP_TEST_GTD" ]; then
     rm -rf "$TMP_TEST_GTD" || true
   fi
@@ -177,6 +200,17 @@ if echo "$CHAT_RES8" | grep -q '"intent":"log_dual"'; then
     echo "  ✅ 3-8. Compound Intent Passed (intent=log_dual, Daily Log + GTD Inbox Written)"
 else
     echo "  ❌ 3-8. Compound Intent Failed. Response: $CHAT_RES8"
+    exit 1
+fi
+
+echo "  3-9. Testing Dev Agent Chat (/status - ADR-018)..."
+DEV_RES=$(run_curl -X POST "$SERVER_URL/api/dev/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_dev_session", "message": "/status"}')
+if echo "$DEV_RES" | grep -q 'action_type'; then
+    echo "  ✅ 3-9. Dev Agent Chat Passed (action_type returned)"
+else
+    echo "  ❌ 3-9. Dev Agent Chat Failed: $DEV_RES"
     exit 1
 fi
 

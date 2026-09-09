@@ -126,6 +126,27 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] 헤더 축약 타이틀, GTD 배지 말줄임, 모바일 최적화 빠른 액션 버튼 및 텍스트에어리어 반응형 스타일링
 - [x] `tests/conftest.py` 테스트 환경 격리 fixture 추가 및 `./scripts/smoke_test.sh` 라이브 검증 완료
 
+### Phase 16: 웹 콘솔 세션 관리 고도화 (ADR-017) - ✅ 완료
+- [x] `SessionService` 내 세션 이름 변경(`update_session_title`), 삭제(`delete_session`), 대화 비우기(`clear_session_messages`) 및 메타데이터 강화(`list_sessions`)
+- [x] 첫 프롬프트 전송 시 의미 있는 대화명 자동 생성(`auto_update_session_title`)
+- [x] `WebRouter` 내 `PATCH /api/sessions/{session_id}`, `DELETE /api/sessions/{session_id}`, `POST /api/sessions/{session_id}/clear` REST API 엔드포인트 구현
+- [x] 사이드바 실시간 검색 입력창 및 채널별(`전체`, `🌐 웹`, `📱 텔레그램`) 필터 탭 UI 구현
+- [x] 카드 호버/터치 액션 버튼(이름 변경, 대화 비우기, 세션 삭제) 및 모달 UI 구현
+- [x] 활성 세션 삭제 시 인접 세션 또는 기본 세션 자동 폴백 UX 적용
+- [x] 헤더 영역 활성 세션 제목, 채널 배지, 메시지 개수 실시간 연동 및 대화 비우기 바로가기 버튼 추가
+- [x] 단위 테스트(`tests/test_session_service.py`, `tests/test_web_router.py`), 린트/타입 검사 및 `./scripts/smoke_test.sh` 라이브 cURL 검증 완료
+
+### Phase 17: 에이전트 허브 대시보드 포털 & 개발 에이전트 분리 (ADR-018) - ✅ 완료
+- [x] 상위 에이전트 허브 대시보드 포털(`app/templates/portal.html`) 및 `GET /` 루트 엔드포인트 구현
+- [x] Watson 비서 콘솔(`GET /watson`) 및 DevBot 개발 콘솔(`GET /dev`, `app/templates/dev.html`) 독립 라우팅 분리
+- [x] 개발 전담 에이전트 서비스(`DevAgentService`) 구현: Git 단축 명령(`/status`, `/diff`, `/log`, `/branch`) 및 엔지니어링 AI 추론
+- [x] `SessionModel`에 `agent_type` 컬럼 추가 및 SQLite 자동 마이그레이션 (`database.init_db`)
+- [x] `GET /api/hub/status`, `POST /api/dev/chat`, `GET /api/dev/sessions`, `GET /api/dev/status` REST 엔드포인트 구축
+- [x] 포털 및 개발자 콘솔 전용 반응형 스타일링(`style.css`), `portal.js`, `dev.js` 클라이언트 구현
+- [x] 각 에이전트 콘솔 상단 헤더에 `[🏠 에이전트 허브]` 복귀 내비게이션 버튼 배치
+- [x] 대시보드 포털 모바일/데스크톱 세로 스크롤 버그 수정 및 카드 원클릭 터치 내비게이션 UX 고도화
+- [x] 단위 테스트(`tests/test_dev_agent.py`), Mypy/Ruff 검증 및 `./scripts/smoke_test.sh` 라이브 검증 완료
+
 
 
 

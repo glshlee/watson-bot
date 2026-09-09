@@ -28,4 +28,6 @@ def init_db():
             columns = [row[1] for row in result.fetchall()]
             if columns and "pending_log" not in columns:
                 conn.exec_driver_sql("ALTER TABLE sessions ADD COLUMN pending_log TEXT")
+            if columns and "agent_type" not in columns:
+                conn.exec_driver_sql("ALTER TABLE sessions ADD COLUMN agent_type VARCHAR(32) DEFAULT 'watson'")
 

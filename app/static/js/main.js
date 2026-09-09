@@ -1,5 +1,9 @@
 document.addEventListener("DOMContentLoaded", () => {
     let currentSessionId = "web_default_session";
+    let allSessions = [];
+    let currentFilter = "all";
+    let searchQuery = "";
+    let targetActionSessionId = null;
 
     const chatMessages = document.getElementById("chat-messages");
     const chatInput = document.getElementById("chat-input");
@@ -7,10 +11,56 @@ document.addEventListener("DOMContentLoaded", () => {
     const categorySelect = document.getElementById("category-select");
     const sessionList = document.getElementById("session-list");
     const newSessionBtn = document.getElementById("new-session-btn");
+    const sessionSearchInput = document.getElementById("session-search-input");
+    const clearSearchBtn = document.getElementById("clear-search-btn");
+    const filterTabs = document.querySelectorAll(".filter-tab");
     const mobileMenuBtn = document.getElementById("mobile-menu-btn");
     const closeSidebarBtn = document.getElementById("close-sidebar-btn");
     const sidebar = document.getElementById("sidebar");
     const sidebarBackdrop = document.getElementById("sidebar-backdrop");
+    const activeSessionTitle = document.getElementById("active-session-title");
+    const mobileSessionTitle = document.getElementById("mobile-session-title");
+    const activeSessionMeta = document.getElementById("active-session-meta");
+    const clearChatBtn = document.getElementById("clear-chat-btn");
+
+    // Modals
+    const renameModal = document.getElementById("rename-modal");
+    const closeRenameModalBtn = document.getElementById("close-rename-modal-btn");
+    const cancelRenameBtn = document.getElementById("cancel-rename-btn");
+    const saveRenameBtn = document.getElementById("save-rename-btn");
+    const renameSessionInput = document.getElementById("rename-session-input");
+
+    const deleteModal = document.getElementById("delete-modal");
+    const closeDeleteModalBtn = document.getElementById("close-delete-modal-btn");
+    const cancelDeleteBtn = document.getElementById("cancel-delete-btn");
+    const confirmDeleteBtn = document.getElementById("confirm-delete-btn");
+    const deleteModalMsg = document.getElementById("delete-modal-msg");
+
+    const clearModal = document.getElementById("clear-modal");
+    const closeClearModalBtn = document.getElementById("close-clear-modal-btn");
+    const cancelClearBtn = document.getElementById("cancel-clear-btn");
+    const confirmClearBtn = document.getElementById("confirm-clear-btn");
+
+    // Relative Time Formatter
+    function formatRelativeTime(dateStr) {
+        if (!dateStr) return "";
+        try {
+            const d = new Date(dateStr);
+            const now = new Date();
+            const diffSec = Math.floor((now - d) / 1000);
+            if (diffSec < 60) return "방금";
+            const diffMin = Math.floor(diffSec / 60);
+            if (diffMin < 60) return `${diffMin}분 전`;
+            const diffHour = Math.floor(diffMin / 60);
+            if (diffHour < 24) return `${diffHour}시간 전`;
+            const diffDay = Math.floor(diffHour / 24);
+            if (diffDay === 1) return "어제";
+            if (diffDay < 7) return `${diffDay}일 전`;
+            return `${d.getMonth() + 1}월 ${d.getDate()}일`;
+        } catch {
+            return "";
+        }
+    }
 
     // Off-canvas mobile drawer handlers
     function openSidebar() {
@@ -27,24 +77,99 @@ document.addEventListener("DOMContentLoaded", () => {
     closeSidebarBtn?.addEventListener("click", closeSidebar);
     sidebarBackdrop?.addEventListener("click", closeSidebar);
 
-    // Fetch and render session list
-    async function loadSessions() {
+    // Fetch session list from API
+    async function loadSessions(autoSelect = false) {
         try {
             const res = await fetch("/api/sessions");
             if (res.ok) {
-                const sessions = await res.json();
-                sessionList.innerHTML = "";
-                sessions.forEach(s => {
-                    const item = document.createElement("div");
-                    item.className = `session-item ${s.id === currentSessionId ? 'active' : ''}`;
-                    item.innerText = s.title || s.id;
-                    item.onclick = () => switchSession(s.id);
-                    sessionList.appendChild(item);
-                });
+                allSessions = await res.json();
+                renderSessionList();
+
+                if (autoSelect && allSessions.length > 0) {
+                    const exists = allSessions.some(s => s.id === currentSessionId);
+                    const targetId = exists ? currentSessionId : allSessions[0].id;
+                    await switchSession(targetId);
+                }
             }
         } catch (e) {
             console.error("Failed to load sessions", e);
         }
+    }
+
+    // Render session cards with search and channel filter
+    function renderSessionList() {
+        sessionList.innerHTML = "";
+
+        const filtered = allSessions.filter(s => {
+            const matchesChannel = currentFilter === "all" || s.channel === currentFilter;
+            const matchesQuery = !searchQuery ||
+                (s.title && s.title.toLowerCase().includes(searchQuery)) ||
+                (s.id && s.id.toLowerCase().includes(searchQuery)) ||
+                (s.last_message && s.last_message.toLowerCase().includes(searchQuery));
+            return matchesChannel && matchesQuery;
+        });
+
+        if (filtered.length === 0) {
+            const emptyDiv = document.createElement("div");
+            emptyDiv.className = "session-empty-state";
+            emptyDiv.innerHTML = `
+                <i class="fa-solid fa-comments"></i>
+                <p>${searchQuery ? '검색된 세션이 없습니다.' : '대화 세션이 없습니다.'}</p>
+            `;
+            sessionList.appendChild(emptyDiv);
+            return;
+        }
+
+        filtered.forEach(s => {
+            const item = document.createElement("div");
+            item.className = `session-item ${s.id === currentSessionId ? 'active' : ''}`;
+            item.dataset.id = s.id;
+
+            const isTelegram = s.channel === "telegram";
+            const channelIcon = isTelegram ? 'fa-brands fa-telegram' : 'fa-solid fa-globe';
+            const displayTitle = s.title || s.id;
+            const timeStr = formatRelativeTime(s.updated_at);
+            const msgCount = s.message_count || 0;
+
+            item.innerHTML = `
+                <div class="session-item-header">
+                    <span class="session-channel-badge ${s.channel}" title="${isTelegram ? '텔레그램 세션' : '웹 콘솔 세션'}">
+                        <i class="${channelIcon}"></i>
+                    </span>
+                    <span class="session-title" title="${displayTitle}">${displayTitle}</span>
+                    <div class="session-actions">
+                        <button class="session-action-btn edit-btn" title="이름 변경"><i class="fa-solid fa-pen"></i></button>
+                        <button class="session-action-btn delete delete-btn" title="세션 삭제"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+                <div class="session-item-footer">
+                    <span class="session-meta-time"><i class="fa-regular fa-clock"></i> ${timeStr}</span>
+                    <span class="session-msg-count">${msgCount}개</span>
+                </div>
+            `;
+
+            // Click card to switch session
+            item.addEventListener("click", (e) => {
+                if (e.target.closest(".session-actions")) return;
+                switchSession(s.id);
+            });
+
+            // Edit button handler
+            const editBtn = item.querySelector(".edit-btn");
+            editBtn?.addEventListener("click", (e) => {
+                e.stopPropagation();
+                openRenameModal(s.id, displayTitle);
+            });
+
+            // Delete button handler
+            const deleteBtn = item.querySelector(".delete-btn");
+            deleteBtn?.addEventListener("click", (e) => {
+                e.stopPropagation();
+                openDeleteModal(s.id, displayTitle);
+            });
+
+            sessionList.appendChild(item);
+        });
     }
 
     // Switch Session and load history
@@ -53,17 +178,200 @@ document.addEventListener("DOMContentLoaded", () => {
         if (window.innerWidth <= 768) {
             closeSidebar();
         }
-        await loadSessions();
+
+        // Highlight active session item in sidebar
+        document.querySelectorAll(".session-item").forEach(el => {
+            el.classList.toggle("active", el.dataset.id === sessionId);
+        });
+
         try {
             const res = await fetch(`/api/sessions/${sessionId}/history`);
             if (res.ok) {
                 const data = await res.json();
                 renderHistory(data.history);
+
+                // Update Header with Session Name
+                const title = data.title || sessionId;
+                if (activeSessionTitle) activeSessionTitle.innerText = title;
+                if (mobileSessionTitle) mobileSessionTitle.innerText = title.length > 14 ? title.slice(0, 14) + "..." : title;
+                if (activeSessionMeta) {
+                    const channelLabel = data.channel === "telegram" ? "📱 텔레그램 연동 세션" : "🌐 웹 대화 세션";
+                    activeSessionMeta.innerText = `${channelLabel} • 메시지 ${data.history.length}개 • ${sessionId}`;
+                }
             }
         } catch (e) {
             console.error("Failed to load session history", e);
         }
     }
+
+    // Search filter listeners
+    sessionSearchInput?.addEventListener("input", (e) => {
+        searchQuery = e.target.value.trim().toLowerCase();
+        if (clearSearchBtn) {
+            clearSearchBtn.classList.toggle("hidden", !searchQuery);
+        }
+        renderSessionList();
+    });
+
+    clearSearchBtn?.addEventListener("click", () => {
+        sessionSearchInput.value = "";
+        searchQuery = "";
+        clearSearchBtn.classList.add("hidden");
+        renderSessionList();
+    });
+
+    // Channel filter tabs
+    filterTabs.forEach(tab => {
+        tab.addEventListener("click", () => {
+            filterTabs.forEach(t => t.classList.remove("active"));
+            tab.classList.add("active");
+            currentFilter = tab.dataset.channel || "all";
+            renderSessionList();
+        });
+    });
+
+    // Rename Session Modal Logic
+    function openRenameModal(sessionId, currentTitle) {
+        targetActionSessionId = sessionId;
+        renameSessionInput.value = currentTitle;
+        renameModal.classList.remove("hidden");
+        setTimeout(() => renameSessionInput.focus(), 100);
+    }
+
+    function closeRenameModal() {
+        renameModal.classList.add("hidden");
+        targetActionSessionId = null;
+    }
+
+    closeRenameModalBtn?.addEventListener("click", closeRenameModal);
+    cancelRenameBtn?.addEventListener("click", closeRenameModal);
+
+    saveRenameBtn?.addEventListener("click", async () => {
+        const newTitle = renameSessionInput.value.trim();
+        if (!newTitle) {
+            alert("세션 이름을 입력해 주세요.");
+            return;
+        }
+
+        saveRenameBtn.disabled = true;
+        saveRenameBtn.innerText = "변경 중...";
+
+        try {
+            const res = await fetch(`/api/sessions/${targetActionSessionId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title: newTitle })
+            });
+
+            if (res.ok) {
+                closeRenameModal();
+                await loadSessions();
+                if (currentSessionId === targetActionSessionId) {
+                    if (activeSessionTitle) activeSessionTitle.innerText = newTitle;
+                    if (mobileSessionTitle) mobileSessionTitle.innerText = newTitle.length > 14 ? newTitle.slice(0, 14) + "..." : newTitle;
+                }
+            } else {
+                alert("세션 이름 변경에 실패했습니다.");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("서버 연결 중 오류가 발생했습니다.");
+        } finally {
+            saveRenameBtn.disabled = false;
+            saveRenameBtn.innerText = "변경 완료";
+        }
+    });
+
+    renameSessionInput?.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            saveRenameBtn.click();
+        }
+    });
+
+    // Delete Session Modal Logic
+    function openDeleteModal(sessionId, title) {
+        targetActionSessionId = sessionId;
+        if (deleteModalMsg) {
+            deleteModalMsg.innerText = `세션 '${title}' (${sessionId}) 및 모든 대화 기록을 완전히 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`;
+        }
+        deleteModal.classList.remove("hidden");
+    }
+
+    function closeDeleteModal() {
+        deleteModal.classList.add("hidden");
+        targetActionSessionId = null;
+    }
+
+    closeDeleteModalBtn?.addEventListener("click", closeDeleteModal);
+    cancelDeleteBtn?.addEventListener("click", closeDeleteModal);
+
+    confirmDeleteBtn?.addEventListener("click", async () => {
+        confirmDeleteBtn.disabled = true;
+        confirmDeleteBtn.innerText = "삭제 중...";
+
+        try {
+            const res = await fetch(`/api/sessions/${targetActionSessionId}`, {
+                method: "DELETE"
+            });
+
+            if (res.ok) {
+                closeDeleteModal();
+                await loadSessions();
+                // If deleted session was active, switch to next available or default
+                if (currentSessionId === targetActionSessionId) {
+                    const nextSession = allSessions.find(s => s.id !== targetActionSessionId);
+                    const newId = nextSession ? nextSession.id : "web_default_session";
+                    await switchSession(newId);
+                }
+            } else {
+                alert("세션 삭제에 실패했습니다.");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("서버 연결 중 오류가 발생했습니다.");
+        } finally {
+            confirmDeleteBtn.disabled = false;
+            confirmDeleteBtn.innerHTML = '<i class="fa-solid fa-trash"></i> 삭제';
+        }
+    });
+
+    // Clear Chat Messages Modal Logic
+    clearChatBtn?.addEventListener("click", () => {
+        clearModal.classList.remove("hidden");
+    });
+
+    closeClearModalBtn?.addEventListener("click", () => clearModal.classList.add("hidden"));
+    cancelClearBtn?.addEventListener("click", () => clearModal.classList.add("hidden"));
+
+    confirmClearBtn?.addEventListener("click", async () => {
+        confirmClearBtn.disabled = true;
+        confirmClearBtn.innerText = "비우는 중...";
+
+        try {
+            const res = await fetch(`/api/sessions/${currentSessionId}/clear`, {
+                method: "POST"
+            });
+
+            if (res.ok) {
+                clearModal.classList.add("hidden");
+                chatMessages.innerHTML = "";
+                appendMessage("assistant", "대화 내용이 초기화되었습니다. 새로운 기록을 남겨보세요! 🤖");
+                await loadSessions();
+                if (activeSessionMeta) {
+                    activeSessionMeta.innerText = `웹 대화 세션 • 메시지 0개 • ${currentSessionId}`;
+                }
+            } else {
+                alert("대화 내용 비우기에 실패했습니다.");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("서버 연결 중 오류가 발생했습니다.");
+        } finally {
+            confirmClearBtn.disabled = false;
+            confirmClearBtn.innerHTML = '<i class="fa-solid fa-broom"></i> 비우기';
+        }
+    });
 
     function renderHistory(history) {
         chatMessages.innerHTML = "";
@@ -297,6 +605,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Initial Load
-    loadSessions();
+    loadSessions(true);
     loadGTDStatus();
 });

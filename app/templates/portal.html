@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko" class="portal-html">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Watson - 24/7 AI Agent Console - Agent Hub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=1.3.1">
+</head>
+<body class="portal-body">
+    <div class="portal-container">
+        <!-- Portal Top Header -->
+        <header class="portal-header">
+            <div class="portal-brand">
+                <div class="portal-logo">
+                    <i class="fa-solid fa-brain-circuit"></i>
+                </div>
+                <div class="portal-brand-text">
+                    <h1>Watson <span>Agent Workspace</span></h1>
+                    <p class="portal-subtitle">자율 비서 및 엔지니어링 에이전트 통합 대시보드</p>
+                </div>
+            </div>
+            <div class="portal-header-badges">
+                <span class="badge portal-status-badge online"><i class="fa-solid fa-circle-check"></i> 24/7 Online</span>
+                <span class="badge portal-status-badge tunnel"><i class="fa-solid fa-shield-halved"></i> HTTPS Secure</span>
+                <span class="badge portal-status-badge tz"><i class="fa-solid fa-clock"></i> KST (Asia/Seoul)</span>
+            </div>
+        </header>
+
+        <!-- Metrics & Summary Row -->
+        <section class="portal-metrics-section">
+            <div class="metric-card">
+                <div class="metric-icon"><i class="fa-solid fa-users-gear"></i></div>
+                <div class="metric-info">
+                    <span class="metric-label">등록 에이전트</span>
+                    <span class="metric-val" id="total-agents-val">2개</span>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon watson"><i class="fa-solid fa-heart-pulse"></i></div>
+                <div class="metric-info">
+                    <span class="metric-label">비서 Watson 세션</span>
+                    <span class="metric-val" id="watson-sessions-val">2개</span>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon dev"><i class="fa-solid fa-laptop-code"></i></div>
+                <div class="metric-info">
+                    <span class="metric-label">DevBot 워크스페이스</span>
+                    <span class="metric-val" id="dev-branch-val">main</span>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon storage"><i class="fa-solid fa-folder-tree"></i></div>
+                <div class="metric-info">
+                    <span class="metric-label">격리 GTD 저장소</span>
+                    <span class="metric-val" id="gtd-status-val">life_log</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Agent Cards Grid -->
+        <main class="portal-grid">
+            <!-- 1. Watson Butler Card -->
+            <div class="agent-portal-card watson-card">
+                <div class="agent-card-header">
+                    <div class="agent-avatar watson-avatar">
+                        <i class="fa-solid fa-robot"></i>
+                    </div>
+                    <div class="agent-title-box">
+                        <div class="agent-role-pill watson-pill">Personal Butler & LifeLog</div>
+                        <h2>비서 Watson</h2>
+                    </div>
+                    <span class="agent-live-badge active"><i class="fa-solid fa-circle"></i> 24/7 상시가동</span>
+                </div>
+
+                <p class="agent-card-desc">
+                    개인 일상 기록, 생각/감정 회고, GTD 일정 정리 및 텔레그램 모바일 연동을 도맡아 챙겨주는 개인 비서입니다.
+                </p>
+
+                <div class="agent-channels">
+                    <span class="channel-pill"><i class="fa-brands fa-telegram"></i> 텔레그램 봇</span>
+                    <span class="channel-pill"><i class="fa-solid fa-globe"></i> 웹 콘솔</span>
+                    <span class="channel-pill"><i class="fa-solid fa-bolt"></i> 1기록 1커밋</span>
+                </div>
+
+                <div class="agent-features-list">
+                    <div class="feature-item"><i class="fa-solid fa-check"></i> 운동, 일기, 식사 등 기록 가치 감지 및 자동 제안</div>
+                    <div class="feature-item"><i class="fa-solid fa-check"></i> 마크다운 영속화 및 개인 GitHub 독립 Git 커밋/푸시</div>
+                    <div class="feature-item"><i class="fa-solid fa-check"></i> 매일 아침 GTD 인박스 & 일정 맞춤형 브리핑</div>
+                    <div class="feature-item"><i class="fa-solid fa-check"></i> 지시어 문맥 역추적 & KST 타임존 정규화</div>
+                </div>
+
+                <div class="agent-card-footer">
+                    <a href="/watson" class="btn-portal-launch watson-btn">
+                        <i class="fa-solid fa-arrow-right-to-bracket"></i> 비서 콘솔 입장
+                    </a>
+                </div>
+            </div>
+
+            <!-- 2. DevBot Agent Card -->
+            <div class="agent-portal-card dev-card">
+                <div class="agent-card-header">
+                    <div class="agent-avatar dev-avatar">
+                        <i class="fa-solid fa-code"></i>
+                    </div>
+                    <div class="agent-title-box">
+                        <div class="agent-role-pill dev-pill">Software Engineering & Ops</div>
+                        <h2>엔지니어 DevBot</h2>
+                    </div>
+                    <span class="agent-live-badge ready"><i class="fa-solid fa-bolt"></i> 온디맨드 준비</span>
+                </div>
+
+                <p class="agent-card-desc">
+                    코드베이스 분석, Git 상태/Diff 검토, 터미널 도구 실행 및 아키텍처 리팩터링을 지원하는 전담 개발자 에이전트입니다.
+                </p>
+
+                <div class="agent-channels">
+                    <span class="channel-pill dev"><i class="fa-solid fa-terminal"></i> 터미널 도구</span>
+                    <span class="channel-pill dev"><i class="fa-solid fa-code-branch"></i> Git 워크스페이스</span>
+                    <span class="channel-pill dev"><i class="fa-solid fa-microchip"></i> AGY Engine</span>
+                </div>
+
+                <div class="agent-features-list">
+                    <div class="feature-item"><i class="fa-solid fa-check"></i> 워크스페이스 코드 탐색 및 구조 분석</div>
+                    <div class="feature-item"><i class="fa-solid fa-check"></i> Git 단축 명령 (`/status`, `/diff`, `/log`) 즉시 조회</div>
+                    <div class="feature-item"><i class="fa-solid fa-check"></i> 기술 스택 디버깅 및 솔루션 코드 설계</div>
+                    <div class="feature-item"><i class="fa-solid fa-check"></i> 비서(Watson)와 격리된 전용 개발 세션 DB 운용</div>
+                </div>
+
+                <div class="agent-card-footer">
+                    <a href="/dev" class="btn-portal-launch dev-btn">
+                        <i class="fa-solid fa-terminal"></i> 개발 콘솔 입장
+                    </a>
+                </div>
+            </div>
+
+            <!-- 3. Expansion Slot Card -->
+            <div class="agent-portal-card slot-card">
+                <div class="agent-card-header">
+                    <div class="agent-avatar slot-avatar">
+                        <i class="fa-solid fa-sparkles"></i>
+                    </div>
+                    <div class="agent-title-box">
+                        <div class="agent-role-pill slot-pill">Expansion Slot</div>
+                        <h2>커스텀 에이전트</h2>
+                    </div>
+                    <span class="agent-live-badge upcoming"><i class="fa-solid fa-lock"></i> 확장 가능</span>
+                </div>
+
+                <p class="agent-card-desc">
+                    필요에 따라 특화된 능력을 가진 새로운 AI 에이전트를 손쉽게 추가할 수 있는 모듈형 확장 슬롯입니다.
+                </p>
+
+                <div class="agent-channels">
+                    <span class="channel-pill slot"><i class="fa-solid fa-book-bookmark"></i> Researcher</span>
+                    <span class="channel-pill slot"><i class="fa-solid fa-chart-line"></i> Finance</span>
+                    <span class="channel-pill slot"><i class="fa-solid fa-pen-nib"></i> Writer</span>
+                </div>
+
+                <div class="agent-features-list slot-list">
+                    <div class="feature-item"><i class="fa-solid fa-plus"></i> 기술 트렌드 및 학술 논문 심층 리서치 에이전트</div>
+                    <div class="feature-item"><i class="fa-solid fa-plus"></i> 가계부·자산·투자 포트폴리오 분석 에이전트</div>
+                    <div class="feature-item"><i class="fa-solid fa-plus"></i> 블로그 포스팅 및 기획 문서 작성 코치</div>
+                </div>
+
+                <div class="agent-card-footer">
+                    <button class="btn-portal-launch slot-btn" disabled>
+                        <i class="fa-solid fa-plus"></i> 에이전트 추가 준비 중
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="portal-footer">
+            <p>Watson Agent Workspace v1.3.0 • FastAPI & SQLite • Cloudflare Tunnel Encrypted</p>
+        </footer>
+    </div>
+
+    <script src="/static/js/portal.js?v=1.3.1"></script>
+</body>
+</html>

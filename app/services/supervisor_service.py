@@ -29,6 +29,7 @@ class SupervisorService:
     ) -> dict[str, Any]:
         # 1. DB 세션 생성 및 보류 기록/히스토리 조회
         self.session_service.get_or_create_session(session_id=session_id, channel=channel)
+        self.session_service.auto_update_session_title(session_id=session_id, user_message=user_message)
         pending_log = self.session_service.get_pending_log(session_id=session_id)
         history = self.session_service.get_session_history(session_id=session_id)
 
@@ -143,5 +144,14 @@ class SupervisorService:
     def get_session_history(self, session_id: str) -> list[dict[str, str]]:
         return self.session_service.get_session_history(session_id=session_id)
 
-    def list_sessions(self) -> list[Any]:
-        return self.session_service.list_sessions()
+    def list_sessions(self, agent_type: str | None = None) -> list[dict[str, Any]]:
+        return self.session_service.list_sessions(agent_type=agent_type)
+
+    def update_session_title(self, session_id: str, title: str) -> Any:
+        return self.session_service.update_session_title(session_id=session_id, title=title)
+
+    def delete_session(self, session_id: str) -> bool:
+        return self.session_service.delete_session(session_id=session_id)
+
+    def clear_session_messages(self, session_id: str) -> bool:
+        return self.session_service.clear_session_messages(session_id=session_id)

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>DevBot - Software Engineering Console</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=1.3.0">
+</head>
+<body class="dev-body">
+    <div class="app-container">
+        <!-- Mobile Sidebar Backdrop Overlay -->
+        <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+        <!-- Sidebar Navigation -->
+        <aside id="sidebar" class="sidebar dev-sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fa-solid fa-code"></i>
+                    <h2>DevBot <span>Ops</span></h2>
+                </div>
+                <button id="close-sidebar-btn" class="close-sidebar-btn" title="사이드바 닫기" aria-label="사이드바 닫기">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="session-management-box">
+                <button id="new-dev-session-btn" class="btn-new-session dev-new-session" title="새 개발 세션 시작">
+                    <i class="fa-solid fa-plus"></i> 새 개발 태스크
+                </button>
+                <div id="dev-session-list" class="session-list">
+                    <!-- Loaded dynamically via dev.js -->
+                </div>
+            </div>
+
+            <div class="system-status dev-status-box">
+                <div class="status-indicator online"></div>
+                <div class="status-info">
+                    <p class="status-title" id="dev-sidebar-branch">Branch: main</p>
+                    <p class="status-sub">AGY & Terminal Ready</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Top Header -->
+            <header class="top-header dev-header">
+                <div class="header-left">
+                    <button id="mobile-menu-btn" class="mobile-menu-btn" title="사이드바 열기" aria-label="메뉴 열기">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <div class="header-title">
+                        <h1 id="chat-title">
+                            <span class="desktop-only" id="active-dev-title">엔지니어링 & 코드 옵스 콘솔</span>
+                            <span class="mobile-only">DevBot 콘솔</span>
+                        </h1>
+                        <p id="chat-subtitle">
+                            <span id="active-dev-meta">코드베이스 분석, Git 상태/Diff 검토 및 쉘 도구 자동화</span>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="user-profile">
+                    <a href="/" class="badge btn-hub-home" title="에이전트 허브 대시보드로 이동">
+                        <i class="fa-solid fa-house"></i> <span class="desktop-only">에이전트 허브</span>
+                    </a>
+                    <a href="/watson" class="badge btn-switch-agent" title="비서 Watson 콘솔로 이동">
+                        <i class="fa-solid fa-robot"></i> <span class="desktop-only">비서 Watson</span>
+                    </a>
+                    <span class="badge dev-branch-badge" id="header-branch-badge"><i class="fa-solid fa-code-branch"></i> main</span>
+                </div>
+            </header>
+
+            <!-- Quick Command Chips Bar -->
+            <div class="dev-quick-bar">
+                <span class="quick-label"><i class="fa-solid fa-terminal"></i> 빠른 명령:</span>
+                <button class="cmd-chip" data-cmd="/status"><i class="fa-solid fa-circle-info"></i> git status</button>
+                <button class="cmd-chip" data-cmd="/diff"><i class="fa-solid fa-code-compare"></i> git diff</button>
+                <button class="cmd-chip" data-cmd="/log"><i class="fa-solid fa-clock-rotate-left"></i> git log</button>
+                <button class="cmd-chip" data-cmd="/branch"><i class="fa-solid fa-code-branch"></i> git branch</button>
+            </div>
+
+            <!-- Chat Console Area -->
+            <div class="chat-console-wrapper">
+                <div id="dev-chat-messages" class="chat-messages-container">
+                    <div class="message assistant">
+                        <div class="avatar"><i class="fa-solid fa-code"></i></div>
+                        <div class="bubble">
+                            안녕하세요! 개발 전담 AI 에이전트 **DevBot**입니다. 💻<br>
+                            워크스페이스 소스코드 분석, Git 버전 관리(`status`/`diff`/`log`), 버그 패치 및 시스템 아키텍처 지원을 담당합니다.<br>
+                            위의 빠른 명령 칩을 누르시거나 궁금한 코딩 질문을 자유롭게 입력해 주세요!
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input Box Bar -->
+                <div class="chat-input-wrapper">
+                    <div class="input-row">
+                        <textarea id="dev-chat-input" placeholder="개발 요청이나 질문을 입력하세요... (예: /status, 프로젝트 구조 설명해줘)" rows="1"></textarea>
+                        <button id="dev-send-btn" class="btn-primary dev-send-btn" aria-label="메시지 전송">
+                            <i class="fa-solid fa-paper-plane"></i> <span class="desktop-only">실행</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/dev.js?v=1.3.0"></script>
+</body>
+</html>

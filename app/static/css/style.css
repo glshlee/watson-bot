@@ -142,6 +142,7 @@ span.desktop-only {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    gap: 8px;
 }
 
 .session-header {
@@ -149,44 +150,281 @@ span.desktop-only {
     justify-content: space-between;
     align-items: center;
     font-size: 0.85rem;
+    font-weight: 600;
     color: var(--text-secondary);
-    margin-bottom: 12px;
 }
 
-.session-header button {
-    background: rgba(139, 92, 246, 0.2);
-    color: var(--accent-purple);
-    border: none;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
+.btn-new-session {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(59, 130, 246, 0.25));
+    color: #c4b5fd;
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    padding: 4px 10px;
+    border-radius: 14px;
+    font-size: 0.78rem;
+    font-weight: 500;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s ease;
 }
 
+.btn-new-session:hover {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.45), rgba(59, 130, 246, 0.45));
+    color: #ffffff;
+    border-color: var(--accent-purple);
+    transform: translateY(-1px);
+}
+
+/* Session Search Input (ADR-017) */
+.session-search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0 10px;
+    transition: border-color 0.2s;
+}
+
+.session-search-wrapper:focus-within {
+    border-color: var(--accent-purple);
+    box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.3);
+}
+
+.search-icon {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin-right: 6px;
+}
+
+#session-search-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    padding: 7px 0;
+}
+
+#session-search-input::placeholder {
+    color: rgba(148, 163, 184, 0.6);
+}
+
+.clear-search-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0 2px;
+}
+
+.clear-search-btn.hidden {
+    display: none;
+}
+
+/* Channel Filter Tabs (ADR-017) */
+.session-filter-tabs {
+    display: flex;
+    gap: 4px;
+    background: rgba(15, 23, 42, 0.4);
+    padding: 3px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.filter-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 4px 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.filter-tab:hover {
+    color: var(--text-primary);
+}
+
+.filter-tab.active {
+    background: rgba(139, 92, 246, 0.25);
+    color: #e2e8f0;
+    font-weight: 600;
+}
+
+/* Session List Container */
 .session-list {
     flex: 1;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
+    padding-right: 2px;
+    -webkit-overflow-scrolling: touch;
 }
 
+/* Session Item Cards */
 .session-item {
-    padding: 10px 12px;
+    padding: 9px 12px;
     border-radius: var(--radius-md);
     background: rgba(255, 255, 255, 0.03);
+    border: 1px solid transparent;
     color: var(--text-secondary);
-    font-size: 0.85rem;
     cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.session-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+}
+
+.session-item.active {
+    background: rgba(139, 92, 246, 0.15);
+    border-color: rgba(139, 92, 246, 0.4);
+    color: var(--text-primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.session-item.active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 3px;
+    background: var(--accent-purple);
+    border-radius: 0 3px 3px 0;
+}
+
+.session-item-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.session-channel-badge {
+    font-size: 0.72rem;
+    width: 18px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.session-channel-badge.web {
+    color: #60a5fa;
+    background: rgba(59, 130, 246, 0.15);
+}
+
+.session-channel-badge.telegram {
+    color: #38bdf8;
+    background: rgba(14, 165, 233, 0.15);
+}
+
+.session-title {
+    flex: 1;
+    font-size: 0.84rem;
+    font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.session-actions {
+    display: none;
+    gap: 4px;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.session-item:hover .session-actions,
+.session-item.active .session-actions {
+    display: flex;
+}
+
+.session-action-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
     transition: all 0.2s;
 }
 
-.session-item:hover, .session-item.active {
-    background: rgba(139, 92, 246, 0.15);
+.session-action-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
     color: var(--text-primary);
+}
+
+.session-action-btn.delete:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.session-item-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.72rem;
+    color: rgba(148, 163, 184, 0.7);
+    padding-left: 26px;
+}
+
+.session-meta-time {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.session-msg-count {
+    background: rgba(255, 255, 255, 0.06);
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+}
+
+/* Empty State */
+.session-empty-state {
+    padding: 24px 12px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.session-empty-state i {
+    font-size: 1.5rem;
+    opacity: 0.4;
+    color: var(--accent-purple);
 }
 
 .system-status {
@@ -646,6 +884,62 @@ textarea:focus {
     font-weight: 500;
 }
 
+.btn-danger {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    border: none;
+    padding: 8px 18px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.btn-danger:hover {
+    background: #b91c1c;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    border: none;
+    padding: 8px 18px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.btn-warning:hover {
+    background: #b45309;
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+}
+
+.btn-clear-chat {
+    background: rgba(239, 68, 68, 0.12) !important;
+    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+    color: #f87171 !important;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.btn-clear-chat:hover {
+    background: rgba(239, 68, 68, 0.25) !important;
+    color: #ffffff !important;
+    border-color: #ef4444 !important;
+}
+
+
 /* =========================================================
    Mobile & Tablet Responsive Styling (ADR-016)
    ========================================================= */
@@ -849,3 +1143,615 @@ textarea:focus {
 }
 
 
+
+/* ==========================================================================
+   Agent Hub Dashboard Portal & Dev Agent Styling (ADR-018)
+   ========================================================================== */
+
+/* Enable full page vertical scrolling for Portal Dashboard */
+html.portal-html,
+html:has(.portal-body) {
+    height: auto !important;
+    min-height: 100% !important;
+    min-height: 100dvh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+}
+
+body.portal-body {
+    background: #0f172a;
+    color: #f8fafc;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    height: auto !important;
+    min-height: 100% !important;
+    min-height: 100dvh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    display: flex;
+    justify-content: center;
+    -webkit-overflow-scrolling: touch;
+}
+
+.portal-container {
+    width: 100%;
+    max-width: 1200px;
+    padding: 32px 24px 60px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    box-sizing: border-box;
+}
+
+/* Header */
+.portal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    border-bottom: 1px solid #1e293b;
+    padding-bottom: 24px;
+}
+
+.portal-brand {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.portal-logo {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
+}
+
+.portal-brand-text h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 0;
+    color: #ffffff;
+}
+
+.portal-brand-text h1 span {
+    color: #60a5fa;
+    font-weight: 400;
+}
+
+.portal-subtitle {
+    margin: 4px 0 0 0;
+    font-size: 0.9rem;
+    color: #94a3b8;
+}
+
+.portal-header-badges {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.portal-status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.portal-status-badge.online {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.portal-status-badge.tunnel {
+    background: rgba(139, 92, 246, 0.15);
+    color: #a78bfa;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.portal-status-badge.tz {
+    background: rgba(59, 130, 246, 0.15);
+    color: #93c5fd;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+/* Metrics Section */
+.portal-metrics-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.metric-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-2px);
+    border-color: #475569;
+}
+
+.metric-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: rgba(148, 163, 184, 0.15);
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+}
+
+.metric-icon.watson {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+}
+
+.metric-icon.dev {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+}
+
+.metric-icon.storage {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+}
+
+.metric-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.metric-label {
+    font-size: 0.8rem;
+    color: #94a3b8;
+}
+
+.metric-val {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin-top: 2px;
+}
+
+/* Agent Grid */
+.portal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 24px;
+}
+
+.agent-portal-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 16px;
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    position: relative;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.agent-portal-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+}
+
+.watson-card:hover {
+    border-color: #3b82f6;
+}
+
+.dev-card:hover {
+    border-color: #10b981;
+}
+
+.watson-card,
+.dev-card {
+    cursor: pointer;
+}
+
+.watson-card:active,
+.dev-card:active {
+    transform: scale(0.985);
+}
+
+.slot-card {
+    border: 1px dashed #475569;
+    background: rgba(30, 41, 59, 0.5);
+}
+
+.agent-card-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.agent-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+}
+
+.watson-avatar {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
+
+.dev-avatar {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+}
+
+.slot-avatar {
+    background: #334155;
+    color: #94a3b8;
+}
+
+.agent-title-box {
+    flex: 1;
+}
+
+.agent-role-pill {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+}
+
+.watson-pill {
+    color: #60a5fa;
+}
+
+.dev-pill {
+    color: #34d399;
+}
+
+.slot-pill {
+    color: #94a3b8;
+}
+
+.agent-title-box h2 {
+    margin: 0;
+    font-size: 1.4rem;
+    color: #f8fafc;
+}
+
+.agent-live-badge {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.agent-live-badge.active {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+}
+
+.agent-live-badge.ready {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+}
+
+.agent-live-badge.upcoming {
+    background: rgba(148, 163, 184, 0.2);
+    color: #94a3b8;
+}
+
+.agent-card-desc {
+    font-size: 0.92rem;
+    color: #cbd5e1;
+    line-height: 1.5;
+    margin: 0;
+    min-height: 42px;
+}
+
+.agent-channels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.channel-pill {
+    font-size: 0.8rem;
+    padding: 4px 10px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    color: #94a3b8;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.channel-pill.dev {
+    color: #6ee7b7;
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.channel-pill.slot {
+    color: #94a3b8;
+    border-style: dashed;
+}
+
+.agent-features-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 0.86rem;
+    color: #94a3b8;
+    background: #0f172a;
+    padding: 16px;
+    border-radius: 10px;
+    border: 1px solid #1e293b;
+}
+
+.feature-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    line-height: 1.4;
+}
+
+.feature-item i {
+    color: #3b82f6;
+    margin-top: 3px;
+    font-size: 0.8rem;
+}
+
+.dev-card .feature-item i {
+    color: #10b981;
+}
+
+.slot-list .feature-item i {
+    color: #64748b;
+}
+
+.agent-card-footer {
+    margin-top: auto;
+    padding-top: 8px;
+}
+
+.btn-portal-launch {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    box-sizing: border-box;
+}
+
+.btn-portal-launch.watson-btn {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.btn-portal-launch.watson-btn:hover {
+    background: linear-gradient(135deg, #60a5fa, #3b82f6);
+    transform: translateY(-1px);
+}
+
+.btn-portal-launch.dev-btn {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-portal-launch.dev-btn:hover {
+    background: linear-gradient(135deg, #34d399, #10b981);
+    transform: translateY(-1px);
+}
+
+.btn-portal-launch.slot-btn {
+    background: #334155;
+    color: #94a3b8;
+    cursor: not-allowed;
+}
+
+.portal-footer {
+    text-align: center;
+    border-top: 1px solid #1e293b;
+    padding-top: 24px;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+/* ==========================================================================
+   Dev Agent Console & Navigation Styles
+   ========================================================================== */
+
+.btn-hub-home {
+    background: #1e293b;
+    color: #f8fafc;
+    text-decoration: none;
+    border: 1px solid #334155;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-hub-home:hover {
+    background: #334155;
+}
+
+.btn-switch-agent {
+    background: #2563eb;
+    color: #ffffff;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.btn-switch-agent:hover {
+    background: #3b82f6;
+}
+
+.dev-body {
+    background: #090d16;
+}
+
+.dev-header {
+    border-bottom-color: #1e293b;
+}
+
+.dev-sidebar {
+    background: #0b1120;
+    border-right-color: #1e293b;
+}
+
+.dev-branch-badge {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.dev-status-box {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+}
+
+.dev-new-session {
+    background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.dev-send-btn {
+    background: #10b981 !important;
+}
+
+.dev-send-btn:hover {
+    background: #059669 !important;
+}
+
+/* Dev Quick Command Bar */
+.dev-quick-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    background: #0d1527;
+    border-bottom: 1px solid #1e293b;
+    overflow-x: auto;
+    flex-shrink: 0;
+    scrollbar-width: thin;
+}
+
+.quick-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #64748b;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cmd-chip {
+    padding: 5px 12px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 20px;
+    color: #e2e8f0;
+    font-size: 0.8rem;
+    font-family: monospace;
+    cursor: pointer;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.cmd-chip:hover {
+    background: #10b981;
+    border-color: #10b981;
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
+/* Code block markdown formatting in messages */
+.code-block {
+    background: #070b14;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-family: "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 0.85rem;
+    color: #a7f3d0;
+    overflow-x: auto;
+    margin: 8px 0;
+}
+
+.inline-code {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.88em;
+    color: #6ee7b7;
+}
+
+@media (max-width: 768px) {
+    .portal-container {
+        padding: 20px 16px 80px 16px;
+        gap: 20px;
+    }
+    .portal-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        padding-bottom: 16px;
+    }
+    .portal-brand-text h1 {
+        font-size: 1.4rem;
+    }
+    .portal-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    .agent-portal-card {
+        padding: 20px 18px;
+        gap: 14px;
+    }
+    .dev-quick-bar {
+        padding: 8px 12px;
+    }
+}

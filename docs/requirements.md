@@ -78,6 +78,22 @@
 - **FR-15.2**: 세션 전환 또는 새 세션 생성 시 모바일 드로어가 자동으로 닫혀 즉시 채팅 입력창에 집중할 수 있어야 한다.
 - **FR-15.3**: `100dvh` 동적 뷰포트와 iOS Safe Area(`env(safe-area-inset-bottom)`), 모바일 16px 폰트(자동 줌 방지)를 적용하여 스마트폰 브라우저 환경에서 매끄러운 스크롤 및 터치 UX를 제공해야 한다.
 
+### FR-16: 웹 콘솔 세션 관리 고도화 (Advanced Session Management UI - ADR-017)
+- **FR-16.1**: 세션 목록 실시간 검색창과 `전체` / `웹` / `텔레그램` 채널 필터 탭을 제공하여 다중 세션을 신속하게 탐색할 수 있어야 한다.
+- **FR-16.2**: `PATCH /api/sessions/{session_id}` API를 통해 세션 제목을 수정하고 실시간 UI 및 SQLite DB에 반영할 수 있어야 한다.
+- **FR-16.3**: `DELETE /api/sessions/{session_id}` API를 통해 특정 세션 및 하위 메시지를 영구 삭제하고, 현재 활성 세션 삭제 시 안전하게 인접 세션으로 폴백해야 한다.
+- **FR-16.4**: `POST /api/sessions/{session_id}/clear` API를 통해 세션을 유지한 채 대화 내역만 초기화할 수 있어야 한다.
+- **FR-16.5**: 신규 세션에서 기본 제목("New Conversation" 등) 상태일 때 사용자의 첫 발화 기반으로 스마트 제목 자동 생성이 실행되어야 한다.
+- **FR-16.6**: 세션 카드에 메시지 개수, 상대 시간("방금", "5분 전"), 채널 배지를 표시하고 헤더 영역과 동기화되어야 한다.
+
+### FR-17: 에이전트 허브 대시보드 포털 및 개발 에이전트 분리 (Agent Hub & Dev Agent - ADR-018)
+- **FR-17.1**: 루트 경로(`/`) 요청 시 Watson 비서, DevBot 개발자, 확장 슬롯을 카드 형태로 제공하는 에이전트 허브 대시보드(`portal.html`)를 반환해야 한다.
+- **FR-17.2**: `GET /api/hub/status` API를 통해 등록된 에이전트 목록, 활성 상태, 세션 수량 및 워크스페이스 상태 메트릭을 반환해야 한다.
+- **FR-17.3**: `GET /watson` 엔드포인트를 통해 비서 왓슨 전용 콘솔을 제공하고, `GET /dev` 엔드포인트를 통해 개발 전담 DevBot 콘솔을 제공해야 한다.
+- **FR-17.4**: `POST /api/dev/chat` 엔드포인트를 통해 Git 상태/Diff/Log/Branch 등의 빠른 도구 명령 실행 및 소프트웨어 엔지니어링 AI 응답을 제공해야 한다.
+- **FR-17.5**: `SessionModel`의 `agent_type` 컬럼을 통해 왓슨 비서 세션(`watson`)과 개발 에이전트 세션(`dev`)을 상호 격리해야 한다.
+- **FR-17.6**: 각 에이전트 콘솔 상단 헤더에 `[🏠 에이전트 허브]` 바로가기 버튼을 제공하여 포털과의 유기적 이동을 보장해야 한다.
+
 ---
 
 
@@ -116,5 +132,7 @@
 | **FR-13** | `app/services/llm_provider.py`, `app/services/agent_service.py`, `app/services/supervisor_service.py` | Pytest 듀얼 로깅/태스크 정제 단위 테스트 & cURL 검증 |
 | **FR-14** | `app/auth.py`, `app/config.py`, `systemd/watson-tunnel.service` | Pytest 인증 단위 테스트(`tests/test_auth.py`) & cURL Auth Guard 검증 |
 | **FR-15** | `app/templates/index.html`, `app/static/css/style.css`, `app/static/js/main.js` | 모바일 뷰포트 반응형 검증 및 cURL 스모크 테스트 |
+| **FR-16** | `app/services/session_service.py`, `app/routers/web_router.py`, `app/templates/index.html`, `app/static/js/main.js` | Pytest 세션 라이프사이클 테스트 & cURL API 검증 |
+| **FR-17** | `app/services/dev_agent_service.py`, `app/routers/web_router.py`, `app/templates/portal.html`, `app/templates/dev.html` | Pytest 허브/데브 라우터 테스트(`tests/test_dev_agent.py`) & cURL 검증 |
 
 
