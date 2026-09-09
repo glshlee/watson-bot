@@ -73,6 +73,11 @@
 - **FR-14.2**: 인바운드 포트 개방 없이 Cloudflare Tunnel을 통해 안전한 HTTPS 외부 접속 경로를 제공해야 한다.
 - **FR-14.3**: `watson-tunnel.service` 데몬을 통해 24/7 상시 터널링 가동 및 토큰 기반 영구 도메인 연동을 지원해야 한다.
 
+### FR-15: 모바일 퍼스트 반응형 웹 인터페이스 및 터치 UX 최적화 (Mobile Responsive UX - ADR-016)
+- **FR-15.1**: 모바일 화면(<= 768px)에서 사이드바를 오프캔버스 드로어로 자동 전환하고, 햄버거 메뉴 및 반투명 백드롭으로 여닫을 수 있어야 한다.
+- **FR-15.2**: 세션 전환 또는 새 세션 생성 시 모바일 드로어가 자동으로 닫혀 즉시 채팅 입력창에 집중할 수 있어야 한다.
+- **FR-15.3**: `100dvh` 동적 뷰포트와 iOS Safe Area(`env(safe-area-inset-bottom)`), 모바일 16px 폰트(자동 줌 방지)를 적용하여 스마트폰 브라우저 환경에서 매끄러운 스크롤 및 터치 UX를 제공해야 한다.
+
 ---
 
 
@@ -110,4 +115,6 @@
 | **FR-12** | `app/config.py`, `app/services/agent_service.py` | Pytest 타임존 변환/롤오버 단위 테스트 & cURL 검증 |
 | **FR-13** | `app/services/llm_provider.py`, `app/services/agent_service.py`, `app/services/supervisor_service.py` | Pytest 듀얼 로깅/태스크 정제 단위 테스트 & cURL 검증 |
 | **FR-14** | `app/auth.py`, `app/config.py`, `systemd/watson-tunnel.service` | Pytest 인증 단위 테스트(`tests/test_auth.py`) & cURL Auth Guard 검증 |
+| **FR-15** | `app/templates/index.html`, `app/static/css/style.css`, `app/static/js/main.js` | 모바일 뷰포트 반응형 검증 및 cURL 스모크 테스트 |
+
 

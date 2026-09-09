@@ -119,6 +119,14 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] `systemd/watson-tunnel.service` 데몬 등록 및 24/7 상시 터널링 가동
 - [x] `tests/test_auth.py` 단위 테스트 및 `./scripts/smoke_test.sh` Auth Guard 실시간 검증 완료
 
+### Phase 15: 모바일 퍼스트 반응형 웹 인터페이스 & 터치 UX 최적화 (ADR-016) - ✅ 완료
+- [x] 모바일 화면(<= 768px)용 오프캔버스 슬라이드 드로어 및 햄버거 메뉴/백드롭 구현
+- [x] 세션 전환 및 새 세션 생성 시 모바일 드로어 자동 닫힘 인터랙션 적용
+- [x] `100dvh` 동적 뷰포트, iOS Safe Area 및 16px 폰트 적용으로 모바일 Safari 자동 확대 방지
+- [x] 헤더 축약 타이틀, GTD 배지 말줄임, 모바일 최적화 빠른 액션 버튼 및 텍스트에어리어 반응형 스타일링
+- [x] `tests/conftest.py` 테스트 환경 격리 fixture 추가 및 `./scripts/smoke_test.sh` 라이브 검증 완료
+
+
 
 
 

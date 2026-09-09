@@ -2,18 +2,26 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Watson - 24/7 AI Agent Console</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/static/css/style.css?v=1.0.1">
+    <link rel="stylesheet" href="/static/css/style.css?v=1.1.0">
 </head>
 <body>
     <div class="app-container">
-        <!-- Sidebar Navigation -->
-        <aside class="sidebar">
-            <div class="logo">
-                <i class="fa-solid fa-brain-circuit"></i>
-                <h2>Watson <span>Agent</span></h2>
+        <!-- Mobile Sidebar Backdrop Overlay -->
+        <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+        <!-- Sidebar Navigation (Responsive Off-Canvas on Mobile) -->
+        <aside id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fa-solid fa-brain-circuit"></i>
+                    <h2>Watson <span>Agent</span></h2>
+                </div>
+                <button id="close-sidebar-btn" class="close-sidebar-btn" title="사이드바 닫기" aria-label="사이드바 닫기">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
             </div>
             
             <div class="session-section">
@@ -39,17 +47,25 @@
         <main class="main-content">
             <!-- Header Bar -->
             <header class="top-header">
-                <div class="header-title">
-                    <h1 id="chat-title">AI 에이전트 인터랙티브 콘솔</h1>
-                    <p id="chat-subtitle">웹상에서 AI와 직접 대화하며 마크다운 기록 및 GitHub 자동 푸시</p>
+                <div class="header-left">
+                    <button id="mobile-menu-btn" class="mobile-menu-btn" title="사이드바 열기" aria-label="메뉴 열기">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <div class="header-title">
+                        <h1 id="chat-title">
+                            <span class="desktop-only">AI 에이전트 인터랙티브 콘솔</span>
+                            <span class="mobile-only">Watson 콘솔</span>
+                        </h1>
+                        <p id="chat-subtitle" class="desktop-only">웹상에서 AI와 직접 대화하며 마크다운 기록 및 GitHub 자동 푸시</p>
+                    </div>
                 </div>
                 <div class="user-profile">
                     <div id="gtd-storage-badge" class="badge gtd-badge" title="클릭하여 GTD 작업 디렉토리 설정">
                         <i class="fa-solid fa-folder-tree"></i> <span id="gtd-path-text">GTD: 로딩 중...</span>
                         <button id="change-gtd-btn" class="gtd-edit-btn" title="GTD 저장소 변경"><i class="fa-solid fa-gear"></i></button>
                     </div>
-                    <span class="badge">AGY / LLM Engine</span>
-                    <i class="fa-brands fa-github avatar"></i>
+                    <span class="badge badge-engine desktop-only">AGY / LLM</span>
+                    <i class="fa-brands fa-github avatar desktop-only"></i>
                 </div>
             </header>
 
@@ -57,7 +73,7 @@
             <div id="gtd-modal" class="modal hidden">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h3><i class="fa-solid fa-folder-gear"></i> GTD 관리 디렉토리 설정 (ADR-007)</h3>
+                        <h3><i class="fa-solid fa-folder-gear"></i> GTD 관리 디렉토리 설정</h3>
                         <button id="close-gtd-modal-btn" class="close-btn">&times;</button>
                     </div>
                     <div class="modal-body">
@@ -90,19 +106,19 @@
                 <!-- Input Box Bar -->
                 <div class="chat-input-wrapper">
                     <div class="category-bar">
-                        <label><i class="fa-solid fa-tag"></i> 로그 범주:</label>
-                        <select id="category-select">
-                            <option value="GTD Inbox">📥 GTD Inbox (할일/수집함)</option>
-                            <option value="Daily Notes & Diary">📝 Daily Notes & Diary</option>
-                            <option value="Workout & Health">🏋️ Workout & Health</option>
-                            <option value="Ideas & Thoughts">💡 Ideas & Thoughts</option>
+                        <label class="category-label"><i class="fa-solid fa-tag"></i> <span class="desktop-only">로그 범주:</span></label>
+                        <select id="category-select" title="로그 범주 선택">
+                            <option value="GTD Inbox">📥 GTD Inbox</option>
+                            <option value="Daily Notes & Diary">📝 Daily Notes</option>
+                            <option value="Workout & Health">🏋️ Workout</option>
+                            <option value="Ideas & Thoughts">💡 Ideas</option>
                         </select>
-                        <span id="push-status-badge" class="push-status-badge"><i class="fa-solid fa-code-commit"></i> Auto Git Push</span>
+                        <span id="push-status-badge" class="push-status-badge" title="Auto Git Push 활성화"><i class="fa-solid fa-code-commit"></i> <span class="desktop-only">Auto Git Push</span></span>
                     </div>
                     <div class="input-row">
-                        <textarea id="chat-input" placeholder="Watson에게 메시지를 보내보세요... (예: 오늘 저녁 파이썬 웹 대시보드 개발 2시간 완료함!)"></textarea>
-                        <button id="send-btn" class="btn-primary">
-                            <i class="fa-solid fa-paper-plane"></i> 전송
+                        <textarea id="chat-input" placeholder="메시지를 입력하세요... (예: 오늘 저녁 운동 완료!)" rows="1"></textarea>
+                        <button id="send-btn" class="btn-primary" aria-label="메시지 전송">
+                            <i class="fa-solid fa-paper-plane"></i> <span class="desktop-only">전송</span>
                         </button>
                     </div>
                 </div>
@@ -110,6 +126,6 @@
         </main>
     </div>
 
-    <script src="/static/js/main.js?v=1.0.1"></script>
+    <script src="/static/js/main.js?v=1.1.0"></script>
 </body>
 </html>

@@ -7,6 +7,25 @@ document.addEventListener("DOMContentLoaded", () => {
     const categorySelect = document.getElementById("category-select");
     const sessionList = document.getElementById("session-list");
     const newSessionBtn = document.getElementById("new-session-btn");
+    const mobileMenuBtn = document.getElementById("mobile-menu-btn");
+    const closeSidebarBtn = document.getElementById("close-sidebar-btn");
+    const sidebar = document.getElementById("sidebar");
+    const sidebarBackdrop = document.getElementById("sidebar-backdrop");
+
+    // Off-canvas mobile drawer handlers
+    function openSidebar() {
+        if (sidebar) sidebar.classList.add("open");
+        if (sidebarBackdrop) sidebarBackdrop.classList.add("active");
+    }
+
+    function closeSidebar() {
+        if (sidebar) sidebar.classList.remove("open");
+        if (sidebarBackdrop) sidebarBackdrop.classList.remove("active");
+    }
+
+    mobileMenuBtn?.addEventListener("click", openSidebar);
+    closeSidebarBtn?.addEventListener("click", closeSidebar);
+    sidebarBackdrop?.addEventListener("click", closeSidebar);
 
     // Fetch and render session list
     async function loadSessions() {
@@ -31,6 +50,9 @@ document.addEventListener("DOMContentLoaded", () => {
     // Switch Session and load history
     async function switchSession(sessionId) {
         currentSessionId = sessionId;
+        if (window.innerWidth <= 768) {
+            closeSidebar();
+        }
         await loadSessions();
         try {
             const res = await fetch(`/api/sessions/${sessionId}/history`);
@@ -102,6 +124,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!text) return;
         appendMessage("user", text);
         chatInput.value = "";
+        chatInput.style.height = "";
 
         sendBtn.disabled = true;
         sendBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
@@ -135,9 +158,15 @@ document.addEventListener("DOMContentLoaded", () => {
             appendMessage("assistant", "⚠️ 서버 연결 오류가 발생했습니다.");
         } finally {
             sendBtn.disabled = false;
-            sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> 전송';
+            sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> <span class="desktop-only">전송</span>';
         }
     }
+
+    // Auto-resize textarea on input
+    chatInput.addEventListener("input", () => {
+        chatInput.style.height = "auto";
+        chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + "px";
+    });
 
     // Send Message Handler
     sendBtn.addEventListener("click", () => {
@@ -156,6 +185,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     newSessionBtn.addEventListener("click", () => {
         const newId = `web_session_${Date.now()}`;
+        if (window.innerWidth <= 768) {
+            closeSidebar();
+        }
         switchSession(newId);
     });
 
