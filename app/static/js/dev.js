@@ -127,6 +127,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
                 if (activeDevTitle) activeDevTitle.innerText = data.title || "DevBot 콘솔";
                 if (activeDevMeta) activeDevMeta.innerText = `개발 태스크 • 메시지 ${data.history.length}개 • ${currentSessionId}`;
+                if (data.history && data.history.length > 0 && data.history[data.history.length - 1].role === "assistant") {
+                    sendBtn.disabled = false;
+                    sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> <span class="desktop-only">실행</span>';
+                }
             }
         } catch (e) {
             console.debug("Failed to sync dev history:", e);
@@ -365,10 +369,11 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Lifecycle & Connection Event Listeners (ADR-021)
-    document.addEventListener("visibilitychange", () => {
+    document.addEventListener("visibilitychange", async () => {
         if (!document.hidden) {
             console.log("[Dev Connection] Tab became visible. Checking health & syncing history...");
             checkHealth();
+            await syncActiveSessionHistory();
         }
     });
 

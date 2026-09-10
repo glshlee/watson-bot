@@ -155,3 +155,15 @@ def clear_session_messages(session_id: str, db: Session = Depends(get_db)):  # n
         raise HTTPException(status_code=404, detail="Session not found")
     return {"success": True, "session_id": session_id}
 
+
+@router.get("/api/briefing")
+def get_briefing(
+    mode: str | None = None,
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    """아침/저녁 맞춤형 GTD 브리핑 조회 엔드포인트 (ADR-024)."""
+    supervisor = SupervisorService(db=db)
+    result = supervisor.get_briefing(mode=mode)
+    return {"status": "success", "data": result}
+
+

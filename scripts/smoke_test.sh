@@ -309,6 +309,46 @@ else
     exit 1
 fi
 
+echo "  3-13. Testing Morning/Evening GTD Briefing (ADR-024)..."
+BRIEF_M_RES=$(run_curl -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_butler_session", "message": "/briefing morning", "auto_push": false}')
+if echo "$BRIEF_M_RES" | grep -q '"intent":"task_briefing_morning"'; then
+    echo "  ✅ 3-13-1. Watson /briefing morning Passed (intent=task_briefing_morning)"
+else
+    echo "  ❌ 3-13-1. Watson /briefing morning Failed: $BRIEF_M_RES"
+    exit 1
+fi
+
+BRIEF_E_RES=$(run_curl -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_butler_session", "message": "/briefing evening", "auto_push": false}')
+if echo "$BRIEF_E_RES" | grep -q '"intent":"task_briefing_evening"'; then
+    echo "  ✅ 3-13-2. Watson /briefing evening Passed (intent=task_briefing_evening)"
+else
+    echo "  ❌ 3-13-2. Watson /briefing evening Failed: $BRIEF_E_RES"
+    exit 1
+fi
+
+API_BRIEF_RES=$(run_curl "$SERVER_URL/api/briefing?mode=morning")
+if echo "$API_BRIEF_RES" | grep -q '"mode":"morning"'; then
+    echo "  ✅ 3-13-3. GET /api/briefing?mode=morning Passed"
+else
+    echo "  ❌ 3-13-3. GET /api/briefing?mode=morning Failed: $API_BRIEF_RES"
+    exit 1
+fi
+
+DEV_BRIEF_RES=$(run_curl -X POST "$SERVER_URL/api/dev/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_dev_session", "message": "/briefing morning"}')
+if echo "$DEV_BRIEF_RES" | grep -q '"action_type":"tool_briefing"'; then
+    echo "  ✅ 3-13-4. Dev Agent /briefing morning Passed (action_type=tool_briefing)"
+else
+    echo "  ❌ 3-13-4. Dev Agent /briefing morning Failed: $DEV_BRIEF_RES"
+    exit 1
+fi
+
+
 
 
 echo "4. Testing GET /api/telegram/status (ADR-006 Telegram Router)..."

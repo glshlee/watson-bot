@@ -50,13 +50,14 @@
 * **웹 연결 복원력 & HTTP/2 터널 안정화 (ADR-021)**: Cloudflare Tunnel을 TCP HTTP/2로 고정하여 유휴 드롭을 방지하고, Uvicorn Keep-Alive(75s) 및 초경량 헬스체크(/api/health)를 제공하며, 웹 콘솔 자동 재시도 및 모바일 화면 복귀 시 세션 히스토리 자동 복원을 보장할 것.
 * **GTD/로그 직접 열람 숏컷 & DevBot 최적화 (ADR-022)**: "/today", "/gtd", "/briefing" 등 숏컷 및 빠른 실행 칩을 통해 일일 로그와 GTD 파일 마크다운을 LLM 지연 없이 0.01초 내 직접 브리핑하고, DevBot 히스토리 200자 트리밍 및 35초 타임아웃으로 응답 안정성을 보장할 것.
 * **모바일 뷰포트 레이아웃 안정화 & 컴포넌트 충돌 방지 (ADR-023)**: 모바일(<=768px) 헤더 긴 부제목 숨김, 우측 배지 34x34px 아이콘화 및 GTD 배지 축약으로 상단 겹침을 방지하고, 수동 카테고리 제거(100% AI 자동분류) 및 하단 입력창 슬림화(140px➔65px), Flex Overflow(min-width:0) 차단으로 화면 흔들림과 컴포넌트 밀림을 원천 차단할 것.
+* **아침/저녁 맞춤형 GTD 브리핑 (ADR-024)**: 시간대(KST) 자동 판별 및 명시적 인자(`/briefing morning`, `/briefing evening`)를 지원하고, 아침에는 집중 우선순위 Top 3 및 실행 순서, 저녁에는 완료 하이라이트 및 과제 이월(Rollover)을 LLM 지능형 합성 및 룰 기반 포맷터 듀얼 엔진으로 브리핑할 것.
 * **Explicit User Commit Trigger Only (에이전트 코드 커밋 수칙)**: 코드 수정 및 기능 구현 후 Git 커밋(`git commit`)은 에이전트가 임의로 자동 실행하지 않으며, 오직 **사용자가 명시적으로 "커밋해" 지시를 내렸을 때만** 수행할 것.
 * **Curl-Based Live Verification (필수)**: 모든 코드 수정 후 반드시 `./scripts/smoke_test.sh` cURL 테스트를 실행하여 실제 라이브 API 수신 및 500 에러 부재를 검증할 것.
 * **Self-Verification & Evolution Loop**: 코드 변경 시 `pytest`/`mypy`/`ruff` 및 cURL 검증 수행 후 실패 시 `evolution.md` 지침에 따라 하네스 자가 진화 집행.
 
 ### 4. Progressive Disclosure (상세 문서 참조)
 * **제품 기획서 개요**: `docs/PRD.md` | **기능 요구사항**: `docs/requirements.md`
-* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-023)
+* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-024)
 
 
 ---

@@ -131,6 +131,13 @@
 - **FR-22.4**: `.message`, `.bubble`, `.code-block`에 `min-width: 0; word-break: break-word; overflow-wrap: anywhere;`를 적용하고, 아바타에 `flex-shrink: 0;`을 고정하여 코드 블록 및 마크다운 표 출력 시 화면 밀림과 Flex Overflow를 원천 차단해야 한다.
 - **FR-22.5**: 에이전트 허브 포털의 메트릭 카드를 모바일에서 2x2 반응형 그리드로 정돈하고, 정적 CSS/JS 캐시 방지를 위해 `v=1.3.3` 쿼리 파라미터를 적용해야 한다.
 
+### FR-23: 아침/저녁 맞춤형 GTD 브리핑 프로토타입 (Morning & Evening Briefing - ADR-024)
+- **FR-23.1**: `BriefingService`를 통해 시간대(KST 기준 오전 05:00~13:59는 morning, 14:00 이후는 evening) 기반 자동 모드 판별 및 명시적 인자(`/briefing morning`, `/briefing evening`)를 처리해야 한다.
+- **FR-23.2**: 아침 브리핑 시 오늘 집중해야 할 **Top 3 우선순위**, 오전/오후 추천 실행 순서, Inbox 미분류 정리 권유를 구조화하여 제공해야 한다.
+- **FR-23.3**: 저녁 브리핑 시 오늘 완료된 작업 하이라이트 요약, 미완료 과제 점검 및 내일로의 이월(Rollover), 내일 아침 1순위 핵심 과제를 제안해야 한다.
+- **FR-23.4**: LLM 지능형 합성 엔진과 0.01초 무지연 결정론적 룰 기반 포맷터 듀얼 엔진으로 무결점 복원력을 제공해야 한다.
+- **FR-23.5**: 외부 연동용 REST API(`GET /api/briefing?mode=morning|evening`) 및 웹 콘솔 퀵 바 원터치 칩(`[🌅 아침 브리핑]`, `[🌇 저녁 회고]`)을 제공해야 한다.
+
 ---
 
 

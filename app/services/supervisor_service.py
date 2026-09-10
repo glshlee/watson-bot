@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_now
 from app.services.agent_service import AgentService
+from app.services.briefing_service import BriefingService
 from app.services.git_service import GitService
 from app.services.llm_provider import LLMProvider
 from app.services.session_service import SessionService
@@ -18,6 +19,11 @@ class SupervisorService:
         self.agent_service = AgentService(base_dir=self.base_dir)
         self.git_service = GitService(repo_path=self.base_dir)
         self.llm_provider = LLMProvider()
+        self.briefing_service = BriefingService(
+            base_dir=self.base_dir,
+            llm_provider=self.llm_provider,
+            git_service=self.git_service,
+        )
 
     def process_user_request(
         self,
@@ -153,9 +159,10 @@ class SupervisorService:
             final_response = f"{icon} **GTD 저장소 동기화 결과**\n{sync_msg}"
 
         elif intent_res.intent == "repo_sync_and_briefing":
-            # (D-2) GTD 레포 동기화 후 즉시 브리핑 (ADR-009)
+            # (D-2) GTD 레포 동기화 후 즉시 브리핑 (ADR-009, ADR-024)
             success, sync_msg = self.git_service.pull()
-            briefing = self.agent_service.get_gtd_summary(date_obj=get_now())
+            briefing_res = self.briefing_service.generate_briefing(mode=None)
+            briefing = briefing_res["markdown"]
             if success:
                 final_response = f"🔄 **최신 GTD 저장소 동기화 완료** (`git pull`)\n\n{briefing}"
             else:
@@ -190,10 +197,23 @@ class SupervisorService:
                 final_response = f"{icon} **GitHub 푸시 결과**\n{push_msg}{url_mention}"
                 push_success = success
 
-        elif intent_res.intent == "task_briefing":
-            # (D-3) GTD 일정 및 할 일 종합 브리핑 (ADR-008 & ADR-009 자동 동기화)
+        elif intent_res.intent == "task_briefing_morning":
+            # (D-3a) 아침 맞춤형 GTD 브리핑 (ADR-024)
             self.git_service.pull()
-            final_response = self.agent_service.get_gtd_summary(date_obj=get_now())
+            briefing_res = self.briefing_service.generate_briefing(mode="morning")
+            final_response = briefing_res["markdown"]
+
+        elif intent_res.intent == "task_briefing_evening":
+            # (D-3b) 저녁 일과 회고 및 GTD 브리핑 (ADR-024)
+            self.git_service.pull()
+            briefing_res = self.briefing_service.generate_briefing(mode="evening")
+            final_response = briefing_res["markdown"]
+
+        elif intent_res.intent == "task_briefing":
+            # (D-3c) 시간대 자동 감지 GTD 종합 브리핑 (ADR-008, ADR-024)
+            self.git_service.pull()
+            briefing_res = self.briefing_service.generate_briefing(mode=None)
+            final_response = briefing_res["markdown"]
 
         elif intent_res.intent == "daily_log_inspect":
             # (D-6) 오늘 일일 로그 파일 즉시 조회 (ADR-022)
@@ -234,3 +254,7 @@ class SupervisorService:
 
     def clear_session_messages(self, session_id: str) -> bool:
         return self.session_service.clear_session_messages(session_id=session_id)
+
+    def get_briefing(self, mode: str | None = None) -> dict[str, Any]:
+        """외부 REST API 및 스케줄러를 위한 아침/저녁 GTD 브리핑 조회 메서드 (ADR-024)."""
+        return self.briefing_service.generate_briefing(mode=mode)

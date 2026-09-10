@@ -374,8 +374,31 @@ class LLMProvider:
             )
 
         # -------------------------------------------------------------
-        # 4-2. GTD 할 일 / 일정 / 브리핑 요청 (task_briefing - ADR-008)
+        # 4-2. GTD 할 일 / 일정 / 브리핑 요청 (task_briefing - ADR-008, ADR-024)
         # -------------------------------------------------------------
+        # (A) 아침 브리핑 명시적 커맨드 및 자연어
+        is_morning_cmd = prompt_lower in ["/briefing morning", "/briefing am", "/briefing 아침", "아침 브리핑", "모닝 브리핑", "출근 브리핑"]
+        is_morning_nlp = any(m in prompt_lower for m in ["아침", "모닝", "출근"]) and any(b in prompt_lower for b in ["브리핑", "일정", "할일", "시작", "정리"])
+        if is_morning_cmd or is_morning_nlp:
+            return IntentResult(
+                intent="task_briefing_morning",
+                ai_response="",
+                log_content=None,
+                category="GTD",
+            )
+
+        # (B) 저녁 브리핑 / 회고 명시적 커맨드 및 자연어
+        is_evening_cmd = prompt_lower in ["/briefing evening", "/briefing pm", "/briefing 저녁", "/briefing 회고", "저녁 브리핑", "이브닝 브리핑", "퇴근 브리핑", "오늘 회고", "저녁 정산"]
+        is_evening_nlp = any(e in prompt_lower for e in ["저녁", "이브닝", "퇴근", "회고", "정산", "마무리"]) and any(b in prompt_lower for b in ["브리핑", "일정", "할일", "회고", "정리", "정산", "마무리"])
+        if is_evening_cmd or is_evening_nlp:
+            return IntentResult(
+                intent="task_briefing_evening",
+                ai_response="",
+                log_content=None,
+                category="GTD",
+            )
+
+        # (C) 일반 브리핑 커맨드 및 자동 판별
         is_briefing_cmd = prompt_lower in ["/briefing", "briefing", "브리핑"]
         if is_briefing_cmd or (any(bt in prompt_lower for bt in briefing_triggers) and any(at in prompt_lower for at in action_triggers)):
             return IntentResult(

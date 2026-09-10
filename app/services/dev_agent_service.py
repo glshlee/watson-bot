@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_now
 from app.services.agent_service import AgentService
+from app.services.briefing_service import BriefingService
 from app.services.llm_provider import LLMProvider
 from app.services.session_service import SessionService
 from app.services.settings_service import SettingsService
@@ -31,6 +32,11 @@ class DevAgentService:
         """현재 설정된 GTD 저장소 경로를 기반으로 AgentService 인스턴스를 반환합니다."""
         gtd_path = SettingsService().get_gtd_path()
         return AgentService(base_dir=gtd_path)
+
+    def _get_briefing_service(self) -> BriefingService:
+        """현재 설정된 GTD 저장소 경로를 기반으로 BriefingService 인스턴스를 반환합니다 (ADR-024)."""
+        gtd_path = SettingsService().get_gtd_path()
+        return BriefingService(base_dir=gtd_path, llm_provider=self.llm_provider)
 
     def _run_git_cmd(self, args: list[str]) -> str:
         """안전한 읽기 전용 Git 명령을 실행합니다."""
@@ -351,6 +357,18 @@ class DevAgentService:
             agent_svc = self._get_agent_service()
             ai_response = agent_svc.read_gtd_and_daily_log(date_obj=get_now())
 
+        elif lower_msg.startswith("/briefing") or ("브리핑" in lower_msg and any(k in lower_msg for k in ["아침", "저녁", "회고", "해줘", "정리"])):
+            action_type = "tool_briefing"
+            briefing_svc = self._get_briefing_service()
+            if any(k in lower_msg for k in ["morning", "am", "아침", "출근", "모닝"]):
+                mode = "morning"
+            elif any(k in lower_msg for k in ["evening", "pm", "저녁", "회고", "정산", "이브닝"]):
+                mode = "evening"
+            else:
+                mode = None
+            briefing_res = briefing_svc.generate_briefing(mode=mode)
+            ai_response = briefing_res["markdown"]
+
         elif lower_msg in ["/help", "help", "도움말", "명령어", "도구"]:
             action_type = "tool_help"
             ai_response = (
@@ -360,7 +378,8 @@ class DevAgentService:
                 "  * `/diff`: 변경 코드(Staged/Unstaged) 실시간 비교\n"
                 "  * `/log`: 최근 7건의 Git 커밋 히스토리 확인\n"
                 "  * `/branch`: 브랜치 목록 조회\n"
-                "* **📋 라이프로그 & GTD 실시간 열람 (ADR-022)**:\n"
+                "* **📋 라이프로그 & GTD 브리핑/열람 (ADR-022, ADR-024)**:\n"
+                "  * `/briefing [morning|evening]`: 아침 집중 과제 및 저녁 일과 회고 맞춤형 브리핑\n"
                 "  * `/today`: 오늘자 작성된 일일 로그(`logs/daily/YYYY-MM-DD.md`) 즉시 열람\n"
                 "  * `/gtd`: 현재 연결된 GTD 수집함(`inbox.md`) 및 다음 행동(`next_actions.md`) 마크다운 직접 확인\n"
                 "* **🧪 자동화 CI & 검증 도구**:\n"

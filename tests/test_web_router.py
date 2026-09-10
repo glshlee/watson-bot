@@ -96,3 +96,21 @@ def test_health_check_endpoints():
     assert res_healthz.status_code == 200
     assert res_healthz.json()["status"] == "ok"
 
+
+def test_get_briefing_endpoint():
+    """ADR-024: 아침/저녁 GTD 브리핑 REST 엔드포인트 검증."""
+    res_morning = client.get("/api/briefing?mode=morning")
+    assert res_morning.status_code == 200
+    data_m = res_morning.json()
+    assert data_m["status"] == "success"
+    assert data_m["data"]["mode"] == "morning"
+    assert "Watson Morning Briefing" in data_m["data"]["markdown"]
+
+    res_evening = client.get("/api/briefing?mode=evening")
+    assert res_evening.status_code == 200
+    data_e = res_evening.json()
+    assert data_e["status"] == "success"
+    assert data_e["data"]["mode"] == "evening"
+    assert "Watson Evening Briefing" in data_e["data"]["markdown"]
+
+

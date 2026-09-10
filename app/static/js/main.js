@@ -147,6 +147,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (activeSessionTitle && data.title) {
                     activeSessionTitle.innerText = data.title;
                 }
+                if (data.history && data.history.length > 0 && data.history[data.history.length - 1].role === "assistant") {
+                    sendBtn.disabled = false;
+                    sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> <span class="desktop-only">전송</span>';
+                }
             }
         } catch (e) {
             console.debug("Failed to sync session history:", e);
@@ -744,10 +748,11 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Lifecycle & Connection Event Listeners (ADR-021)
-    document.addEventListener("visibilitychange", () => {
+    document.addEventListener("visibilitychange", async () => {
         if (!document.hidden) {
             console.log("[Connection] Tab became visible. Checking health & syncing history...");
             checkHealth();
+            await syncActiveSessionHistory();
         }
     });
 
