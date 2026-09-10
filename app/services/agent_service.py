@@ -234,7 +234,18 @@ class AgentService:
             else:
                 header_target = f"## 📝 {category}" if not category.startswith("##") else category
 
-        entry_line = f"- [{time_str}] {content}\n"
+        # 1. 멀티라인 줄바꿈 정규화 (불릿 서식 깨짐 방지)
+        cleaned_content = " ".join(line.strip() for line in content.splitlines() if line.strip())
+
+        # 2. 중복 기록 방지 가드 (Deduplication Guard)
+        existing_text = "".join(file_lines)
+        check_snippet = cleaned_content[:30] if len(cleaned_content) >= 30 else cleaned_content
+        if check_snippet and check_snippet in existing_text:
+            logger.info("Content already recorded in %s, skipping duplicate append: %s", filepath, check_snippet)
+            return filepath
+
+        entry_line = f"- [{time_str}] {cleaned_content}\n"
+
 
         # Find header line index
         target_idx = -1
@@ -349,3 +360,128 @@ class AgentService:
             sections.append("오늘도 보람찬 하루 되실 수 있도록 왓슨이 든든히 서포트하겠습니다! 무엇부터 함께 해볼까요? 💪✨")
 
         return "\n".join(sections)
+
+    def remove_gtd_tasks(self, keywords: list[str]) -> list[str]:
+        """
+        gtd/inbox.md 및 gtd/next_actions.md에서 주어진 키워드들을 포함하는 태스크 라인을 제거합니다.
+        제거된 태스크 명칭 목록을 반환합니다.
+        """
+        removed_tasks: list[str] = []
+        if not keywords:
+            return removed_tasks
+
+        gtd_files = [
+            self.get_gtd_inbox_filepath(),
+            os.path.join(self.base_dir, "gtd", "next_actions.md"),
+        ]
+
+        # 2글자 이상의 의미 있는 키워드 정규화
+        clean_keywords = [
+            k.strip().lower()
+            for k in keywords
+            if len(k.strip()) >= 2 and k.strip().lower() not in ["제거", "삭제", "완료", "할일", "작업", "태스크"]
+        ]
+
+        if not clean_keywords:
+            return removed_tasks
+
+        for filepath in gtd_files:
+            if not os.path.exists(filepath):
+                continue
+
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+            except OSError as e:
+                logger.warning(f"Failed to read {filepath}: {e}")
+                continue
+
+            new_lines = []
+            file_modified = False
+
+            for line in lines:
+                line_s = line.strip()
+                if line_s.startswith(("- [ ]", "- [x]")):
+                    line_lower = line_s.lower()
+                    matched = False
+                    for kw in clean_keywords:
+                        # 공백 제거 비교도 함께 지원 (예: '주간 보고' vs '주간보고')
+                        kw_nospace = kw.replace(" ", "")
+                        line_nospace = line_lower.replace(" ", "")
+                        if kw in line_lower or kw_nospace in line_nospace:
+                            matched = True
+                            task_name = re.sub(r"^-\s*\[[ x]\]\s*", "", line_s)
+                            task_name = re.sub(r"[\*`]", "", task_name).strip()
+
+                            if task_name and task_name not in removed_tasks:
+                                removed_tasks.append(task_name)
+                            file_modified = True
+                            break
+                    if not matched:
+                        new_lines.append(line)
+                else:
+                    new_lines.append(line)
+
+            if file_modified:
+                try:
+                    with open(filepath, "w", encoding="utf-8") as f:
+                        f.writelines(new_lines)
+                    logger.info(f"Removed tasks from {filepath}: {removed_tasks}")
+                except OSError as e:
+                    logger.error(f"Failed to write to {filepath}: {e}")
+
+        return removed_tasks
+
+    def find_and_remove_matching_tasks(self, user_message: str) -> list[str]:
+        """
+        사용자 메시지에서 삭제/제거 의도를 감지하여, 기존 GTD 저장소(inbox.md, next_actions.md)의
+        실제 등록된 태스크 목록과 대조하여 일치하는 태스크를 안전하게 제거합니다.
+        """
+        gtd_files = [
+            self.get_gtd_inbox_filepath(),
+            os.path.join(self.base_dir, "gtd", "next_actions.md"),
+        ]
+        active_tasks: list[str] = []
+        for filepath in gtd_files:
+            if os.path.exists(filepath):
+                try:
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        for line in f:
+                            line_s = line.strip()
+                            if line_s.startswith("- [ ]"):
+                                item = line_s[5:].strip()
+                                item_clean = re.sub(r"[\*`]", "", item).strip()
+
+                                if item_clean and item_clean not in active_tasks:
+                                    active_tasks.append(item_clean)
+                except OSError:
+                    pass
+
+        user_msg_lower = user_message.lower()
+        matched_keywords: list[str] = []
+
+        # (A) 구문별 분리 ("tiara_ad는 제거해", "주간보고 제거", ...)
+        clauses = re.split(r"[,.\n및]+", user_message)
+        for clause in clauses:
+            clause_clean = clause.strip()
+            if any(term in clause_clean for term in ["제거", "삭제", "빼", "지워", "제외", "완료", "해결"]):
+                kw = re.sub(r"(?:는|도|은|를|을|에\s*대해)?\s*(?:제거해|제거|삭제해|삭제|빼줘|빼|지워줘|지워|제외해|제외|완료해|완료).*$", "", clause_clean).strip()
+                if len(kw) >= 2:
+                    matched_keywords.append(kw)
+
+        # (B) 활성 태스크와의 직접 대조 (오타 '나내' -> '아내' 등 부분 일치 보정)
+        for task in active_tasks:
+            words = [w for w in re.split(r"[\s\(\)\[\]\-]+", task) if len(w) >= 2]
+            for w in words:
+                w_lower = w.lower()
+                if len(w) >= 3 and (w_lower in user_msg_lower or (w in ["건강회복", "임신케어", "주간보고"] and any(part in user_msg_lower for part in [w, w.replace(" ", "")]))):
+                    matched_keywords.append(w)
+            # 가족을 위한 시간 보내기 등의 구문
+            if "가족" in task and "가족" in user_msg_lower and any(t in user_msg_lower for t in ["제거", "삭제", "빼"]):
+                matched_keywords.append("가족")
+            if "건강" in task and ("건강" in user_msg_lower or "회복" in user_msg_lower) and any(t in user_msg_lower for t in ["제거", "삭제", "빼"]):
+                matched_keywords.append("건강")
+
+        matched_keywords = list(set(matched_keywords))
+        return self.remove_gtd_tasks(matched_keywords)
+

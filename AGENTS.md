@@ -45,13 +45,16 @@
 * **모바일 퍼스트 반응형 웹 UX (ADR-016)**: 스마트폰 화면(<=768px)에서 사이드바를 오프캔버스 슬라이드 드로어로 자동 전환하고, 100dvh 뷰포트, iOS Safe Area, 사파리 줌 방지(16px) 및 터치 친화적 액션 컴포넌트를 보장할 것.
 * **웹 세션 관리 고도화 & 스마트 네이밍 (ADR-017)**: 웹 콘솔에서 세션 실시간 검색 및 채널 필터(`전체`/`웹`/`텔레그램`), 제목 변경/삭제/비우기 CRUD, 활성 세션 삭제 시 인접 세션 안전 폴백 및 첫 발화 기반 스마트 자동 네이밍을 보장할 것.
 * **에이전트 허브 포털 & 개발 에이전트 분리 (ADR-018)**: 루트 경로(`/`)에 에이전트 허브 대시보드를 제공하고, 왓슨 비서(`/watson`)와 개발 전담 DevBot(`/dev`)을 독립 라우팅 및 `agent_type` 세션 격리로 분리 운영할 것.
+* **DevBot 대화형 엔지니어링 툴체인 (ADR-019)**: DevBot 콘솔(`/dev`)에서 터미널 없이 `/test`(단위 테스트), `/lint`(Ruff & Mypy 정적 검사), `/commit`(Conventional Commits 3종 추천/원터치 커밋)을 즉시 실행하고, `docs/roadmap.md` 마일스톤 주입 및 안전 프로세스 격리로 시니어 페어 프로그래밍 대화를 제공할 것.
+* **결정론적 GTD 태스크 제거 & 원격 투명성 (ADR-020)**: 태스크 삭제 요청 시 LLM 구두 시뮬레이션을 차단하고 `inbox.md`/`next_actions.md`에서 물리적 마크다운 삭제 및 즉시 커밋·푸시를 집행하며, "커밋해", "푸시도해야지", "어디다 푸시한거야?" 등 자연어 커밋/푸시 질의에 실제 Git 원격 상태(URL, 브랜치, 해시)를 투명 보고할 것.
 * **Explicit User Commit Trigger Only (에이전트 코드 커밋 수칙)**: 코드 수정 및 기능 구현 후 Git 커밋(`git commit`)은 에이전트가 임의로 자동 실행하지 않으며, 오직 **사용자가 명시적으로 "커밋해" 지시를 내렸을 때만** 수행할 것.
 * **Curl-Based Live Verification (필수)**: 모든 코드 수정 후 반드시 `./scripts/smoke_test.sh` cURL 테스트를 실행하여 실제 라이브 API 수신 및 500 에러 부재를 검증할 것.
 * **Self-Verification & Evolution Loop**: 코드 변경 시 `pytest`/`mypy`/`ruff` 및 cURL 검증 수행 후 실패 시 `evolution.md` 지침에 따라 하네스 자가 진화 집행.
 
 ### 4. Progressive Disclosure (상세 문서 참조)
 * **제품 기획서 개요**: `docs/PRD.md` | **기능 요구사항**: `docs/requirements.md`
-* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-018)
+* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-020)
+
 
 ---
 

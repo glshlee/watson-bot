@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 
 import git
 from git.exc import GitError
@@ -145,4 +146,69 @@ class GitService:
         except (GitError, TypeError) as e:
             logger.error(f"[GitService Push Error]: {e}")
             return False, f"GitHub 푸시 중 오류 발생: {e}"
+
+    def commit(self, commit_message: str) -> tuple[bool, str]:
+        """
+        현재 작업 트리의 변경 사항을 스테이징(git add -A)하고 로컬 Git 커밋을 생성합니다.
+        """
+        if not self.repo:
+            return False, "지정된 디렉토리가 Git 저장소가 아닙니다."
+
+        try:
+            self.repo.git.add(A=True)
+            if not self.repo.is_dirty(untracked_files=True):
+                return False, "현재 변경된 파일이 없어 커밋할 내용이 없습니다. (Working tree clean)"
+
+            commit_obj = self.repo.index.commit(commit_message)
+            commit_hash = commit_obj.hexsha[:7]
+            logger.info("Committed %s: %s in %s", commit_hash, commit_message, self.repo_path)
+            return True, f"로컬 변경 사항을 성공적으로 커밋했습니다 (`{commit_hash}`: {commit_message}) ✍️"
+        except (GitError, TypeError, OSError) as e:
+            logger.error(f"Git commit error: {e}")
+            return False, f"Git 커밋 중 오류 발생: {e}"
+
+    def get_remote_info(self) -> dict:
+        """
+        현재 Git 저장소의 원격 저장소 URL, 브랜치, 최근 커밋 해시 및 상태를 투명하게 반환합니다.
+        """
+        if not self.repo:
+            return {"configured": False, "message": "Git 저장소가 설정되지 않았습니다."}
+        if not self.repo.remotes:
+            return {"configured": False, "message": "연결된 원격 저장소(remote)가 없습니다."}
+
+        remote_name = settings.GIT_REMOTE_NAME if settings.GIT_REMOTE_NAME in self.repo.remotes else self.repo.remotes[0].name
+        remote = self.repo.remotes[remote_name]
+        raw_url = str(remote.url)
+        safe_url = re.sub(r"https://[^@]+@", "https://", raw_url)
+        branch = self.repo.active_branch.name if not self.repo.head.is_detached else "detached"
+
+        latest_commit = ""
+        latest_hash = ""
+        try:
+            head_commit = self.repo.head.commit
+            latest_hash = head_commit.hexsha[:7]
+            summary_val = head_commit.summary
+            latest_commit = summary_val.decode("utf-8", errors="replace") if isinstance(summary_val, bytes) else str(summary_val)
+        except (GitError, AttributeError, ValueError) as exc:
+            logger.debug("Failed to read head commit: %s", exc)
+
+        ahead_count = 0
+        try:
+            ahead_output = self.repo.git.rev_list("--count", f"{remote_name}/{branch}..{branch}").strip()
+            ahead_count = int(ahead_output)
+        except (GitError, ValueError) as exc:
+            logger.debug("Failed to count ahead commits: %s", exc)
+            ahead_count = 0
+
+        return {
+            "configured": True,
+            "remote_name": remote_name,
+            "url": safe_url,
+            "branch": branch,
+            "latest_hash": latest_hash,
+            "latest_commit": latest_commit,
+            "ahead_count": ahead_count,
+            "is_dirty": self.repo.is_dirty(untracked_files=True),
+        }
+
 

@@ -94,6 +94,21 @@
 - **FR-17.5**: `SessionModel`의 `agent_type` 컬럼을 통해 왓슨 비서 세션(`watson`)과 개발 에이전트 세션(`dev`)을 상호 격리해야 한다.
 - **FR-17.6**: 각 에이전트 콘솔 상단 헤더에 `[🏠 에이전트 허브]` 바로가기 버튼을 제공하여 포털과의 유기적 이동을 보장해야 한다.
 
+### FR-18: DevBot 대화형 엔지니어링 툴체인 및 실시간 개발 실행 환경 (Interactive Dev Toolchain - ADR-019)
+- **FR-18.1**: `POST /api/dev/chat`에 `/test` 명령 전달 시 대상 테스트 파일(또는 기본 코어 스위트)에 대한 `pytest`를 비차단 방식으로 안전하게 실행하고 요약 브리핑을 반환해야 한다.
+- **FR-18.2**: `POST /api/dev/chat`에 `/lint` 명령 전달 시 `ruff check .` 및 `mypy .`를 실행하여 정적 분석 및 타입 검사 결과를 뱃지 형태로 보고해야 한다.
+- **FR-18.3**: `POST /api/dev/chat`에 `/commit` 명령 전달 시 변경점을 분석하여 Conventional Commits 3종을 추천하거나, 메시지가 함께 전달된 경우 Git 커밋을 원자적으로 집행해야 한다.
+- **FR-18.4**: `POST /api/dev/chat`에 `/help` 명령 전달 시 사용 가능한 모든 개발자 단축 도구 목록과 사용 예시를 반환해야 한다.
+- **FR-18.5**: DevBot AI 엔지니어링 추론 시 `docs/roadmap.md`의 최근 마일스톤 및 워크스페이스 상태를 프롬프트 컨텍스트에 실시간 주입하고, AGY CLI 비대화형 표준 규격(`-p`, `--dangerously-skip-permissions`)으로 실행해야 한다.
+- **FR-18.6**: 웹 콘솔(`/dev`) 입력창 상단에 빠른 도구 실행을 위한 퀵 액션 칩(`/test`, `/lint`, `/commit`, `/help`)을 제공해야 한다.
+- **FR-18.7**: 모든 외부 명령어 인자에 대해 경로 트래버설(`..`) 및 쉘 메타문자 인젝션을 방지하는 보안 검증을 수행해야 한다.
+
+### FR-19: 결정론적 GTD 태스크 삭제, 구어체 원격 푸시/커밋 라우팅 및 저장소 투명성 (ADR-020)
+- **FR-19.1**: 사용자 메시지에 등록된 태스크 삭제/제거 의도("제거해", "삭제해", "빼줘" 등) 감지 시 `inbox.md` 및 `next_actions.md`에서 일치하는 태스크를 물리적으로 안전하게 제거하고 Git 커밋/푸시를 집행해야 한다.
+- **FR-19.2**: "커밋해", "커밋", "/commit" 등 명시적 커밋 요청 시 작업 트리가 변경되었을 때만 실제 `git commit`을 집행하고, 변경점이 없으면 깨끗한 상태를 정직하게 보고해야 한다.
+- **FR-19.3**: "푸시도해야지", "푸시해야지", "올려야지" 등 한국어 구어체 어미와 보조사를 `repo_push` 인텐트로 완벽히 라우팅하여 실제 `git push`를 집행해야 한다.
+- **FR-19.4**: "어디다 푸시한거야?", "어디로 푸시했어?" 등 푸시 대상/상태 질의 시 실제 연결된 GitHub Remote URL, 브랜치명, 최신 커밋 해시를 투명하게 반환하고, 가상 브랜치 날조 등 LLM 환각을 원천 차단해야 한다.
+
 ---
 
 
@@ -134,5 +149,9 @@
 | **FR-15** | `app/templates/index.html`, `app/static/css/style.css`, `app/static/js/main.js` | 모바일 뷰포트 반응형 검증 및 cURL 스모크 테스트 |
 | **FR-16** | `app/services/session_service.py`, `app/routers/web_router.py`, `app/templates/index.html`, `app/static/js/main.js` | Pytest 세션 라이프사이클 테스트 & cURL API 검증 |
 | **FR-17** | `app/services/dev_agent_service.py`, `app/routers/web_router.py`, `app/templates/portal.html`, `app/templates/dev.html` | Pytest 허브/데브 라우터 테스트(`tests/test_dev_agent.py`) & cURL 검증 |
+| **FR-18** | `app/services/dev_agent_service.py`, `app/templates/dev.html` | Pytest 툴체인 단위 테스트(`tests/test_dev_agent.py`) & cURL 라이브 검증 |
+| **FR-19** | `app/services/agent_service.py`, `app/services/git_service.py`, `app/services/llm_provider.py`, `app/services/supervisor_service.py` | Pytest 단위 테스트(`test_agent_service.py`, `test_supervisor_service.py`) & cURL 검증 |
+
+
 
 

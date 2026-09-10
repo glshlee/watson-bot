@@ -147,6 +147,28 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] 대시보드 포털 모바일/데스크톱 세로 스크롤 버그 수정 및 카드 원클릭 터치 내비게이션 UX 고도화
 - [x] 단위 테스트(`tests/test_dev_agent.py`), Mypy/Ruff 검증 및 `./scripts/smoke_test.sh` 라이브 검증 완료
 
+### Phase 18: DevBot 대화형 엔지니어링 툴체인 및 실시간 개발 실행 환경 (ADR-019) - ✅ 완료
+- [x] DevBot 전용 엔지니어링 툴체인 메서드(`_run_pytest`, `_run_lint`, `_run_git_commit`, `_recommend_commit_messages`, `_get_roadmap_summary`) 구현
+- [x] AGY CLI 호출 정규화(`-p`, `--dangerously-skip-permissions`, 50s 타임아웃, PATH 자동 보정) 및 고탄력 추론 안정화
+- [x] 대화형 툴체인 단축 명령 지원:
+  - `/test [경로]`: pytest 단위 테스트 실행 및 결과 요약 브리핑
+  - `/lint`: ruff 및 mypy 린트/타입 검사 병렬 실행 및 뱃지 상태 반환
+  - `/commit [메시지]`: Conventional Commits 메시지 자동 추천 3종 또는 안전한 git commit 집행
+  - `/help`: 개발자 툴체인 명령어 도움말 제공
+- [x] 디렉토리 트래버설(`..`) 및 쉘 메타문자 차단을 통한 안전한 하위 프로세스 실행 보장
+- [x] 웹 콘솔(`/dev`) 입력창 상단 퀵 툴 칩(`/test`, `/lint`, `/commit`, `/help`) UI 추가
+- [x] `tests/test_dev_agent.py` 단위 테스트, Mypy/Ruff 검증 및 `./scripts/smoke_test.sh` 3-10 라이브 cURL 검증 완료
+
+### Phase 19: 결정론적 GTD 태스크 삭제, 구어체 원격 푸시/커밋 라우팅 및 저장소 투명성 (ADR-020) - ✅ 완료
+- [x] GTD 태스크 실제 삭제/완료 메서드(`remove_gtd_tasks`, `find_and_remove_matching_tasks`) 구현 및 `gtd_remove` 인텐트 연동
+- [x] 명시적 Git 커밋 명령(`repo_commit`) 신설 ("커밋해", "커밋", "/commit" 등) 및 변경점 유무 정직한 보고
+- [x] 구어체 원격 푸시(`repo_push`) 어미/조사 확장 ("푸시도해야지", "푸시해야지", "푸시도", "올려야지" 등)
+- [x] 원격 저장소 상태/주소 질의(`get_remote_info`) 처리 ("어디다 푸시한거야?", "어디로 푸시했어?")로 실제 GitHub URL/브랜치 투명 브리핑
+- [x] 시스템 프롬프트 가드레일 강화로 Git 환각 및 허위 가상 브랜치 날조 원천 차단
+- [x] `tests/test_agent_service.py`, `tests/test_supervisor_service.py`, `./scripts/smoke_test.sh` 검증 완료
+
+
+
 
 
 

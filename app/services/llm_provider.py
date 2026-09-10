@@ -217,29 +217,75 @@ class LLMProvider:
                     category=cat,
                 )
 
-
         # -------------------------------------------------------------
-        # 3. GTD 레포 원격 푸시 (repo_push - ADR-011)
+        # 2-4. GTD 태스크 삭제/제거/완료 처리 의도 (gtd_remove - ADR-020)
+        # 예: "tiara_ad는 제거해. 주간보고 아젠다도 제거...", "tiara_ad 빼줘", "할일에서 OO 삭제해줘"
         # -------------------------------------------------------------
-        is_pushup = any(w in prompt_clean.lower() for w in ["푸시업", "pushup", "push-up", "push up"])
-        is_explicit_push = prompt_clean.lower() in [
-            "/push", "push", "푸시", "푸시해", "푸시해줘", "푸시도 해줘", "푸시 부탁", "푸시 부탁해",
-            "깃 푸시", "깃 푸시해줘", "git push", "깃푸시", "푸시 확인", "푸시 확인해줘", "푸시 다시 해줘"
-        ]
-        push_action_patterns = [
-            r"(?:깃|git|원격|github|저장소|gtd|커밋|로그|내용|기록)?\s*(?:푸시|push)\s*(?:해줘|해|줘|주세요|부탁|확인|다시|진행)",
-            r"(?:푸시|push)\s*(?:가|도|를|은)?\s*(?:안\s*됐|실패|누락|확인|다시|됐어|해줘|부탁)",
-            r"(?:원격|깃허브|github)\s*(?:저장소)?(?:에|로)?\s*(?:올려줘|푸시해줘|반영해줘|보내줘)",
-        ]
-        has_push_action = any(re.search(pat, prompt_clean, re.IGNORECASE) for pat in push_action_patterns)
-
-        if not is_pushup and (is_explicit_push or has_push_action):
+        remove_triggers = ["제거", "삭제", "빼줘", "빼", "지워", "지워줘", "제외", "제외해", "완료 처리", "해결 완료"]
+        has_remove_trigger = any(rt in prompt_clean for rt in remove_triggers)
+        if has_remove_trigger and any(k in prompt_clean for k in ["는", "도", "은", "를", "을", "에서", "할일", "태스크", "인박스", "tiara", "아젠다", "보고", "지원", "시간", "gtd", "케어"]):
             return IntentResult(
-                intent="repo_push",
+                intent="gtd_remove",
+                ai_response="",
+                log_content=prompt_clean,
+                category="GTD",
+            )
+
+        # -------------------------------------------------------------
+        # 2-5. Git 커밋 명령 (repo_commit - ADR-020)
+        # 예: "커밋해", "커밋", "커밋해줘", "커밋도 해줘", "커밋하자", "커밋해야지", "/commit"
+        # -------------------------------------------------------------
+        commit_exact = ["/commit", "commit", "커밋", "커밋해", "커밋해줘", "커밋도 해줘", "커밋도해줘", "커밋하자", "커밋해야지", "깃 커밋", "git commit", "커밋 부탁", "커밋 부탁해", "커밋 진행해"]
+        commit_patterns = [
+            r"^(?:깃|git)?\s*(?:커밋|commit)\s*(?:해줘|해|줘|주세요|부탁|하자|해야지|진행|해라)?[\.\!\?\s]*$",
+            r"(?:정리된\s*(?:것|내용|상태)?|방금\s*(?:작업|내용)?)\s*(?:커밋|commit)\s*(?:해줘|해|줘|주세요|하자|해야지)",
+        ]
+        is_commit_cmd = prompt_clean.lower() in commit_exact or any(re.search(pat, prompt_clean, re.IGNORECASE) for pat in commit_patterns)
+        if is_commit_cmd:
+            return IntentResult(
+                intent="repo_commit",
                 ai_response="",
                 log_content=None,
                 category="Git",
             )
+
+        # -------------------------------------------------------------
+        # 3. GTD 레포 원격 푸시 및 상태/원격지 확인 (repo_push - ADR-011, ADR-020)
+        # -------------------------------------------------------------
+        is_pushup = any(w in prompt_clean.lower() for w in ["푸시업", "pushup", "push-up", "push up"])
+
+        # 푸시 위치/주소/상태 확인 질문 질의인지 검사 (ADR-020)
+        is_push_query = any(q in prompt_clean for q in [
+            "어디다 푸시", "어디로 푸시", "어디에 푸시", "푸시 어디", "어디 푸시",
+            "푸시 주소", "푸시 저장소", "푸시 레포", "레포 주소", "저장소 주소",
+            "푸시 됐어", "푸시 됐니", "푸시 되었", "푸시된 거 맞아", "푸시된거 맞아",
+            "어디로 push", "어디다 push"
+        ])
+
+        push_exact_words = [
+            "/push", "push", "푸시", "푸시해", "푸시해줘", "푸시도 해줘", "푸시도해줘", "푸시도",
+            "푸시해야지", "푸시도해야지", "푸시도 해야지", "푸시하자", "푸시해야돼", "푸시도 해",
+            "푸시 부탁", "푸시 부탁해", "깃 푸시", "깃 푸시해줘", "git push", "깃푸시",
+            "푸시 확인", "푸시 확인해줘", "푸시 다시 해줘", "푸시해라", "푸시 진행해",
+            "올려야지", "올려줘", "깃허브로 올려", "깃허브에 올려", "원격으로 올려"
+        ]
+        is_explicit_push = prompt_clean.lower() in push_exact_words
+
+        push_action_patterns = [
+            r"(?:깃|git|원격|github|저장소|gtd|커밋|로그|내용|기록)?\s*(?:푸시|push)\s*(?:도\s*)?(?:해줘|해|줘|주세요|부탁|확인|다시|진행|하자|해야지|해야돼|해야지\?|했어\?|된거야\?|한거야\?)",
+            r"(?:푸시|push)\s*(?:가|도|를|은)?\s*(?:안\s*됐|실패|누락|확인|다시|됐어|해줘|부탁|해야지|해야돼|하자|해)",
+            r"(?:원격|깃허브|github)\s*(?:저장소)?(?:에|로)?\s*(?:올려줘|푸시해줘|반영해줘|보내줘|올려야지)",
+        ]
+        has_push_action = any(re.search(pat, prompt_clean, re.IGNORECASE) for pat in push_action_patterns)
+
+        if not is_pushup and (is_explicit_push or has_push_action or is_push_query):
+            return IntentResult(
+                intent="repo_push",
+                ai_response="",
+                log_content="query" if is_push_query else "push",
+                category="Git",
+            )
+
 
         # -------------------------------------------------------------
         # 4. GTD 레포 원격 동기화 및 최신화 (repo_sync / repo_sync_and_briefing - ADR-009)
@@ -387,10 +433,14 @@ class LLMProvider:
                 full_prompt = (
                     "너는 사용자의 24시간 개인 라이프로그 및 GTD AI 비서 왓슨(Watson)이다.\n"
                     "친절하고 다정하며 센스 있게 한국어로 대화해라. 이전 대화 맥락이 있다면 자연스럽게 이어가라.\n"
-                    "주의: 코드 블록 실행이나 실제 Git 명령을 시뮬레이션하지 말고, 사용자와의 진솔하고 따뜻한 대화 및 조언에 집중하라.\n"
-                    "절대로 '이야기 잘 들었습니다' 같은 기계적이고 판에 박힌 앵무새 답변을 하지 마라. "
+                    "중요 절대 규칙:\n"
+                    "- 코드 블록 실행이나 실제 Git 명령, 커밋, 푸시를 절대로 시뮬레이션하거나 대행한 척 거짓말하지 마라.\n"
+                    "- 가상의 브랜치나 저장소(origin/private-lifelog 등)를 절대로 지어내지 마라. Git 작업은 백엔드가 직접 집행한다.\n"
+                    "- 저장소 푸시/커밋 상태에 대한 질문에는 '백엔드에서 실제 Git 상태를 점검하시려면 /status, /sync, /push 명령어를 사용해 달라'고 정직하게 안내하라.\n"
+                    "- 절대로 '이야기 잘 들었습니다' 같은 기계적이고 판에 박힌 앵무새 답변을 하지 마라. "
                     "사용자의 질문이나 대화에 귀기울이고 구체적이고 도움이 되는 답변을 정성껏 제공해라.\n\n"
                 )
+
                 if history_text:
                     full_prompt += f"[이전 대화 내역]\n{history_text}\n"
                 full_prompt += f"[사용자 입력]\n{prompt}\n\n왓슨 비서로서 답변:"
@@ -449,10 +499,20 @@ class LLMProvider:
         workout_keywords = ["운동", "헬스", "러닝", "달리기", "벤치", "스쿼트", "풀업", "pt", "산책", "수영", "요가", "만보"]
         if any(k in text for k in workout_keywords):
             return "Workout & Health"
-        idea_keywords = ["아이디어", "생각", "영감", "깨달음", "고민", "결심", "계획", "감정", "마음", "슬퍼", "걱정", "불안", "기분", "느낌"]
+        # 일상 일기/서사적 표현이 있거나 긴 문장이면 우선적으로 Daily Notes & Diary로 분류
+        daily_narrative_keywords = [
+            "퇴근", "출근", "회사", "와이프", "아내", "남편", "가족", "친구", "식사", "저녁", "점심", "아침",
+            "영화", "여행", "다녀왔", "갔다", "했어", "갔어", "먹었", "왔어", "오늘", "하루", "일과",
+            "초음파", "병원", "데이트", "인수인계"
+        ]
+        if any(k in text for k in daily_narrative_keywords) or len(text.strip()) >= 40:
+            return "Daily Notes & Diary"
+
+        idea_keywords = ["아이디어", "영감", "깨달음", "새로운 구상", "발상", "고민"]
         if any(k in text for k in idea_keywords):
             return "Ideas & Thoughts"
         return "Daily Notes & Diary"
+
 
     def _extract_actionable_task(self, text: str) -> str:
         """

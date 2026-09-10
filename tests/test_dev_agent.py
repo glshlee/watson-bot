@@ -90,3 +90,38 @@ def test_hub_and_dev_endpoints():
 
     # Clean up test session
     client.delete("/api/sessions/test_dev_endpoint_session")
+
+
+def test_dev_agent_toolchain():
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(bind=engine)
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    db = TestingSessionLocal()
+
+    service = DevAgentService(db=db)
+
+    # 1. /help
+    res_help = service.process_dev_request("dev_tool_test", "/help")
+    assert res_help["action_type"] == "tool_help"
+    assert "/test" in res_help["ai_response"]
+    assert "/lint" in res_help["ai_response"]
+    assert "/commit" in res_help["ai_response"]
+
+    # 2. /lint
+    res_lint = service.process_dev_request("dev_tool_test", "/lint")
+    assert res_lint["action_type"] == "tool_lint"
+    assert "Ruff" in res_lint["ai_response"]
+    assert "Mypy" in res_lint["ai_response"]
+
+
+    # 3. /commit recommendation
+    res_commit_rec = service.process_dev_request("dev_tool_test", "/commit")
+    assert res_commit_rec["action_type"] == "tool_commit"
+    assert "Conventional Commits" in res_commit_rec["ai_response"]
+
+
+    # 4. /test targeting specific file
+    res_test = service.process_dev_request("dev_tool_test", "/test tests/test_auth.py")
+    assert res_test["action_type"] == "tool_test"
+    assert "pytest" in res_test["ai_response"]
+

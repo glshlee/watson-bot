@@ -192,6 +192,40 @@ else
     exit 1
 fi
 
+echo "  3-7-1. Testing Natural Speech Repo Push (푸시도해야지 - ADR-020)..."
+CHAT_RES7_1=$(run_curl -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_butler_session", "message": "푸시도해야지", "auto_push": false}')
+if echo "$CHAT_RES7_1" | grep -q '"intent":"repo_push"'; then
+    echo "  ✅ 3-7-1. Natural Speech Repo Push Passed (intent=repo_push)"
+else
+    echo "  ❌ 3-7-1. Natural Speech Repo Push Failed. Response: $CHAT_RES7_1"
+    exit 1
+fi
+
+echo "  3-7-2. Testing Push Destination Query (어디다 푸시한거야? - ADR-020)..."
+CHAT_RES7_2=$(run_curl -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_butler_session", "message": "어디다 푸시한거야?", "auto_push": false}')
+if echo "$CHAT_RES7_2" | grep -q '"intent":"repo_push"' && echo "$CHAT_RES7_2" | grep -q '원격 GitHub 저장소 정보'; then
+    echo "  ✅ 3-7-2. Push Destination Query Passed (Real GitHub Repo Info Returned, No Hallucination)"
+else
+    echo "  ❌ 3-7-2. Push Destination Query Failed. Response: $CHAT_RES7_2"
+    exit 1
+fi
+
+echo "  3-7-3. Testing Repo Commit (커밋해 - ADR-020)..."
+CHAT_RES7_3=$(run_curl -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_butler_session", "message": "커밋해", "auto_push": false}')
+if echo "$CHAT_RES7_3" | grep -q '"intent":"repo_commit"'; then
+    echo "  ✅ 3-7-3. Repo Commit Passed (intent=repo_commit)"
+else
+    echo "  ❌ 3-7-3. Repo Commit Failed. Response: $CHAT_RES7_3"
+    exit 1
+fi
+
+
 echo "  3-8. Testing Compound Intent (로그와 GTD 동시 기록 - ADR-014)..."
 CHAT_RES8=$(run_curl -X POST "$SERVER_URL/api/chat" \
   -H "Content-Type: application/json" \
@@ -213,6 +247,18 @@ else
     echo "  ❌ 3-9. Dev Agent Chat Failed: $DEV_RES"
     exit 1
 fi
+
+echo "  3-10. Testing Dev Agent Toolchain (/lint - ADR-019)..."
+DEV_LINT_RES=$(run_curl -X POST "$SERVER_URL/api/dev/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_dev_session", "message": "/lint"}')
+if echo "$DEV_LINT_RES" | grep -q '"action_type":"tool_lint"'; then
+    echo "  ✅ 3-10. Dev Agent Toolchain Passed (action_type=tool_lint)"
+else
+    echo "  ❌ 3-10. Dev Agent Toolchain Failed: $DEV_LINT_RES"
+    exit 1
+fi
+
 
 
 echo "4. Testing GET /api/telegram/status (ADR-006 Telegram Router)..."

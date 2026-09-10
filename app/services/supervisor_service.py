@@ -62,7 +62,8 @@ class SupervisorService:
 
             if auto_push:
                 date_str = get_now().strftime("%Y-%m-%d")
-                commit_msg = f"docs(lifelog & gtd): [{target_cat}] {content_to_log[:25]} ({date_str}) [{session_id}]"
+                clean_summary = " ".join(line.strip() for line in content_to_log.splitlines() if line.strip())
+                commit_msg = f"docs(lifelog & gtd): [{target_cat}] {clean_summary[:25]} ({date_str}) [{session_id}]"
                 push_success = self.git_service.sync_and_commit_push(commit_message=commit_msg, file_path=None)
 
             self.session_service.clear_pending_log(session_id=session_id)
@@ -80,10 +81,12 @@ class SupervisorService:
 
             if auto_push:
                 date_str = get_now().strftime("%Y-%m-%d")
-                commit_msg = f"docs(lifelog): [{target_cat}] {content_to_log[:30]} ({date_str}) [{session_id}]"
+                clean_summary = " ".join(line.strip() for line in content_to_log.splitlines() if line.strip())
+                commit_msg = f"docs(lifelog): [{target_cat}] {clean_summary[:30]} ({date_str}) [{session_id}]"
                 push_success = self.git_service.sync_and_commit_push(commit_message=commit_msg, file_path=filepath)
 
             self.session_service.clear_pending_log(session_id=session_id)
+
 
         elif intent_res.intent == "log_suggest":
             # (B) 비서가 라이프로그 기록을 제안 -> 세션에 보류 보관 (Git 커밋 X, 마크다운 수정 X)
@@ -100,7 +103,50 @@ class SupervisorService:
             self.session_service.clear_pending_log(session_id=session_id)
 
         final_response = intent_res.ai_response
-        if intent_res.intent == "repo_sync":
+
+        if intent_res.intent == "gtd_remove":
+            # (A-3) GTD 태스크 삭제/제거 (ADR-020)
+            removed = self.agent_service.find_and_remove_matching_tasks(user_message)
+            if removed:
+                bullets = "\n".join(f"• {t}" for t in removed)
+                date_str = get_now().strftime("%Y-%m-%d")
+                commit_msg = f"fix(gtd): remove {len(removed)} completed tasks ({date_str}) [{session_id}]"
+                push_res = ""
+                if auto_push:
+                    p_success, p_msg = self.git_service.commit(commit_msg)
+                    if p_success:
+                        p_ok, p_out = self.git_service.push()
+                        push_res = f"\n\n🚀 **원격 저장소 반영**: {p_out}"
+                        push_success = p_ok
+                    else:
+                        push_res = f"\n\nℹ️ {p_msg}"
+                else:
+                    self.git_service.commit(commit_msg)
+
+                final_response = (
+                    f"🗑️ **GTD 항목 제거 및 동기화 완료**\n\n"
+                    f"요청하신 {len(removed)}개 항목을 GTD 목록(`inbox.md`, `next_actions.md`)에서 안전하게 제거했습니다:\n"
+                    f"{bullets}{push_res}"
+                )
+            else:
+                final_response = "제거할 일치하는 GTD 항목을 찾지 못했습니다. 현재 등록된 할 일 명칭을 다시 확인해 주세요. 📋"
+
+        elif intent_res.intent == "repo_commit":
+            # (D-5) 명시적 로컬 Git 커밋 명령 (ADR-020)
+            date_str = get_now().strftime("%Y-%m-%d")
+            commit_msg = f"docs(gtd): manual commit via watson ({date_str}) [{session_id}]"
+            success, msg = self.git_service.commit(commit_msg)
+            if success:
+                push_res = ""
+                if auto_push:
+                    p_ok, p_out = self.git_service.push()
+                    push_res = f"\n🚀 **원격 저장소 동기화**: {p_out}"
+                    push_success = p_ok
+                final_response = f"✍️ **Git 커밋 완료**\n{msg}{push_res}"
+            else:
+                final_response = f"ℹ️ **Git 커밋 상태**\n{msg}"
+
+        elif intent_res.intent == "repo_sync":
             # (D-1) GTD 레포 원격 동기화 (ADR-009)
             success, sync_msg = self.git_service.pull()
             icon = "✅" if success else "⚠️"
@@ -116,16 +162,39 @@ class SupervisorService:
                 final_response = f"⚠️ **동기화 주의**: {sync_msg}\n\n{briefing}"
 
         elif intent_res.intent == "repo_push":
-            # (D-4) GTD 레포 원격 푸시 (ADR-011)
-            success, push_msg = self.git_service.push()
-            icon = "🚀" if success else "⚠️"
-            final_response = f"{icon} **GitHub 푸시 결과**\n{push_msg}"
-            push_success = success
+            # (D-4) GTD 레포 원격 푸시 및 상태/원격지 확인 (ADR-011, ADR-020)
+            is_query = (intent_res.log_content == "query")
+            remote_info = self.git_service.get_remote_info()
+
+            if is_query or any(q in user_message for q in ["어디다", "어디로", "어디 푸시", "어디에"]):
+                url = remote_info.get("url", "GitHub Remote")
+                branch = remote_info.get("branch", "main")
+                c_hash = remote_info.get("latest_hash", "")
+                c_msg = remote_info.get("latest_commit", "")
+                ahead = remote_info.get("ahead_count", 0)
+                sync_state = "모든 로컬 커밋이 원격 저장소에 완벽히 동기화되어 있습니다. ✅" if ahead == 0 else f"{ahead}개의 로컬 커밋이 푸시 대기 중입니다."
+
+                final_response = (
+                    f"📍 **현재 연결된 원격 GitHub 저장소 정보**\n\n"
+                    f"* **원격 저장소 URL**: `{url}`\n"
+                    f"* **브랜치**: `{branch}`\n"
+                    f"* **최근 커밋**: `{c_hash}` ({c_msg})\n"
+                    f"* **동기화 상태**: {sync_state}\n\n"
+                    f"모든 GTD 및 라이프로그 데이터는 지정하신 위 GitHub 공식 저장소로만 안전하게 푸시 및 백업됩니다. 🔐📦"
+                )
+            else:
+                success, push_msg = self.git_service.push()
+                icon = "🚀" if success else "⚠️"
+                url = remote_info.get("url", "")
+                url_mention = f"\n(원격 저장소: `{url}`)" if url else ""
+                final_response = f"{icon} **GitHub 푸시 결과**\n{push_msg}{url_mention}"
+                push_success = success
 
         elif intent_res.intent == "task_briefing":
             # (D-3) GTD 일정 및 할 일 종합 브리핑 (ADR-008 & ADR-009 자동 동기화)
             self.git_service.pull()
             final_response = self.agent_service.get_gtd_summary(date_obj=get_now())
+
 
 
         # 5. AI 응답 DB 저장

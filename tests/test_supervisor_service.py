@@ -267,6 +267,64 @@ def test_supervisor_dual_logging_workflow(db_session):
         shutil.rmtree(temp_dir)
 
 
+def test_supervisor_gtd_remove_and_commit_workflows(db_session):
+    temp_dir = tempfile.mkdtemp()
+    try:
+        gtd_dir = os.path.join(temp_dir, "gtd")
+        os.makedirs(gtd_dir, exist_ok=True)
+        inbox_file = os.path.join(gtd_dir, "inbox.md")
+        with open(inbox_file, "w", encoding="utf-8") as f:
+            f.write("# Inbox\n- [ ] tiara_ad 처리 방안 가이드라인 후속 작업 🚨\n- [ ] 생필품 구매\n")
+
+        supervisor = SupervisorService(db=db_session, base_dir=temp_dir)
+
+        # 1. gtd_remove: "tiara_ad는 제거해"
+        res_remove = supervisor.process_user_request(
+            session_id="remove_session",
+            user_message="tiara_ad는 제거해",
+            channel="telegram",
+            auto_push=False,
+        )
+        assert res_remove["intent"] == "gtd_remove"
+        assert "tiara_ad" in res_remove["ai_response"]
+        with open(inbox_file, "r", encoding="utf-8") as f:
+            assert "tiara_ad" not in f.read()
+
+        # 2. repo_commit: "커밋해"
+        res_commit = supervisor.process_user_request(
+            session_id="commit_session",
+            user_message="커밋해",
+            channel="telegram",
+            auto_push=False,
+        )
+        assert res_commit["intent"] == "repo_commit"
+        assert "Git 커밋" in res_commit["ai_response"]
+
+        # 3. repo_push with natural ending: "푸시도해야지"
+        res_push1 = supervisor.process_user_request(
+            session_id="push_session",
+            user_message="푸시도해야지",
+            channel="telegram",
+            auto_push=False,
+        )
+        assert res_push1["intent"] == "repo_push"
+        assert "GitHub 푸시 결과" in res_push1["ai_response"]
+
+        # 4. repo_push destination query: "어디다 푸시한거야?"
+        res_push_query = supervisor.process_user_request(
+            session_id="push_session",
+            user_message="어디다 푸시한거야?",
+            channel="telegram",
+            auto_push=False,
+        )
+        assert res_push_query["intent"] == "repo_push"
+        assert "원격 GitHub 저장소 정보" in res_push_query["ai_response"]
+        assert "origin/private-lifelog" not in res_push_query["ai_response"]
+    finally:
+        shutil.rmtree(temp_dir)
+
+
+
 
 
 

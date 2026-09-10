@@ -104,3 +104,94 @@ def test_append_to_gtd_inbox_smart_section_routing():
     finally:
         shutil.rmtree(temp_dir)
 
+
+def test_append_lifelog_multiline_and_deduplication():
+    temp_dir = tempfile.mkdtemp()
+    try:
+        os.makedirs(os.path.join(temp_dir, "logs", "daily"), exist_ok=True)
+        service = AgentService(base_dir=temp_dir)
+        kst = get_app_timezone()
+        now = datetime(2026, 9, 9, 9, 19, tzinfo=kst)
+
+        multiline_content = (
+            "고든은 내 팀원이라 인수인계는 완료됐어.\n"
+            "오늘은 6시에 퇴근해서 와이프랑 영화를 보러 갈거야. 오늘은 문화데이니까."
+        )
+
+        # 1. First append
+        filepath = service.append_or_update_lifelog(
+            content=multiline_content,
+            category="Daily Notes & Diary",
+            date_obj=now,
+        )
+
+        with open(filepath, "r", encoding="utf-8") as f:
+            text = f.read()
+
+        # Check multiline was joined into a single clean line
+        expected_line = "- [09:19] 고든은 내 팀원이라 인수인계는 완료됐어. 오늘은 6시에 퇴근해서 와이프랑 영화를 보러 갈거야. 오늘은 문화데이니까."
+        assert expected_line in text
+
+        # 2. Second append with duplicate content should be ignored
+        service.append_or_update_lifelog(
+            content=multiline_content,
+            category="Daily Notes & Diary",
+            date_obj=now,
+        )
+
+        with open(filepath, "r", encoding="utf-8") as f:
+            text2 = f.read()
+
+        # Count occurrences of the line: must be exactly 1
+        assert text2.count(expected_line) == 1
+    finally:
+        shutil.rmtree(temp_dir)
+
+
+def test_remove_gtd_tasks():
+    temp_dir = tempfile.mkdtemp()
+    try:
+        gtd_dir = os.path.join(temp_dir, "gtd")
+        os.makedirs(gtd_dir, exist_ok=True)
+        inbox_file = os.path.join(gtd_dir, "inbox.md")
+        next_file = os.path.join(gtd_dir, "next_actions.md")
+
+        with open(inbox_file, "w", encoding="utf-8") as f:
+            f.write(
+                "# Inbox\n"
+                "- [ ] tiara_ad 처리 방안 가이드라인 후속 작업 🚨\n"
+                "- [ ] 차주 주간 보고 아젠다 미리 준비 📊\n"
+                "- [ ] 서산 여행 계획 🚗\n"
+            )
+
+        with open(next_file, "w", encoding="utf-8") as f:
+            f.write(
+                "# Next Actions\n"
+                "- [ ] tiara_ad 처리 방안 가이드라인 후속 작업 🚨\n"
+                "- [ ] 가족을 위한 시간 보내기 💌\n"
+                "- [ ] 생필품 구매 🛒\n"
+            )
+
+        service = AgentService(base_dir=temp_dir)
+        user_msg = "tiara_ad는 제거해. 주간보고 아젠다도 제거. 가족위한 시간 보내기 제거"
+        removed = service.find_and_remove_matching_tasks(user_msg)
+
+        assert any("tiara_ad" in r for r in removed)
+        assert any("주간 보고" in r or "주간보고" in r for r in removed)
+        assert any("가족" in r for r in removed)
+
+        with open(inbox_file, "r", encoding="utf-8") as f:
+            inbox_text = f.read()
+        with open(next_file, "r", encoding="utf-8") as f:
+            next_text = f.read()
+
+        assert "tiara_ad" not in inbox_text
+        assert "tiara_ad" not in next_text
+        assert "가족" not in next_text
+        assert "서산 여행 계획" in inbox_text
+        assert "생필품 구매" in next_text
+    finally:
+        shutil.rmtree(temp_dir)
+
+
+
