@@ -206,6 +206,17 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] 웹 콘솔 퀵 바에 `[🌅 아침 브리핑]`, `[🌇 저녁 회고]` 원터치 칩 추가
 - [x] 단위 테스트(`tests/test_briefing_service.py`, `tests/test_web_router.py`), 린트/타입 검사 및 `./scripts/smoke_test.sh` 3-13 라이브 검증 완료
 
+### Phase 24: 브리핑 스케줄 UI 시각화 및 당일 일정 타임라인 (ADR-025) - ✅ 완료
+- [x] 아침(08:30 KST, 활성 05:00~13:59), 저녁(20:00 KST, 활성 14:00~04:59) 정규 브리핑 시각 및 윈도우 명세 정립
+- [x] `BriefingService.get_schedule_info()` 및 `format_schedule_briefing()`으로 구조화된 스케줄 정보 및 당일 일정 타임라인 파싱 구현
+- [x] `LLMProvider` 및 `SupervisorService`에 `briefing_schedule_inspect` 인텐트(`/schedule`, `/briefing schedule`, "몇 시에 스케줄링 되어있어?", "스케줄 확인") 연동
+- [x] 경량 REST 엔드포인트(`GET /api/briefing/schedule`) 신설
+- [x] 웹 콘솔 퀵 바에 시간 명시 칩(`[🌅 아침 (08:30)]`, `[🌇 저녁 (20:00)]`) 및 `[⏰ 스케줄]` 칩 배치
+- [x] 인터랙티브 스케줄 팝업 모달(`#schedule-modal`) 구현 (현재 활성 브리핑 모드 뱃지, 규격 상세, 당일 일정 타임라인)
+- [x] 모바일 반응형 스타일링 및 캐시 방지 버전(`v=1.3.5`) 일괄 적용
+- [x] 단위 테스트(`test_briefing_service.py`, `test_web_router.py`) 및 `./scripts/smoke_test.sh` 3-13-5, 3-13-6 라이브 검증 완료
+
+
 
 
 

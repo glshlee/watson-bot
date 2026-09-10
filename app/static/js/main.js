@@ -747,6 +747,116 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    // Schedule Modal (ADR-025)
+    const scheduleModal = document.getElementById("schedule-modal");
+    const closeScheduleModalBtn = document.getElementById("close-schedule-modal-btn");
+    const closeScheduleBtn = document.getElementById("close-schedule-btn");
+    const btnScheduleView = document.getElementById("btn-schedule-view");
+    const scheduleModalBody = document.getElementById("schedule-modal-body");
+
+    async function openScheduleModal() {
+        if (!scheduleModal || !scheduleModalBody) return;
+        scheduleModal.classList.remove("hidden");
+        scheduleModalBody.innerHTML = `
+            <div class="schedule-loading" style="text-align:center; padding:30px; color:var(--text-secondary);">
+                <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+                <p style="margin-top:10px; font-size:0.9rem;">스케줄 정보를 불러오는 중...</p>
+            </div>
+        `;
+
+        try {
+            const res = await fetchWithRetry("/api/briefing/schedule");
+            if (res.ok) {
+                const json = await res.json();
+                renderScheduleModalContent(json.data);
+            } else {
+                scheduleModalBody.innerHTML = `<p style="color:#ef4444; padding:20px;">스케줄 정보를 불러오지 못했습니다. (${res.status})</p>`;
+            }
+        } catch (e) {
+            scheduleModalBody.innerHTML = `<p style="color:#ef4444; padding:20px;">스케줄 로딩 오류: ${e.message}</p>`;
+        }
+    }
+
+    function renderScheduleModalContent(data) {
+        if (!scheduleModalBody) return;
+        const schedules = data.schedules || [];
+        const todaySchedules = data.today_schedules || [];
+
+        let scheduleCardsHtml = schedules.map(s => `
+            <div class="schedule-card ${s.is_active ? 'active' : ''}">
+                <div class="schedule-card-top">
+                    <div class="schedule-card-title">
+                        ${s.id === 'morning' ? '🌅' : '🌇'} ${s.title}
+                        ${s.is_active ? '<span class="schedule-active-badge" style="font-size:0.7rem; padding:2px 7px;">현재 모드</span>' : ''}
+                    </div>
+                    <span class="schedule-card-time"><i class="fa-regular fa-clock"></i> ${s.scheduled_time}</span>
+                </div>
+                <div class="schedule-card-desc">
+                    <strong>자동 감지 구간:</strong> ${s.active_range}<br>
+                    ${s.summary}
+                </div>
+                <div class="schedule-card-action">
+                    <button class="btn-schedule-trigger" onclick="window.triggerScheduleBriefing('${s.command}')">
+                        <i class="fa-solid fa-play"></i> 지금 실행하기
+                    </button>
+                </div>
+            </div>
+        `).join("");
+
+        let todayScheduleHtml = "";
+        if (todaySchedules.length > 0) {
+            todayScheduleHtml = `
+                <div class="schedule-today-box" style="margin-top: 14px;">
+                    <div class="schedule-today-title"><i class="fa-solid fa-calendar-day"></i> 오늘 일일 로그 주요 일정 (${todaySchedules.length}건)</div>
+                    <ul class="schedule-today-list">
+                        ${todaySchedules.map(item => `<li class="schedule-today-item">${escapeHtml(item)}</li>`).join("")}
+                    </ul>
+                </div>
+            `;
+        } else {
+            todayScheduleHtml = `
+                <div class="schedule-today-box" style="margin-top: 14px;">
+                    <div class="schedule-today-title"><i class="fa-solid fa-calendar-day"></i> 오늘 일일 로그 주요 일정</div>
+                    <p style="font-size:0.82rem; color:var(--text-secondary); margin:0;">오늘 작성된 시간별 일정이 없습니다.</p>
+                </div>
+            `;
+        }
+
+        scheduleModalBody.innerHTML = `
+            <div class="schedule-header-card">
+                <div class="schedule-header-time">
+                    <span class="schedule-current-time"><i class="fa-regular fa-clock"></i> ${data.current_time}</span>
+                    <span class="schedule-current-date">${data.current_date}</span>
+                </div>
+                <div class="schedule-active-badge">
+                    <i class="fa-solid fa-circle-check"></i> ${data.active_mode_label} 가동 중
+                </div>
+            </div>
+            <div class="schedule-cards-grid">
+                ${scheduleCardsHtml}
+            </div>
+            ${todayScheduleHtml}
+        `;
+    }
+
+    window.triggerScheduleBriefing = function(cmd) {
+        if (scheduleModal) scheduleModal.classList.add("hidden");
+        if (chatInput) {
+            chatInput.value = cmd;
+            handleSendMessage();
+        }
+    };
+
+    if (btnScheduleView) {
+        btnScheduleView.addEventListener("click", openScheduleModal);
+    }
+    if (closeScheduleModalBtn) {
+        closeScheduleModalBtn.addEventListener("click", () => scheduleModal?.classList.add("hidden"));
+    }
+    if (closeScheduleBtn) {
+        closeScheduleBtn.addEventListener("click", () => scheduleModal?.classList.add("hidden"));
+    }
+
     // Lifecycle & Connection Event Listeners (ADR-021)
     document.addEventListener("visibilitychange", async () => {
         if (!document.hidden) {

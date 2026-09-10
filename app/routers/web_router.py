@@ -167,3 +167,13 @@ def get_briefing(
     return {"status": "success", "data": result}
 
 
+@router.get("/api/briefing/schedule")
+def get_briefing_schedule(
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    """브리핑 정기 스케줄 및 오늘 일일 일정 조회 엔드포인트 (ADR-025)."""
+    supervisor = SupervisorService(db=db)
+    result = supervisor.get_briefing_schedule()
+    return {"status": "success", "data": result}
+
+

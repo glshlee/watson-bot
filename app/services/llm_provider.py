@@ -374,8 +374,19 @@ class LLMProvider:
             )
 
         # -------------------------------------------------------------
-        # 4-2. GTD 할 일 / 일정 / 브리핑 요청 (task_briefing - ADR-008, ADR-024)
+        # 4-2. GTD 할 일 / 일정 / 브리핑 요청 (task_briefing - ADR-008, ADR-024, ADR-025)
         # -------------------------------------------------------------
+        # (S) 브리핑 스케줄 / 시간 확인 커맨드 및 자연어 (ADR-025)
+        is_schedule_cmd = prompt_lower in ["/schedule", "/briefing schedule", "스케줄", "스케쥴", "브리핑 스케줄"]
+        is_schedule_nlp = any(k in prompt_lower for k in ["브리핑", "일정", "회고"]) and any(s in prompt_lower for s in ["스케줄", "스케쥴", "몇 시", "몇시", "시간", "언제", "스케쥴링", "스케줄링"])
+        if is_schedule_cmd or is_schedule_nlp or ("스케" in prompt_lower and any(q in prompt_lower for q in ["몇 시", "몇시", "언제", "확인", "보여", "알려", "어떻게"])):
+            return IntentResult(
+                intent="briefing_schedule_inspect",
+                ai_response="",
+                log_content=None,
+                category="GTD",
+            )
+
         # (A) 아침 브리핑 명시적 커맨드 및 자연어
         is_morning_cmd = prompt_lower in ["/briefing morning", "/briefing am", "/briefing 아침", "아침 브리핑", "모닝 브리핑", "출근 브리핑"]
         is_morning_nlp = any(m in prompt_lower for m in ["아침", "모닝", "출근"]) and any(b in prompt_lower for b in ["브리핑", "일정", "할일", "시작", "정리"])

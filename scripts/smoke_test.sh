@@ -348,6 +348,24 @@ else
     exit 1
 fi
 
+SCHEDULE_API_RES=$(run_curl "$SERVER_URL/api/briefing/schedule")
+if echo "$SCHEDULE_API_RES" | grep -q '"schedules"'; then
+    echo "  ✅ 3-13-5. GET /api/briefing/schedule Passed (ADR-025)"
+else
+    echo "  ❌ 3-13-5. GET /api/briefing/schedule Failed: $SCHEDULE_API_RES"
+    exit 1
+fi
+
+SCHEDULE_CHAT_RES=$(run_curl -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_butler_session", "message": "/schedule", "auto_push": false}')
+if echo "$SCHEDULE_CHAT_RES" | grep -q '"intent":"briefing_schedule_inspect"'; then
+    echo "  ✅ 3-13-6. Watson /schedule Passed (intent=briefing_schedule_inspect)"
+else
+    echo "  ❌ 3-13-6. Watson /schedule Failed: $SCHEDULE_CHAT_RES"
+    exit 1
+fi
+
 
 
 

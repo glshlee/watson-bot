@@ -309,3 +309,78 @@ class BriefingService:
             "date": context["date_str"],
             "markdown": rule_based_briefing,
         }
+
+    def get_schedule_info(self, date_obj: datetime | None = None) -> dict[str, Any]:
+        """
+        브리핑 스케줄 시간대 설정 및 금일 일일 로그의 주요 일정 현황을 반환합니다 (ADR-025).
+        """
+        now_dt = date_obj or get_now()
+        active_mode = self.detect_briefing_mode(date_obj=now_dt)
+        date_str = now_dt.strftime("%Y-%m-%d")
+        time_str = now_dt.strftime("%H:%M")
+        weekday_str = WEEKDAYS_KR[now_dt.weekday()]
+        ctx = self.read_briefing_context(date_obj=now_dt)
+
+        return {
+            "current_time": f"{time_str} KST",
+            "current_date": f"{date_str} ({weekday_str})",
+            "active_mode": active_mode,
+            "active_mode_label": "🌅 아침 모드" if active_mode == "morning" else "🌇 저녁 모드",
+            "schedules": [
+                {
+                    "id": "morning",
+                    "title": "아침 브리핑 (Morning Briefing)",
+                    "scheduled_time": "08:30 KST",
+                    "active_range": "05:00 ~ 13:59 KST",
+                    "command": "/briefing morning",
+                    "is_active": active_mode == "morning",
+                    "summary": "오늘의 집중 우선순위 Top 3, 오전/오후 추천 실행 흐름, 미분류 수집함 정리",
+                },
+                {
+                    "id": "evening",
+                    "title": "저녁 일과 회고 (Evening Briefing)",
+                    "scheduled_time": "20:00 KST",
+                    "active_range": "14:00 ~ 04:59 KST",
+                    "command": "/briefing evening",
+                    "is_active": active_mode == "evening",
+                    "summary": "오늘 완료 작업 하이라이트 요약, 미완료 과제 내일 이월(Rollover), 내일 1순위 과제 제안",
+                },
+            ],
+            "today_schedules": ctx["schedule_items"],
+        }
+
+    def format_schedule_briefing(self, date_obj: datetime | None = None) -> str:
+        """
+        스케줄 확인 요청 시 마크다운 형태의 스케줄 요약 메시지를 반환합니다 (ADR-025).
+        """
+        info = self.get_schedule_info(date_obj=date_obj)
+        cur_time = info["current_time"]
+        cur_date = info["current_date"]
+        mode_label = info["active_mode_label"]
+
+        lines = [
+            "### ⏰ **왓슨 GTD 브리핑 및 일정 스케줄 안내**\n",
+            f"* **현재 기준 시각**: `{cur_date} {cur_time}` (현재 **{mode_label}** 가동 중)\n",
+            "#### 📋 **정기 브리핑 스케줄 규격**",
+            "* 🌅 **아침 브리핑 (Morning Briefing)**",
+            "  * **정기 스케줄 시각**: 매일 **오전 08:30 KST**",
+            "  * **자동 감지 구간**: `05:00 ~ 13:59 KST`",
+            "  * **주요 내용**: 오늘의 집중 우선순위 Top 3, 추천 실행 흐름, 수집함 정리",
+            "* 🌇 **저녁 일과 회고 (Evening Briefing)**",
+            "  * **정기 스케줄 시각**: 매일 **오후 20:00 (8:00 PM) KST**",
+            "  * **자동 감지 구간**: `14:00 ~ 04:59 KST`",
+            "  * **주요 내용**: 오늘 완료 작업 요약, 미완료 과제 내일 이월(Rollover), 내일 1순위 과제",
+            "",
+        ]
+
+        if info["today_schedules"]:
+            lines.append("#### 📅 **오늘 일일 로그에 등록된 주요 일정 (Schedule)**")
+            for item in info["today_schedules"]:
+                lines.append(f"* ▫️ {item}")
+            lines.append("")
+        else:
+            lines.append("#### 📅 **오늘 일일 로그에 등록된 주요 일정**")
+            lines.append("* 오늘 일일 로그에 등록된 시간별 일정이 없습니다. 가벼운 일정을 추가해 보세요! ☕\n")
+
+        lines.append("💡 웹 콘솔 하단의 `[⏰ 스케줄]` 칩을 누르시면 시각화된 모달 팝업으로도 언제든 확인하실 수 있습니다!")
+        return "\n".join(lines)

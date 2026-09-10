@@ -130,3 +130,42 @@ def test_llm_provider_briefing_intent_classification():
 
     res_nlp_general = provider.analyze_and_respond("오늘 할 일 브리핑해줘")
     assert res_nlp_general.intent == "task_briefing"
+
+    # 3. 스케줄 의도 (ADR-025)
+    res_sched_cmd = provider.analyze_and_respond("/schedule")
+    assert res_sched_cmd.intent == "briefing_schedule_inspect"
+
+    res_sched_nlp1 = provider.analyze_and_respond("몇 시에 스케줄링 되어있어?")
+    assert res_sched_nlp1.intent == "briefing_schedule_inspect"
+
+    res_sched_nlp2 = provider.analyze_and_respond("브리핑 스케줄 확인해줘")
+    assert res_sched_nlp2.intent == "briefing_schedule_inspect"
+
+
+def test_briefing_schedule_info_and_formatting():
+    temp_dir = tempfile.mkdtemp()
+    try:
+        kst = get_app_timezone()
+        morning_dt = datetime(2026, 9, 10, 8, 0, tzinfo=kst)
+
+        os.makedirs(os.path.join(temp_dir, "logs", "daily"), exist_ok=True)
+        with open(os.path.join(temp_dir, "logs", "daily", "2026-09-10.md"), "w", encoding="utf-8") as f:
+            f.write("# 2026-09-10\n\n## 📅 주요 일정\n- 10:00 스프린트 플래닝\n")
+
+        service = BriefingService(base_dir=temp_dir)
+        info = service.get_schedule_info(date_obj=morning_dt)
+
+        assert info["active_mode"] == "morning"
+        assert len(info["schedules"]) == 2
+        assert info["schedules"][0]["scheduled_time"] == "08:30 KST"
+        assert info["schedules"][1]["scheduled_time"] == "20:00 KST"
+        assert "10:00 스프린트 플래닝" in info["today_schedules"]
+
+        md = service.format_schedule_briefing(date_obj=morning_dt)
+        assert "왓슨 GTD 브리핑 및 일정 스케줄 안내" in md
+        assert "08:30 KST" in md
+        assert "20:00" in md
+        assert "10:00 스프린트 플래닝" in md
+    finally:
+        shutil.rmtree(temp_dir)
+

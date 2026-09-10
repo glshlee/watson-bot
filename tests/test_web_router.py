@@ -114,3 +114,16 @@ def test_get_briefing_endpoint():
     assert "Watson Evening Briefing" in data_e["data"]["markdown"]
 
 
+def test_get_briefing_schedule_endpoint():
+    """ADR-025: 브리핑 정기 스케줄 및 오늘 일정 REST 엔드포인트 검증."""
+    res = client.get("/api/briefing/schedule")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "success"
+    assert "current_time" in data["data"]
+    assert "schedules" in data["data"]
+    assert len(data["data"]["schedules"]) == 2
+    assert "today_schedules" in data["data"]
+
+
+

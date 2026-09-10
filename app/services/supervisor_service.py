@@ -215,6 +215,10 @@ class SupervisorService:
             briefing_res = self.briefing_service.generate_briefing(mode=None)
             final_response = briefing_res["markdown"]
 
+        elif intent_res.intent == "briefing_schedule_inspect":
+            # (D-3d) 브리핑 스케줄 및 오늘 주요 일정 시간표 확인 (ADR-025)
+            final_response = self.briefing_service.format_schedule_briefing(date_obj=get_now())
+
         elif intent_res.intent == "daily_log_inspect":
             # (D-6) 오늘 일일 로그 파일 즉시 조회 (ADR-022)
             final_response = self.agent_service.read_daily_log(date_obj=get_now())
@@ -258,3 +262,7 @@ class SupervisorService:
     def get_briefing(self, mode: str | None = None) -> dict[str, Any]:
         """외부 REST API 및 스케줄러를 위한 아침/저녁 GTD 브리핑 조회 메서드 (ADR-024)."""
         return self.briefing_service.generate_briefing(mode=mode)
+
+    def get_briefing_schedule(self) -> dict[str, Any]:
+        """브리핑 스케줄 및 오늘 주요 일정 시간표 정보 조회 메서드 (ADR-025)."""
+        return self.briefing_service.get_schedule_info()

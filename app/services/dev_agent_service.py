@@ -369,6 +369,11 @@ class DevAgentService:
             briefing_res = briefing_svc.generate_briefing(mode=mode)
             ai_response = briefing_res["markdown"]
 
+        elif lower_msg in ["/schedule", "/briefing schedule"] or ("스케줄" in lower_msg and any(k in lower_msg for k in ["확인", "몇 시", "몇시", "보여", "알려", "어떻게", "언제"])):
+            action_type = "tool_schedule"
+            briefing_svc = self._get_briefing_service()
+            ai_response = briefing_svc.format_schedule_briefing(date_obj=get_now())
+
         elif lower_msg in ["/help", "help", "도움말", "명령어", "도구"]:
             action_type = "tool_help"
             ai_response = (

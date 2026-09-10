@@ -138,6 +138,12 @@
 - **FR-23.4**: LLM 지능형 합성 엔진과 0.01초 무지연 결정론적 룰 기반 포맷터 듀얼 엔진으로 무결점 복원력을 제공해야 한다.
 - **FR-23.5**: 외부 연동용 REST API(`GET /api/briefing?mode=morning|evening`) 및 웹 콘솔 퀵 바 원터치 칩(`[🌅 아침 브리핑]`, `[🌇 저녁 회고]`)을 제공해야 한다.
 
+### FR-24: 브리핑 스케줄 UI 시각화 및 당일 일정 타임라인 (ADR-025)
+- **FR-24.1**: `BriefingService.get_schedule_info()` 및 `format_schedule_briefing()`을 통해 아침 브리핑(08:30 KST, 활성 05:00~13:59), 저녁 회고(20:00 KST, 활성 14:00~04:59)의 정규 시각 및 당일 일일 로그(`logs/daily/YYYY-MM-DD.md`)의 시간대별 일정 타임라인을 구조화하여 제공해야 한다.
+- **FR-24.2**: `LLMProvider`에 `briefing_schedule_inspect`(`/schedule`, `/briefing schedule`, "몇 시에 스케줄링 되어있어?", "스케줄 확인") 인텐트를 추가하고 지연 없이 즉각 브리핑을 반환해야 한다.
+- **FR-24.3**: `GET /api/briefing/schedule` REST API를 통해 현재 활성 모드, 아침/저녁 규격 및 당일 일정 목록을 JSON으로 제공해야 한다.
+- **FR-24.4**: 웹 콘솔 퀵 바에 시간 명시 칩(`[🌅 아침 (08:30)]`, `[🌇 저녁 (20:00)]`)과 `[⏰ 스케줄]` 칩을 제공하고, 탭 시 `#schedule-modal`을 통해 활성 뱃지 및 타임라인을 시각화해야 한다.
+
 ---
 
 
@@ -182,6 +188,9 @@
 | **FR-19** | `app/services/agent_service.py`, `app/services/git_service.py`, `app/services/llm_provider.py`, `app/services/supervisor_service.py` | Pytest 단위 테스트(`test_agent_service.py`, `test_supervisor_service.py`) & cURL 검증 |
 | **FR-20** | `scripts/run_tunnel.sh`, `systemd/watson.service`, `app/main.py`, `app/static/js/main.js`, `dev.js` | Pytest 단위 테스트(`test_web_router.py`) & cURL 스모크 검증(0-1) |
 | **FR-21** | `app/services/agent_service.py`, `app/services/llm_provider.py`, `app/services/dev_agent_service.py`, `app/templates/index.html`, `dev.html` | Pytest 단위 테스트(`test_agent_service.py`, `test_supervisor_service.py`, `test_dev_agent.py`) & cURL 검증 |
+| **FR-22** | `app/templates/index.html`, `app/templates/dev.html`, `app/static/css/style.css` | 모바일 뷰포트 레이아웃 반응형 검증 & cURL 스모크 검증 |
+| **FR-23** | `app/services/briefing_service.py`, `app/routers/web_router.py`, `app/templates/index.html` | Pytest 단위 테스트(`test_briefing_service.py`, `test_web_router.py`) & cURL 스모크 검증(3-13) |
+| **FR-24** | `app/services/briefing_service.py`, `app/routers/web_router.py`, `app/static/js/main.js`, `app/templates/index.html` | Pytest 단위 테스트(`test_briefing_service.py`, `test_web_router.py`) & cURL 스모크 검증(3-13-5, 3-13-6) |
 
 
 
