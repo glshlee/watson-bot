@@ -86,6 +86,12 @@
   - *"tiara_ad는 제거해"*, *"주간보고 아젠다도 제거"* 등 태스크 삭제 요청 시 LLM의 가짜 완료 답변을 차단하고, `inbox.md` 및 `next_actions.md` 파일에서 해당 마크다운 항목(`- [ ] ...`)을 물리적으로 완벽히 탐색·삭제합니다.
   - 삭제 후 즉시 로컬 Git 커밋 및 원격 GitHub 자동 푸시를 집행하여 실제 파일 및 리포지토리 상태를 100% 동기화합니다.
   - *"커밋해"*, `repo_commit` 명령을 결정론적으로 파싱하여 변경사항을 즉시 커밋하고, *"푸시도해야지"*, *"어디다 푸시한거야?"* 등 자연어 어미 변화(`~해야지`, `~하자`) 및 원격 리포지토리 확인 질의에 실제 Git 원격 URL, 브랜치, 최신 커밋 해시를 정직하게 투명 보고합니다.
+- 🌐 **웹 연결 복원력 & Cloudflare HTTP/2 터널 안정화 (Web Connection Resilience - ADR-021)**
+  - Cloudflare Tunnel 통신 프로토콜을 UDP QUIC에서 TCP TLS 기반 **HTTP/2 (`--protocol http2`, `--retries 10`)**로 고정하여 클라우드 NAT 환경의 유휴 연결 만료 및 터널 끊김을 원천 방지합니다.
+  - Uvicorn Keep-Alive를 **75초(`--timeout-keep-alive 75`, 동시성 100)**로 최적화하여 Cloudflare 프록시와의 소켓 닫힘 경합 및 502/504 에러를 제거합니다.
+  - 초경량 헬스체크(`GET /api/health`, `< 1ms`) 및 25초 주기 브라우저 하트비트를 통해 실시간 연결 상태를 추적합니다.
+  - 웹 콘솔(`main.js`, `dev.js`)에 **지능형 재시도 엔진(`fetchWithRetry`)**을 도입하고, 모바일 화면 꺼짐 후 복귀나 백그라운드 탭 전환 시(`visibilitychange`, `online`) 세션 히스토리를 자동 동기화하여 이미 생성된 AI 응답을 누락 없이 복원합니다.
+  - 3단계 연결 펄스 인디케이터(`online`/`warning`/`offline`) 및 최상단 연결 알림 배너와 원클릭 수동 재시도 버튼을 제공합니다.
 
 - 📁 **GTD 저장소 격리 및 외부 체계 오케스트레이션 (GTD Repo Isolation - ADR-007)**
   - 왓슨 봇 소스코드 저장소와 개인 데이터(GTD/라이프로그) 저장소를 물리적으로 완벽히 분리합니다.
@@ -318,7 +324,7 @@ watson-bot/
 │   ├── templates/           # Jinja2 HTML 대시보드 및 설정 템플릿
 │   └── main.py              # FastAPI 진입점 및 Lifespan 관리
 ├── docs/
-│   ├── adr/                 # 아키텍처 결정 기록 (ADR-001 ~ ADR-020)
+│   ├── adr/                 # 아키텍처 결정 기록 (ADR-001 ~ ADR-021)
 │   ├── PRD.md               # 제품 기획서
 │   ├── requirements.md      # 기능 명세서
 │   └── roadmap.md           # 개발 로드맵

@@ -82,3 +82,17 @@ def test_session_management_endpoints():
     res_del_404 = client.delete(f"/api/sessions/{session_id}")
     assert res_del_404.status_code == 404
 
+
+def test_health_check_endpoints():
+    """ADR-021: 초경량 헬스체크 및 하트비트 엔드포인트 검증."""
+    res_health = client.get("/api/health")
+    assert res_health.status_code == 200
+    data = res_health.json()
+    assert data["status"] == "ok"
+    assert data["service"] == "watson"
+    assert "timestamp" in data
+
+    res_healthz = client.get("/healthz")
+    assert res_healthz.status_code == 200
+    assert res_healthz.json()["status"] == "ok"
+

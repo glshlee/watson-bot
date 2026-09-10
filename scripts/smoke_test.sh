@@ -50,6 +50,14 @@ if [ "$AUTH_TEST" -eq 1 ]; then
     echo "✅ Auth Guard Passed (401 Unauthorized without credentials)"
 fi
 
+echo "0-1. Testing Lightweight Health Check & Heartbeat (ADR-021)..."
+HEALTH_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$SERVER_URL/api/health")
+if [ "$HEALTH_CODE" -ne 200 ]; then
+    echo "❌ GET /api/health failed with status $HEALTH_CODE"
+    exit 1
+fi
+echo "✅ GET /api/health Passed (200 OK - Health Alive)"
+
 echo "1. Testing GET / (Agent Hub Portal with Auth - ADR-018)..."
 RESPONSE_CODE=$(run_curl -o /dev/null -w "%{http_code}" "$SERVER_URL/")
 if [ "$RESPONSE_CODE" -ne 200 ]; then

@@ -167,6 +167,17 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] 시스템 프롬프트 가드레일 강화로 Git 환각 및 허위 가상 브랜치 날조 원천 차단
 - [x] `tests/test_agent_service.py`, `tests/test_supervisor_service.py`, `./scripts/smoke_test.sh` 검증 완료
 
+### Phase 20: 웹 연결 복원력, Cloudflare HTTP/2 터널 안정화 및 화면 복귀 자동 동기화 (ADR-021) - ✅ 완료
+- [x] Cloudflare Tunnel 통신 프로토콜을 QUIC UDP에서 신뢰성 높은 HTTP/2 TCP TLS로 강제 전환하여 유휴 연결 드롭 차단
+- [x] Uvicorn Keep-Alive 시간(75초) 및 동시성(100) 튜닝을 통해 역방향 프록시 소켓 경합 및 502/504 방지
+- [x] SQLite 동시성 락 방지 (`timeout=30.0`) 적용
+- [x] 초경량 헬스체크 및 하트비트 핑 엔드포인트 (`GET /api/health`, `GET /healthz`) 신설
+- [x] 프론트엔드(`main.js`, `dev.js`) 지능형 재시도 엔진(`fetchWithRetry`) 및 65초 타임아웃 주입
+- [x] 스마트폰 백그라운드 전환/화면 복귀 시 자동 헬스체크 및 세션 히스토리 복원(`visibilitychange`, `online`/`offline`) 구현
+- [x] 실시간 연결 상태 배너(`#connection-banner`) 및 3단계 펄스 인디케이터(`online`, `warning`, `offline`) UI 적용
+- [x] `tests/test_web_router.py` 헬스체크 단위 테스트 및 `scripts/smoke_test.sh` 0-1 단계 라이브 검증 완료
+
+
 
 
 

@@ -39,7 +39,20 @@ async def lifespan(app: FastAPI):
             pass
 
 
+from datetime import datetime, timezone
+
 app = FastAPI(title="Watson GitHub LifeLog AI Agent", version="1.0.0", lifespan=lifespan)
+
+@app.get("/api/health")
+@app.get("/healthz")
+def health_check():
+    """초경량 헬스체크 엔드포인트: 터널 및 웹 프론트엔드 하트비트 연결 상태 확인용."""
+    return {
+        "status": "ok",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "service": "watson",
+        "version": "1.0.0",
+    }
 
 # Mount Static files
 os.makedirs("app/static", exist_ok=True)

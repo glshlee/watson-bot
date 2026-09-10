@@ -72,6 +72,13 @@
                 </div>
             </header>
 
+            <!-- Connection Status Banner (ADR-021) -->
+            <div id="connection-banner" class="connection-banner hidden">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span id="connection-banner-text">서버 연결이 원활하지 않습니다.</span>
+                <button id="reconnect-btn" class="btn-reconnect" title="연결 재시도"><i class="fa-solid fa-rotate"></i> 재시도</button>
+            </div>
+
             <!-- Quick Command Chips Bar -->
             <div class="dev-quick-bar">
                 <span class="quick-label"><i class="fa-solid fa-terminal"></i> 도구:</span>

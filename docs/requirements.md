@@ -109,6 +109,14 @@
 - **FR-19.3**: "푸시도해야지", "푸시해야지", "올려야지" 등 한국어 구어체 어미와 보조사를 `repo_push` 인텐트로 완벽히 라우팅하여 실제 `git push`를 집행해야 한다.
 - **FR-19.4**: "어디다 푸시한거야?", "어디로 푸시했어?" 등 푸시 대상/상태 질의 시 실제 연결된 GitHub Remote URL, 브랜치명, 최신 커밋 해시를 투명하게 반환하고, 가상 브랜치 날조 등 LLM 환각을 원천 차단해야 한다.
 
+### FR-20: 웹 연결 복원력, Cloudflare HTTP/2 터널 안정화 및 화면 복귀 자동 동기화 (ADR-021)
+- **FR-20.1**: Cloudflare Tunnel 연결 시 `--protocol http2` 및 `--retries 10`을 설정하여 클라우드 NAT 게이트웨이 및 모바일 네트워크에서의 UDP 유휴 타임아웃 및 QUIC 스트림 드롭을 원천 차단해야 한다.
+- **FR-20.2**: Uvicorn 구동 시 `--timeout-keep-alive 75` 및 `--limit-concurrency 100`을 적용하여 역방향 프록시와의 연결 닫힘 경합 및 502/504 Bad Gateway를 방지해야 한다.
+- **FR-20.3**: `GET /api/health` 및 `GET /healthz` 초경량 헬스체크 엔드포인트를 제공하여 터널 모니터링 및 프론트엔드 하트비트 핑에 `< 1ms` 내 응답해야 한다.
+- **FR-20.4**: 프론트엔드 웹 콘솔(`main.js`, `dev.js`)에 `fetchWithRetry` 지능형 재시도 엔진을 적용하여 일시적 네트워크 결함 시 지수 백오프로 자동 재시도하고, 65초 타임아웃 신호를 주입해야 한다.
+- **FR-20.5**: 모바일 화면 꺼짐 및 탭 백그라운드 복귀 시(`visibilitychange`, `online`) 즉시 헬스체크 및 세션 히스토리 재동기화를 수행하여 서버에서 완료된 AI 응답을 유실 없이 자동 렌더링해야 한다.
+- **FR-20.6**: 프론트엔드 최상단에 실시간 연결 상태 배너(`#connection-banner`)와 3단계 펄스 인디케이터(`online`, `warning`, `offline`) 및 수동 재시도 버튼을 제공해야 한다.
+
 ---
 
 
@@ -151,6 +159,7 @@
 | **FR-17** | `app/services/dev_agent_service.py`, `app/routers/web_router.py`, `app/templates/portal.html`, `app/templates/dev.html` | Pytest 허브/데브 라우터 테스트(`tests/test_dev_agent.py`) & cURL 검증 |
 | **FR-18** | `app/services/dev_agent_service.py`, `app/templates/dev.html` | Pytest 툴체인 단위 테스트(`tests/test_dev_agent.py`) & cURL 라이브 검증 |
 | **FR-19** | `app/services/agent_service.py`, `app/services/git_service.py`, `app/services/llm_provider.py`, `app/services/supervisor_service.py` | Pytest 단위 테스트(`test_agent_service.py`, `test_supervisor_service.py`) & cURL 검증 |
+| **FR-20** | `scripts/run_tunnel.sh`, `systemd/watson.service`, `app/main.py`, `app/static/js/main.js`, `dev.js` | Pytest 단위 테스트(`test_web_router.py`) & cURL 스모크 검증(0-1) |
 
 
 

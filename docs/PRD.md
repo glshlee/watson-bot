@@ -126,10 +126,18 @@
 * **명시적 Git 커밋 명령 (`repo_commit`)**: "커밋해", "커밋", "/commit" 요청 시 실제 작업 트리 변경 상태를 검사하여 변경점이 있을 때만 커밋/푸시하고, 변경점이 없으면 "작업 트리가 깨끗합니다"라고 정직하게 안내.
 * **구어체 원격 푸시 (`repo_push`) 및 저장소 정보 투명 브리핑**: "푸시도해야지", "푸시해야지", "올려야지" 등 한국어 구어체 어미를 전면 포괄하며, "어디다 푸시한거야?" 질문 시 실제 연결된 GitHub Remote URL(`https://github.com/...`)과 브랜치명, 최신 커밋 해시를 투명하게 제공하여 LLM 허위 환각(가상 브랜치 날조 등) 원천 차단.
 
+### 3.18. 🌐 웹 연결 복원력, Cloudflare HTTP/2 터널 안정화 및 화면 복귀 자동 동기화 (Web Connection Resilience - ADR-021)
+* **Cloudflare HTTP/2 전송 및 Uvicorn Keep-Alive 튜닝**:
+  * `cloudflared` 통신 프로토콜을 QUIC UDP에서 TCP TLS 기반 HTTP/2로 강제하여 클라우드 NAT 게이트웨이 및 모바일 통신망의 무입력 포트 만료/유휴 드롭 현상을 원천 방지.
+  * Uvicorn Keep-Alive 시간을 75초로 증대하고 동시성 제한을 100으로 설정하여 역방향 프록시와 백엔드 간 연결 닫힘 경합 및 502/504 Bad Gateway 완전 해소.
+* **초경량 헬스체크 및 하트비트 모니터링**:
+  * 무부하 고속 응답(`< 1ms`)의 `GET /api/health`, `GET /healthz` 엔드포인트를 제공하고 25초 주기 브라우저 하트비트를 통해 실시간 연결 상태 점검.
+* **지능형 재시도 및 세션 히스토리 자동 복원 (`fetchWithRetry`)**:
+  * 일시적 네트워크 순단 시 지수 백오프로 최대 2회 자동 재시도하며, 모바일 화면 꺼짐/백그라운드 복귀(`visibilitychange`, `online`) 시 서버에 이미 저장된 최신 AI 응답을 즉각 동기화하여 메시지 유실 방지.
+* **실시간 연결 상태 UI**:
+  * 3단계 펄스 인디케이터(`online`, `warning`, `offline`) 및 최상단 연결 상태 배너(`#connection-banner`)와 원클릭 재시도 버튼 제공.
+
 ---
-
-
-
 
 ## 4. 시스템 아키텍처 개요 (System Architecture Overview)
 

@@ -436,25 +436,114 @@ span.desktop-only {
     align-items: center;
     gap: 12px;
     margin-top: 16px;
+    transition: all 0.3s ease;
 }
 
-.status-indicator.online {
+.system-status.warning {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.system-status.offline {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.status-indicator {
     width: 10px;
     height: 10px;
     border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.status-indicator.online {
     background-color: var(--accent-green);
     box-shadow: 0 0 8px var(--accent-green);
+}
+
+.status-indicator.warning {
+    background-color: #f59e0b;
+    box-shadow: 0 0 8px #f59e0b;
+    animation: pulse-warn 1.5s infinite;
+}
+
+.status-indicator.offline {
+    background-color: #ef4444;
+    box-shadow: 0 0 8px #ef4444;
+}
+
+@keyframes pulse-warn {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
 }
 
 .status-title {
     font-size: 0.85rem;
     font-weight: 600;
     color: var(--accent-green);
+    transition: color 0.3s ease;
+}
+
+.system-status.warning .status-title {
+    color: #f59e0b;
+}
+
+.system-status.offline .status-title {
+    color: #ef4444;
 }
 
 .status-sub {
     font-size: 0.75rem;
     color: var(--text-secondary);
+}
+
+/* Connection Banner (ADR-021) */
+.connection-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px;
+    border-radius: var(--radius-md);
+    font-size: 0.88rem;
+    font-weight: 500;
+    margin-bottom: 12px;
+    transition: all 0.3s ease;
+    animation: fadeIn 0.3s ease;
+}
+
+.connection-banner.hidden {
+    display: none !important;
+}
+
+.connection-banner.warning {
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    color: #fbbf24;
+}
+
+.connection-banner.offline {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #f87171;
+}
+
+.btn-reconnect {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid currentColor;
+    color: inherit;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.2s;
+}
+
+.btn-reconnect:hover {
+    background: rgba(255, 255, 255, 0.2);
 }
 
 /* Main Content */

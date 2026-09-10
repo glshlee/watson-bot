@@ -14,12 +14,12 @@ if [ -f .env ]; then
 fi
 
 if [ -n "$TOKEN" ]; then
-    echo "Starting Cloudflare Tunnel with dedicated token..."
-    exec /usr/local/bin/cloudflared tunnel run --token "$TOKEN"
+    echo "Starting Cloudflare Tunnel with dedicated token (HTTP/2)..."
+    exec /usr/local/bin/cloudflared tunnel run --protocol http2 --retries 10 --token "$TOKEN"
 else
-    echo "Starting Cloudflare Quick Tunnel on port 8000..."
+    echo "Starting Cloudflare Quick Tunnel on port 8000 (HTTP/2)..."
     > "$LOG_FILE"
-    /usr/local/bin/cloudflared tunnel --url http://localhost:8000 --logfile "$LOG_FILE" &
+    /usr/local/bin/cloudflared tunnel --url http://localhost:8000 --protocol http2 --retries 10 --logfile "$LOG_FILE" &
     PID=$!
 
     # Extract assigned trycloudflare.com URL and write to file
