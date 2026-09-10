@@ -195,7 +195,17 @@ class SupervisorService:
             self.git_service.pull()
             final_response = self.agent_service.get_gtd_summary(date_obj=get_now())
 
+        elif intent_res.intent == "daily_log_inspect":
+            # (D-6) 오늘 일일 로그 파일 즉시 조회 (ADR-022)
+            final_response = self.agent_service.read_daily_log(date_obj=get_now())
 
+        elif intent_res.intent == "gtd_inspect":
+            # (D-7) GTD inbox/next_actions 파일 직접 조회 (ADR-022)
+            final_response = self.agent_service.read_gtd_files()
+
+        elif intent_res.intent == "gtd_and_log_inspect":
+            # (D-8) GTD 파일 및 오늘 일일 로그 종합 직접 조회 (ADR-022)
+            final_response = self.agent_service.read_gtd_and_daily_log(date_obj=get_now())
 
         # 5. AI 응답 DB 저장
         self.session_service.add_message(session_id=session_id, role="assistant", content=final_response)

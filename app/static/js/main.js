@@ -614,6 +614,15 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    // Watson Quick Shortcut Chips (ADR-022)
+    const watsonChips = document.querySelectorAll(".watson-chip-btn");
+    watsonChips.forEach(chip => {
+        chip.addEventListener("click", () => {
+            const cmd = chip.dataset.cmd;
+            if (cmd) sendTextMessage(cmd);
+        });
+    });
+
     chatInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();

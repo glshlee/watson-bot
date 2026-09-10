@@ -267,6 +267,48 @@ else
     exit 1
 fi
 
+echo "  3-11. Testing Watson Shortcuts (/today & /gtd - ADR-022)..."
+TODAY_RES=$(run_curl -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_butler_session", "message": "/today", "auto_push": false}')
+if echo "$TODAY_RES" | grep -q '"intent":"daily_log_inspect"'; then
+    echo "  ✅ 3-11-1. Watson /today Passed (intent=daily_log_inspect)"
+else
+    echo "  ❌ 3-11-1. Watson /today Failed: $TODAY_RES"
+    exit 1
+fi
+
+GTD_RES=$(run_curl -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_butler_session", "message": "/gtd", "auto_push": false}')
+if echo "$GTD_RES" | grep -q '"intent":"gtd_inspect"'; then
+    echo "  ✅ 3-11-2. Watson /gtd Passed (intent=gtd_inspect)"
+else
+    echo "  ❌ 3-11-2. Watson /gtd Failed: $GTD_RES"
+    exit 1
+fi
+
+echo "  3-12. Testing Dev Agent Shortcuts (/today & /gtd - ADR-022)..."
+DEV_TODAY_RES=$(run_curl -X POST "$SERVER_URL/api/dev/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_dev_session", "message": "/today"}')
+if echo "$DEV_TODAY_RES" | grep -q '"action_type":"tool_today_log"'; then
+    echo "  ✅ 3-12-1. Dev Agent /today Passed (action_type=tool_today_log)"
+else
+    echo "  ❌ 3-12-1. Dev Agent /today Failed: $DEV_TODAY_RES"
+    exit 1
+fi
+
+DEV_GTD_RES=$(run_curl -X POST "$SERVER_URL/api/dev/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_dev_session", "message": "/gtd"}')
+if echo "$DEV_GTD_RES" | grep -q '"action_type":"tool_gtd_files"'; then
+    echo "  ✅ 3-12-2. Dev Agent /gtd Passed (action_type=tool_gtd_files)"
+else
+    echo "  ❌ 3-12-2. Dev Agent /gtd Failed: $DEV_GTD_RES"
+    exit 1
+fi
+
 
 
 echo "4. Testing GET /api/telegram/status (ADR-006 Telegram Router)..."

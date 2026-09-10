@@ -485,3 +485,89 @@ class AgentService:
         matched_keywords = list(set(matched_keywords))
         return self.remove_gtd_tasks(matched_keywords)
 
+    def read_daily_log(self, date_obj: datetime | None = None) -> str:
+        """
+        지정된 날짜(기본값: 오늘, KST)의 일일 로그 마크다운 파일(logs/daily/YYYY-MM-DD.md)을 읽어
+        전문 및 메타데이터를 반환합니다 (ADR-022).
+        """
+        date_obj = self._normalize_datetime(date_obj)
+        date_str = date_obj.strftime("%Y-%m-%d")
+        filepath = self.get_lifelog_filepath(date_obj)
+        rel_path = os.path.relpath(filepath, self.base_dir)
+
+        if not os.path.exists(filepath):
+            return (
+                f"ℹ️ **오늘({date_str}) 작성된 일일 로그가 아직 없습니다.**\n\n"
+                f"* **대상 파일**: `{rel_path}`\n"
+                f"* 일과나 생각, 메모를 남겨주시면 즉시 마크다운에 기록하고 Git에 반영해 드립니다! ✍️"
+            )
+
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+
+            mtime = datetime.fromtimestamp(os.path.getmtime(filepath), tz=get_app_timezone()).strftime("%H:%M:%S")
+            lines_count = len(content.splitlines())
+
+            return (
+                f"### 📅 오늘 일일 로그 (`{date_str}`)\n\n"
+                f"* **파일 경로**: `{rel_path}` (최종 수정: `{mtime}`, 총 `{lines_count}`줄)\n\n"
+                f"---\n\n"
+                f"{content}\n"
+            )
+        except OSError as e:
+            logger.error(f"Failed to read daily log at {filepath}: {e}")
+            return f"⚠️ 일일 로그 파일 읽기 오류: {e}"
+
+    def read_gtd_files(self) -> str:
+        """
+        현재 연결된 GTD 저장소의 수집함(inbox.md) 및 다음 행동(next_actions.md) 파일을 직접 읽어
+        현재 등록된 모든 할 일과 섹션 현황을 반환합니다 (ADR-022).
+        """
+        inbox_path = self.get_gtd_inbox_filepath()
+        next_path = os.path.join(self.base_dir, "gtd", "next_actions.md")
+
+        inbox_rel = os.path.relpath(inbox_path, self.base_dir)
+        next_rel = os.path.relpath(next_path, self.base_dir) if os.path.exists(next_path) else "gtd/next_actions.md"
+
+        inbox_content = ""
+        inbox_open = 0
+        if os.path.exists(inbox_path):
+            try:
+                with open(inbox_path, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+                    inbox_open = sum(1 for line in lines if line.strip().startswith("- [ ]"))
+                    inbox_content = "".join(lines).strip()
+            except OSError as e:
+                inbox_content = f"⚠️ 파일 읽기 오류: {e}"
+        else:
+            inbox_content = "(파일이 존재하지 않습니다)"
+
+        next_content = ""
+        next_open = 0
+        if os.path.exists(next_path):
+            try:
+                with open(next_path, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+                    next_open = sum(1 for line in lines if line.strip().startswith("- [ ]"))
+                    next_content = "".join(lines).strip()
+            except OSError as e:
+                next_content = f"⚠️ 파일 읽기 오류: {e}"
+        else:
+            next_content = "(파일이 존재하지 않습니다)"
+
+        return (
+            f"### 📋 현재 GTD 파일 현황 브리핑\n\n"
+            f"#### 📥 1. 수집함 Inbox (`{inbox_rel}`) - 미완료 `{inbox_open}`개\n"
+            f"```markdown\n{inbox_content}\n```\n\n"
+            f"#### ⚡ 2. 다음 행동 Next Actions (`{next_rel}`) - 미완료 `{next_open}`개\n"
+            f"```markdown\n{next_content}\n```\n"
+        )
+
+    def read_gtd_and_daily_log(self, date_obj: datetime | None = None) -> str:
+        """오늘자 일일 로그와 GTD 파일 현황을 종합 브리핑합니다 (ADR-022)."""
+        log_text = self.read_daily_log(date_obj)
+        gtd_text = self.read_gtd_files()
+        return f"{log_text}\n\n---\n\n{gtd_text}"
+
+

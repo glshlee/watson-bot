@@ -117,6 +117,13 @@
 - **FR-20.5**: 모바일 화면 꺼짐 및 탭 백그라운드 복귀 시(`visibilitychange`, `online`) 즉시 헬스체크 및 세션 히스토리 재동기화를 수행하여 서버에서 완료된 AI 응답을 유실 없이 자동 렌더링해야 한다.
 - **FR-20.6**: 프론트엔드 최상단에 실시간 연결 상태 배너(`#connection-banner`)와 3단계 펄스 인디케이터(`online`, `warning`, `offline`) 및 수동 재시도 버튼을 제공해야 한다.
 
+### FR-21: GTD 및 데일리 로그 파일 즉시 열람 숏컷 & DevBot 대기시간 최적화 (ADR-022)
+- **FR-21.1**: `AgentService`에 `read_daily_log()`, `read_gtd_files()`, `read_gtd_and_daily_log()`를 구현하여 오늘자 일일 로그 및 GTD 수집함/다음 행동 파일의 마크다운 원본, 수정 시각, 줄 수, 미완료 태스크 개수를 0.01초 내에 반환해야 한다.
+- **FR-21.2**: `LLMProvider`에 `daily_log_inspect`(`/today`, `/daily`), `gtd_inspect`(`/gtd`, `/inbox`), `gtd_and_log_inspect`(`/gtd-today`, `/today-gtd`), `task_briefing`(`/briefing`) 인텐트 분류 및 라우팅을 지원해야 한다.
+- **FR-21.3**: `SupervisorService` 및 `DevAgentService`에서 해당 인텐트 수신 시 LLM 지연 없이 로컬 파일 시스템을 즉시 조회하여 초고속으로 응답해야 한다.
+- **FR-21.4**: DevBot 엔지니어링 추론 시 대화 히스토리를 200자로 축약(ADR-010 규격)하고 AGY 타임아웃을 35초로 튜닝하여 무응답 결함을 차단해야 한다.
+- **FR-21.5**: Watson 비서 웹 콘솔(`.watson-quick-bar`) 및 DevBot 웹 콘솔(`.dev-quick-bar`)에 빠른 실행 칩을 제공하여 원터치 조회를 지원해야 한다.
+
 ---
 
 
@@ -160,6 +167,7 @@
 | **FR-18** | `app/services/dev_agent_service.py`, `app/templates/dev.html` | Pytest 툴체인 단위 테스트(`tests/test_dev_agent.py`) & cURL 라이브 검증 |
 | **FR-19** | `app/services/agent_service.py`, `app/services/git_service.py`, `app/services/llm_provider.py`, `app/services/supervisor_service.py` | Pytest 단위 테스트(`test_agent_service.py`, `test_supervisor_service.py`) & cURL 검증 |
 | **FR-20** | `scripts/run_tunnel.sh`, `systemd/watson.service`, `app/main.py`, `app/static/js/main.js`, `dev.js` | Pytest 단위 테스트(`test_web_router.py`) & cURL 스모크 검증(0-1) |
+| **FR-21** | `app/services/agent_service.py`, `app/services/llm_provider.py`, `app/services/dev_agent_service.py`, `app/templates/index.html`, `dev.html` | Pytest 단위 테스트(`test_agent_service.py`, `test_supervisor_service.py`, `test_dev_agent.py`) & cURL 검증 |
 
 
 

@@ -92,6 +92,11 @@
   - 초경량 헬스체크(`GET /api/health`, `< 1ms`) 및 25초 주기 브라우저 하트비트를 통해 실시간 연결 상태를 추적합니다.
   - 웹 콘솔(`main.js`, `dev.js`)에 **지능형 재시도 엔진(`fetchWithRetry`)**을 도입하고, 모바일 화면 꺼짐 후 복귀나 백그라운드 탭 전환 시(`visibilitychange`, `online`) 세션 히스토리를 자동 동기화하여 이미 생성된 AI 응답을 누락 없이 복원합니다.
   - 3단계 연결 펄스 인디케이터(`online`/`warning`/`offline`) 및 최상단 연결 알림 배너와 원클릭 수동 재시도 버튼을 제공합니다.
+- 📋 **GTD 및 데일리 로그 파일 즉시 열람 숏컷 & DevBot 대기시간 최적화 (Inspection Shortcuts - ADR-022)**
+  - *"오늘자 로그 보여줘"*, `/today`, `/daily` 명령 시 오늘자 마크다운 파일(`logs/daily/YYYY-MM-DD.md`)의 원본, 줄 수, 최종 수정 시각을 0.01초 내에 즉각 열람합니다.
+  - *"gtd 파일 보여줘"*, `/gtd`, `/inbox` 명령 시 수집함(`inbox.md`)과 다음 행동(`next_actions.md`) 마크다운을 직접 읽고 미완료 태스크(`- [ ]`) 개수를 자동 집계하여 보고합니다.
+  - Watson 콘솔(`.watson-quick-bar`)과 DevBot 콘솔(`.dev-quick-bar`)에 원터치 실행 칩을 제공하여 번거로운 타이핑 없이 원클릭 조회를 지원합니다.
+  - DevBot의 대화 맥락을 200자로 축약하고 AGY CLI 타임아웃을 35초로 튜닝하여 50초 대기 지연 및 폴백 문제를 해결했습니다.
 
 - 📁 **GTD 저장소 격리 및 외부 체계 오케스트레이션 (GTD Repo Isolation - ADR-007)**
   - 왓슨 봇 소스코드 저장소와 개인 데이터(GTD/라이프로그) 저장소를 물리적으로 완벽히 분리합니다.
@@ -324,7 +329,7 @@ watson-bot/
 │   ├── templates/           # Jinja2 HTML 대시보드 및 설정 템플릿
 │   └── main.py              # FastAPI 진입점 및 Lifespan 관리
 ├── docs/
-│   ├── adr/                 # 아키텍처 결정 기록 (ADR-001 ~ ADR-021)
+│   ├── adr/                 # 아키텍처 결정 기록 (ADR-001 ~ ADR-022)
 │   ├── PRD.md               # 제품 기획서
 │   ├── requirements.md      # 기능 명세서
 │   └── roadmap.md           # 개발 로드맵

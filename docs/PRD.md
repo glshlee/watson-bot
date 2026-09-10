@@ -137,6 +137,19 @@
 * **실시간 연결 상태 UI**:
   * 3단계 펄스 인디케이터(`online`, `warning`, `offline`) 및 최상단 연결 상태 배너(`#connection-banner`)와 원클릭 재시도 버튼 제공.
 
+### 3.19. 📋 GTD 및 데일리 로그 파일 즉시 열람 숏컷 & DevBot 대기시간 최적화 (Inspection Shortcuts - ADR-022)
+* **결정론적 파일 직접 열람 API**:
+  * `AgentService`에 `read_daily_log()`, `read_gtd_files()`, `read_gtd_and_daily_log()`를 탑재하여 실제 파일 경로, 수정 시각, 줄 수, 미완료 태스크 개수 및 코드 블록 마크다운을 LLM 지연 없이 0.01초 내에 반환.
+* **슬래시 커맨드 및 자연어 라우팅**:
+  * `/today`, `/daily`, "오늘 로그 보여줘", "오늘 일기 읽어줘" -> `daily_log_inspect`
+  * `/gtd`, `/inbox`, "gtd 파일 보여줘", "인박스 파일 읽어줘" -> `gtd_inspect`
+  * `/gtd-today`, `/today-gtd`, "gtd랑 오늘 로그 보여줘" -> `gtd_and_log_inspect`
+  * `/briefing` 슬래시 커맨드 매핑 추가.
+* **DevBot 툴체인 및 성능 최적화**:
+  * `/dev` 콘솔에서도 동일한 `/today`, `/gtd` 숏컷 지원 및 대화 히스토리 200자 트리밍 & 35초 타임아웃 적용.
+* **웹 콘솔 원터치 칩 바**:
+  * Watson 비서 콘솔(`.watson-quick-bar`) 및 DevBot 콘솔(`.dev-quick-bar`)에 즉시 실행 칩 제공.
+
 ---
 
 ## 4. 시스템 아키텍처 개요 (System Architecture Overview)

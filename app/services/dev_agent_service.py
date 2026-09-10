@@ -6,8 +6,11 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.config import get_now
+from app.services.agent_service import AgentService
 from app.services.llm_provider import LLMProvider
 from app.services.session_service import SessionService
+from app.services.settings_service import SettingsService
 
 logger = logging.getLogger("watson.dev_agent")
 
@@ -23,6 +26,11 @@ class DevAgentService:
         self.workspace_path = os.path.abspath(workspace_path)
         self.session_service = SessionService(db)
         self.llm_provider = LLMProvider()
+
+    def _get_agent_service(self) -> AgentService:
+        """현재 설정된 GTD 저장소 경로를 기반으로 AgentService 인스턴스를 반환합니다."""
+        gtd_path = SettingsService().get_gtd_path()
+        return AgentService(base_dir=gtd_path)
 
     def _run_git_cmd(self, args: list[str]) -> str:
         """안전한 읽기 전용 Git 명령을 실행합니다."""
@@ -328,6 +336,21 @@ class DevAgentService:
             else:
                 ai_response = self._recommend_commit_messages()
 
+        elif lower_msg in ["/today", "/daily", "today", "daily", "오늘 로그", "오늘 일기", "오늘자 로그", "오늘 로그 보여줘", "오늘 일기 보여줘"]:
+            action_type = "tool_today_log"
+            agent_svc = self._get_agent_service()
+            ai_response = agent_svc.read_daily_log(date_obj=get_now())
+
+        elif lower_msg in ["/gtd", "/inbox", "gtd", "inbox", "gtd 파일", "인박스 파일", "gtd 파일 보여줘", "인박스 파일 보여줘"]:
+            action_type = "tool_gtd_files"
+            agent_svc = self._get_agent_service()
+            ai_response = agent_svc.read_gtd_files()
+
+        elif lower_msg in ["/gtd-today", "/today-gtd", "/all-log"]:
+            action_type = "tool_gtd_and_today_log"
+            agent_svc = self._get_agent_service()
+            ai_response = agent_svc.read_gtd_and_daily_log(date_obj=get_now())
+
         elif lower_msg in ["/help", "help", "도움말", "명령어", "도구"]:
             action_type = "tool_help"
             ai_response = (
@@ -337,6 +360,9 @@ class DevAgentService:
                 "  * `/diff`: 변경 코드(Staged/Unstaged) 실시간 비교\n"
                 "  * `/log`: 최근 7건의 Git 커밋 히스토리 확인\n"
                 "  * `/branch`: 브랜치 목록 조회\n"
+                "* **📋 라이프로그 & GTD 실시간 열람 (ADR-022)**:\n"
+                "  * `/today`: 오늘자 작성된 일일 로그(`logs/daily/YYYY-MM-DD.md`) 즉시 열람\n"
+                "  * `/gtd`: 현재 연결된 GTD 수집함(`inbox.md`) 및 다음 행동(`next_actions.md`) 마크다운 직접 확인\n"
                 "* **🧪 자동화 CI & 검증 도구**:\n"
                 "  * `/test [경로]`: pytest 단위 테스트 비동기 실행 (예: `/test`, `/test tests/test_auth.py`)\n"
                 "  * `/lint`: Ruff 린터 및 Mypy 타입 검사 즉시 실행\n"
@@ -372,8 +398,15 @@ class DevAgentService:
                 f"{repo_context}"
             )
 
-            history = self.session_service.get_session_history(session_id, limit=6)
-            history_context = "\n".join([f"{m['role']}: {m['content']}" for m in history[-4:]]) if history else ""
+            history = self.session_service.get_session_history(session_id, limit=4)
+            history_lines = []
+            if history:
+                for m in history[-3:]:
+                    c = str(m.get("content", "")).strip()
+                    if len(c) > 200:
+                        c = c[:200] + "..."
+                    history_lines.append(f"{m.get('role')}: {c}")
+            history_context = "\n".join(history_lines)
             full_prompt = f"{dev_system_prompt}\n\n[최근 대화 맥락]\n{history_context}\n\n[사용자 질문]\n{clean_msg}\n\nDevBot 엔지니어 답변:"
 
             # Use LLMProvider analyze or generate
@@ -391,7 +424,7 @@ class DevAgentService:
                         cmd,
                         capture_output=True,
                         text=True,
-                        timeout=50,
+                        timeout=35,
                         check=False,
                         env=env,
                     )
@@ -407,7 +440,7 @@ class DevAgentService:
                     f"(수정 중인 파일: {ws_status['changed_files_count']}개)\n\n"
                     f"문의하신 내용: **\"{clean_msg}\"**\n\n"
                     f"코드베이스 분석, 버그 수정, 단위 테스트(`pytest`), Git 브랜치 관리 등 "
-                    f"필요한 엔지니어링 작업을 언제든 말씀해 주세요! 빠른 명령어(`/status`, `/diff`, `/log`)도 지원합니다."
+                    f"필요한 엔지니어링 작업을 언제든 말씀해 주세요! 빠른 명령어(`/status`, `/diff`, `/log`, `/today`, `/gtd`)도 지원합니다."
                 )
 
         # 6. Record assistant response

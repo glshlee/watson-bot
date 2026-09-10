@@ -1818,6 +1818,42 @@ body.portal-body {
     color: #6ee7b7;
 }
 
+/* Watson Quick Shortcut Chips Bar (ADR-022) */
+.watson-quick-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: #0f172a;
+    border-bottom: 1px solid #1e293b;
+    overflow-x: auto;
+    flex-shrink: 0;
+    scrollbar-width: thin;
+}
+
+.watson-chip-btn {
+    padding: 5px 12px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 20px;
+    color: #cbd5e1;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.watson-chip-btn:hover {
+    background: #4f46e5;
+    border-color: #6366f1;
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
 @media (max-width: 768px) {
     .portal-container {
         padding: 20px 16px 80px 16px;
@@ -1842,5 +1878,13 @@ body.portal-body {
     }
     .dev-quick-bar {
         padding: 8px 12px;
+    }
+    .watson-quick-bar {
+        padding: 6px 12px;
+        gap: 6px;
+    }
+    .watson-chip-btn {
+        padding: 4px 10px;
+        font-size: 0.75rem;
     }
 }

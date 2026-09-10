@@ -325,9 +325,59 @@ class LLMProvider:
 
 
         # -------------------------------------------------------------
-        # 4. GTD 할 일 / 일정 / 브리핑 요청 (task_briefing - ADR-008)
+        # 4-1. 오늘 일일 로그 / GTD 파일 직접 조회 숏컷 (ADR-022)
         # -------------------------------------------------------------
-        if any(bt in prompt_clean.lower() for bt in briefing_triggers) and any(at in prompt_clean.lower() for at in action_triggers):
+        prompt_lower = prompt_clean.lower()
+        gtd_keywords = ["gtd", "인박스", "inbox", "수집함", "할일", "next_actions", "다음 행동"]
+        log_keywords = ["오늘 로그", "오늘자 로그", "오늘의 로그", "오늘 일기", "오늘자 일기", "데일리 로그", "데일리로그", "오늘 기록"]
+
+        is_composite_shortcut = prompt_lower in ["/gtd-today", "/today-gtd", "/all-log"]
+        has_both_targets = any(gk in prompt_lower for gk in gtd_keywords) and any(lk in prompt_lower for lk in log_keywords)
+        read_inspect_triggers = ["읽어", "보여", "확인", "열어", "조회", "출력", "상태", "현황", "내용"]
+
+        if is_composite_shortcut or (has_both_targets and any(rit in prompt_lower for rit in read_inspect_triggers)):
+            return IntentResult(
+                intent="gtd_and_log_inspect",
+                ai_response="",
+                log_content=None,
+                category="GTD",
+            )
+
+        # 오늘 일일 로그 직접 조회 (/today, /daily, "오늘 로그 보여줘", "오늘 일기 읽어줘" 등)
+        is_today_shortcut = prompt_lower in ["/today", "/daily", "today", "daily"]
+        today_log_patterns = [
+            r"^(?:오늘|오늘자|오늘의|데일리)\s*(?:라이프\s*)?(?:로그|일기|기록)\s*(?:보여줘|보여|읽어줘|읽어|확인|열어줘|열어|출력|조회|알려줘|어떻게\s*돼|내용)?[\.\!\?\s]*$",
+            r"(?:오늘|오늘자|오늘의)\s*(?:작성된|기록된)?\s*(?:로그|일기|기록|다이어리)\s*(?:보여줘|읽어줘|열어줘|확인해줘|조회)",
+        ]
+        is_today_log_inspect = is_today_shortcut or any(re.search(pat, prompt_lower, re.IGNORECASE) for pat in today_log_patterns)
+        if is_today_log_inspect and not has_record_action:
+            return IntentResult(
+                intent="daily_log_inspect",
+                ai_response="",
+                log_content=None,
+                category="LifeLog",
+            )
+
+        # GTD 파일 직접 조회 (/gtd, /inbox, "gtd 파일 보여줘", "인박스 파일 읽어줘" 등)
+        is_gtd_shortcut = prompt_lower in ["/gtd", "/inbox", "gtd", "inbox"]
+        gtd_file_patterns = [
+            r"^(?:gtd|인박스|inbox|수집함)\s*(?:파일|원본|내용)?\s*(?:보여줘|보여|읽어줘|읽어|확인|열어줘|열어|출력|조회)?[\.\!\?\s]*$",
+            r"(?:gtd|inbox|인박스|next_actions|수집함|다음\s*행동)\s*(?:파일|문서|원본|마크다운)?\s*(?:읽어줘|읽어|보여줘|보여|확인해줘|열어줘|출력)",
+        ]
+        is_gtd_inspect = is_gtd_shortcut or any(re.search(pat, prompt_lower, re.IGNORECASE) for pat in gtd_file_patterns)
+        if is_gtd_inspect and not has_record_action and not has_remove_trigger:
+            return IntentResult(
+                intent="gtd_inspect",
+                ai_response="",
+                log_content=None,
+                category="GTD",
+            )
+
+        # -------------------------------------------------------------
+        # 4-2. GTD 할 일 / 일정 / 브리핑 요청 (task_briefing - ADR-008)
+        # -------------------------------------------------------------
+        is_briefing_cmd = prompt_lower in ["/briefing", "briefing", "브리핑"]
+        if is_briefing_cmd or (any(bt in prompt_lower for bt in briefing_triggers) and any(at in prompt_lower for at in action_triggers)):
             return IntentResult(
                 intent="task_briefing",
                 ai_response="",

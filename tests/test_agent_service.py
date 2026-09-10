@@ -194,4 +194,48 @@ def test_remove_gtd_tasks():
         shutil.rmtree(temp_dir)
 
 
+def test_read_daily_log_and_gtd_files():
+    temp_dir = tempfile.mkdtemp()
+    try:
+        daily_dir = os.path.join(temp_dir, "logs", "daily")
+        gtd_dir = os.path.join(temp_dir, "gtd")
+        os.makedirs(daily_dir, exist_ok=True)
+        os.makedirs(gtd_dir, exist_ok=True)
+
+        service = AgentService(base_dir=temp_dir)
+        kst = get_app_timezone()
+        now = datetime(2026, 9, 10, 10, 0, tzinfo=kst)
+
+        # 1. Empty daily log
+        empty_res = service.read_daily_log(now)
+        assert "작성된 일일 로그가 아직 없습니다" in empty_res
+
+        # 2. Append and read
+        service.append_or_update_lifelog("테스트 일과 기록 작성", "Daily Notes & Diary", date_obj=now)
+        log_res = service.read_daily_log(now)
+        assert "2026-09-10" in log_res
+        assert "테스트 일과 기록 작성" in log_res
+
+        # 3. Create GTD inbox & next_actions
+        inbox_file = os.path.join(gtd_dir, "inbox.md")
+        next_file = os.path.join(gtd_dir, "next_actions.md")
+        with open(inbox_file, "w", encoding="utf-8") as f:
+            f.write("# Inbox\n- [ ] 인박스 태스크 1\n- [ ] 인박스 태스크 2\n")
+        with open(next_file, "w", encoding="utf-8") as f:
+            f.write("# Next Actions\n- [ ] 다음 행동 태스크 1\n- [x] 완료된 태스크\n")
+
+        gtd_res = service.read_gtd_files()
+        assert "수집함 Inbox" in gtd_res
+        assert "미완료 `2`개" in gtd_res
+        assert "다음 행동 Next Actions" in gtd_res
+        assert "미완료 `1`개" in gtd_res
+
+        # 4. Composite view
+        comp_res = service.read_gtd_and_daily_log(now)
+        assert "오늘 일일 로그" in comp_res
+        assert "현재 GTD 파일 현황 브리핑" in comp_res
+    finally:
+        shutil.rmtree(temp_dir)
+
+
 

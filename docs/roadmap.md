@@ -177,6 +177,15 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] 실시간 연결 상태 배너(`#connection-banner`) 및 3단계 펄스 인디케이터(`online`, `warning`, `offline`) UI 적용
 - [x] `tests/test_web_router.py` 헬스체크 단위 테스트 및 `scripts/smoke_test.sh` 0-1 단계 라이브 검증 완료
 
+### Phase 21: GTD 및 데일리 로그 파일 즉시 열람 숏컷(/today, /gtd) 및 DevBot 대기시간 최적화 (ADR-022) - ✅ 완료
+- [x] `AgentService`에 `read_daily_log()`, `read_gtd_files()`, `read_gtd_and_daily_log()` 구현 (KST 기준 파일 원본 마크다운 및 미완료 체크박스 자동 집계)
+- [x] `LLMProvider`에 `daily_log_inspect`, `gtd_inspect`, `gtd_and_log_inspect` 인텐트 및 슬래시 커맨드(`/today`, `/daily`, `/gtd`, `/inbox`, `/gtd-today`, `/briefing`) 인식 추가
+- [x] `SupervisorService`에서 지연 없는 결정론적 파일 즉시 열람 라우팅 연동
+- [x] `DevAgentService`에 `/today`, `/gtd`, `/gtd-today` 엔지니어링 툴체인 연동 및 프롬프트 히스토리 경량화(200자 트리밍) & 35초 타임아웃 적용
+- [x] Watson 비서 콘솔(`/watson`)에 빠른 액션 칩 바(`.watson-quick-bar`: `/today`, `/gtd`, `/briefing`, `/sync`, `/push`) 구현
+- [x] DevBot 콘솔(`/dev`)에 `/today (일일로그)`, `/gtd (GTD현황)` 칩 추가
+- [x] 단위 테스트 및 스모크 테스트 라이브 검증 완료
+
 
 
 

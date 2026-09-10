@@ -324,6 +324,64 @@ def test_supervisor_gtd_remove_and_commit_workflows(db_session):
         shutil.rmtree(temp_dir)
 
 
+def test_supervisor_inspection_shortcuts(db_session):
+    temp_dir = tempfile.mkdtemp()
+    try:
+        daily_dir = os.path.join(temp_dir, "logs", "daily")
+        gtd_dir = os.path.join(temp_dir, "gtd")
+        os.makedirs(daily_dir, exist_ok=True)
+        os.makedirs(gtd_dir, exist_ok=True)
+
+        supervisor = SupervisorService(db=db_session, base_dir=temp_dir)
+
+        # 1. /today shortcut
+        res_today = supervisor.process_user_request(
+            session_id="today_session",
+            user_message="/today",
+            channel="web",
+            auto_push=False,
+        )
+        assert res_today["intent"] == "daily_log_inspect"
+        assert "오늘" in res_today["ai_response"]
+
+        # 2. /gtd shortcut
+        inbox_file = os.path.join(gtd_dir, "inbox.md")
+        with open(inbox_file, "w", encoding="utf-8") as f:
+            f.write("# Inbox\n- [ ] 긴급 버그 수정\n")
+
+        res_gtd = supervisor.process_user_request(
+            session_id="gtd_session",
+            user_message="/gtd",
+            channel="web",
+            auto_push=False,
+        )
+        assert res_gtd["intent"] == "gtd_inspect"
+        assert "수집함 Inbox" in res_gtd["ai_response"]
+        assert "긴급 버그 수정" in res_gtd["ai_response"]
+
+        # 3. /gtd-today composite shortcut
+        res_comp = supervisor.process_user_request(
+            session_id="comp_session",
+            user_message="/gtd-today",
+            channel="web",
+            auto_push=False,
+        )
+        assert res_comp["intent"] == "gtd_and_log_inspect"
+        assert "일일 로그" in res_comp["ai_response"]
+        assert "GTD 파일 현황" in res_comp["ai_response"]
+
+        # 4. /briefing shortcut
+        res_briefing = supervisor.process_user_request(
+            session_id="briefing_session",
+            user_message="/briefing",
+            channel="web",
+            auto_push=False,
+        )
+        assert res_briefing["intent"] == "task_briefing"
+    finally:
+        shutil.rmtree(temp_dir)
+
+
 
 
 

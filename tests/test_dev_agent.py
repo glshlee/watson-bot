@@ -125,3 +125,13 @@ def test_dev_agent_toolchain():
     assert res_test["action_type"] == "tool_test"
     assert "pytest" in res_test["ai_response"]
 
+    # 5. /today shortcut
+    res_today = service.process_dev_request("dev_tool_test", "/today")
+    assert res_today["action_type"] == "tool_today_log"
+    assert "일일 로그" in res_today["ai_response"]
+
+    # 6. /gtd shortcut
+    res_gtd = service.process_dev_request("dev_tool_test", "/gtd")
+    assert res_gtd["action_type"] == "tool_gtd_files"
+    assert "GTD 파일 현황" in res_gtd["ai_response"]
+
