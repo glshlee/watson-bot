@@ -556,7 +556,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 body: JSON.stringify({
                     session_id: currentSessionId,
                     message: text,
-                    category: categorySelect.value
+                    category: categorySelect ? categorySelect.value : "Daily Notes & Diary"
                 })
             }, 2, 1500);
 

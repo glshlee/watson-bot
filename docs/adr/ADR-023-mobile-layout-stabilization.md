@@ -28,10 +28,10 @@
 ### 2.2 하단 입력 독(Input Dock) 초슬림화 & 50% 높이 다이어트 (`style.css`)
 - **인라인 가로 스크롤 칩 바**:
   - `.watson-quick-bar`와 `.dev-quick-bar`의 불필요한 배경/테두리/패딩을 제거하고, `white-space: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none;`의 유려한 가로 스크롤 필(Pill) 툴바로 개편.
-- **카테고리 셀렉트 & 입력창 최적화**:
-  - 카테고리 셀렉트 높이를 28px로 컴팩트화하고 마진을 5px로 압축.
-  - 텍스트 입력창 높이를 40px로 정돈하여 하단 입력 영역 전체 높이를 140px에서 **75px~80px**로 50% 슬림화.
-  - 가상 키보드 팝업 시에도 메시지 가시 면적을 70% 이상 확보.
+- **수동 카테고리 드롭다운 제거 및 100% AI 자동 분류 전환 (`index.html`, `main.js`)**:
+  - 수동 범주 선택기(`.category-bar`)를 완전히 제거하고 왓슨 LLM의 맥락 인식 자동 분류(Workout, Ideas, GTD Inbox, Daily Notes)에 전담 위임.
+  - Auto Git Push 인디케이터는 상단 헤더 프로필 영역(`.badge-push`)으로 정돈하여 하단 입력 영역 높이를 140px에서 **60px~65px** 수준으로 극대화 슬림화.
+  - 가상 키보드 팝업 시에도 메시지 가시 면적을 75% 이상 확보.
 
 ### 2.3 Flex Overflow 원천 차단 및 아바타 고정 (`style.css`)
 - `.message`, `.bubble`, `.code-block`에 `min-width: 0; word-break: break-word; overflow-wrap: anywhere;` 적용.
