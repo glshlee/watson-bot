@@ -186,6 +186,16 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] DevBot 콘솔(`/dev`)에 `/today (일일로그)`, `/gtd (GTD현황)` 칩 추가
 - [x] 단위 테스트 및 스모크 테스트 라이브 검증 완료
 
+### Phase 22: 모바일 뷰포트 레이아웃 안정화 & 컴포넌트 충돌 방지 (ADR-023) - ✅ 완료
+- [x] 모바일(<= 768px) 헤더 긴 부제목(`p#chat-subtitle`) 자동 숨김으로 줄바꿈 충돌 차단
+- [x] 모바일 우측 액션 배지 34x34px 정사각형 터치 아이콘 버튼으로 정돈 및 GTD 경로 배지 50px 축약
+- [x] 빠른 칩 바(`.watson-quick-bar`, `.dev-quick-bar`) 슬림 가로 스와이프 필 바로 개편 및 스크롤바 숨김(`scrollbar-width: none`)
+- [x] 카테고리 셀렉트 및 텍스트 입력창 높이 압축으로 하단 고정 영역 50% 슬림화 (140px ➔ 75px)
+- [x] `.message`, `.bubble`, `.code-block`에 `min-width: 0; word-break: break-word; overflow-wrap: anywhere;` 적용 및 아바타 `flex-shrink: 0;` 고정
+- [x] 코드 블록(`<pre class="code-block">`) 내부 스크롤 격리로 긴 코드/마크다운 표 Flex Overflow 원천 차단
+- [x] 에이전트 허브 포털 메트릭 카드 2x2 반응형 그리드 개편 및 정적 템플릿 CSS 캐시 방지 버전(`v=1.3.2`) 일괄 반영
+- [x] 스모크 테스트 및 단위 테스트 라이브 검증 완료
+
 
 
 

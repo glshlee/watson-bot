@@ -150,6 +150,19 @@
 * **웹 콘솔 원터치 칩 바**:
   * Watson 비서 콘솔(`.watson-quick-bar`) 및 DevBot 콘솔(`.dev-quick-bar`)에 즉시 실행 칩 제공.
 
+### 3.20. 📱 모바일 뷰포트 레이아웃 안정화 & 컴포넌트 충돌 방지 (Mobile Layout Stabilization - ADR-023)
+* **상단 헤더 충돌 격리 & 슬림화**:
+  * 모바일(`<= 768px`)에서 부제목 텍스트(`p#chat-subtitle`)를 자동 숨김 처리하여 텍스트 줄바꿈 충돌 차단.
+  * 우측 액션 배지(홈, 대화 비우기, DevBot 전환)를 `34x34px` 정사각형 터치 아이콘 버튼으로 컴팩트화하고 GTD 경로 배지 너비를 50px로 축약해 헤더 좌우 겹침을 100% 해소.
+* **하단 입력창 50% 높이 다이어트 (140px ➔ 75px)**:
+  * 빠른 칩 바(`.watson-quick-bar`)를 불필요한 이중 패딩/테두리 없는 슬림 가로 스크롤 필(Pill) 툴바로 일체화.
+  * 카테고리 셀렉트 및 텍스트 입력창 높이를 압축하여 가상 키보드 팝업 시에도 메시지 가시 면적 70% 이상 확보.
+* **Flexbox Child Overflow 원천 차단**:
+  * `.message`, `.bubble`, `.code-block`에 `min-width: 0; word-break: break-word; overflow-wrap: anywhere;` 적용.
+  * 아바타 `flex-shrink: 0;` 고정 및 코드 블록 내부 스크롤 격리로 긴 코드/표 출력 시 화면 흔들림 및 컴포넌트 밀림 현상 박멸.
+* **포털 대시보드 2x2 반응형 메트릭 그리드**:
+  * 에이전트 허브 포털의 메트릭 카드 4종을 2x2 반응형 그리드로 정돈하고 자산 캐시 방지 쿼리 `v=1.3.2` 반영.
+
 ---
 
 ## 4. 시스템 아키텍처 개요 (System Architecture Overview)
