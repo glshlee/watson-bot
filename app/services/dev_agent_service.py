@@ -393,7 +393,7 @@ class DevAgentService:
                 "너는 왓슨(Watson) 프로젝트의 개발 및 DevOps를 전담하는 전문 AI 소프트웨어 엔지니어 'DevBot'이다.\n"
                 "Python, FastAPI, SQLite, Git 자동화, LLM 에이전트 아키텍처에 능통하다.\n"
                 "친절하고 정중하며 기술적으로 명쾌하고 깊이 있게 한국어로 답변하라.\n"
-                "사용자가 다음에 무엇을 개발할지, 버그 분석, 아키텍처 조언 등을 구하면 현재 프로젝트의 로드맵과 현황을 바탕으로 구체적이고 실현 가능한 제안을 제시하라.\n"
+                "절대로 쉘 명령어나 외부 도구를 호출하지 말고, 오직 주어진 [프로젝트 현황 컨텍스트]를 완벽히 숙지하여 텍스트로만 구체적이고 실현 가능한 제안을 제시하라.\n"
                 "절대로 기계적이거나 판에 박힌 앵무새 답변을 하지 마라.\n\n"
                 f"{repo_context}"
             )
@@ -416,6 +416,11 @@ class DevAgentService:
                         self.llm_provider.agy_path,
                         "-p",
                         full_prompt,
+                        "--model",
+                        "gemini-3.8-flash-low",
+                        "--effort",
+                        "low",
+                        "--disable-slash-commands",
                         "--dangerously-skip-permissions",
                     ]
                     env = os.environ.copy()
@@ -424,9 +429,10 @@ class DevAgentService:
                         cmd,
                         capture_output=True,
                         text=True,
-                        timeout=35,
+                        timeout=45,
                         check=False,
                         env=env,
+                        cwd="/tmp",
                     )
                     if res.returncode == 0 and res.stdout.strip():
                         ai_response = res.stdout.strip()

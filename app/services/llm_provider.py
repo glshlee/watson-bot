@@ -498,13 +498,25 @@ class LLMProvider:
                 env = os.environ.copy()
                 env["PATH"] = "/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin:" + env.get("PATH", "")
 
+                cmd = [
+                    agy_bin,
+                    "-p",
+                    full_prompt,
+                    "--model",
+                    "gemini-3.8-flash-low",
+                    "--effort",
+                    "low",
+                    "--disable-slash-commands",
+                    "--dangerously-skip-permissions",
+                ]
                 res = subprocess.run(
-                    [agy_bin, "-p", full_prompt, "--dangerously-skip-permissions"],
+                    cmd,
                     capture_output=True,
                     text=True,
-                    timeout=50,
+                    timeout=45,
                     check=False,
                     env=env,
+                    cwd="/tmp",
                 )
                 if res.returncode == 0 and res.stdout.strip():
                     return res.stdout.strip()
