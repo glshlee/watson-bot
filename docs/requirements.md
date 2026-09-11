@@ -144,6 +144,13 @@
 - **FR-24.3**: `GET /api/briefing/schedule` REST API를 통해 현재 활성 모드, 아침/저녁 규격 및 당일 일정 목록을 JSON으로 제공해야 한다.
 - **FR-24.4**: 웹 콘솔 퀵 바에 시간 명시 칩(`[🌅 아침 (08:30)]`, `[🌇 저녁 (20:00)]`)과 `[⏰ 스케줄]` 칩을 제공하고, 탭 시 `#schedule-modal`을 통해 활성 뱃지 및 타임라인을 시각화해야 한다.
 
+### FR-25: 텔레그램 정기 브리핑 자동 푸시 스케줄러 (ADR-026)
+- **FR-25.1**: `BriefingScheduler` 백그라운드 서비스를 통해 매일 08:30 KST(아침) 및 20:00 KST(저녁) 정각을 감지하여 텔레그램 허용 사용자(`TELEGRAM_ALLOWED_CHAT_IDS`)에게 맞춤형 브리핑을 능동 푸시 발송해야 한다.
+- **FR-25.2**: 일자별 발송 플래그(`last_dispatched`)를 유지하여 동일 일자에 동일 모드 브리핑이 중복 발송되는 결함을 원천 방지해야 한다.
+- **FR-25.3**: 발송 직전 `git pull`을 수행하여 원격 최신 변경점을 반영하고, 발송된 브리핑은 `telegram:{chat_id}` DB 세션에 저장되어 대화 맥락을 보존해야 한다.
+- **FR-25.4**: `GET /api/briefing/scheduler/status` 및 `POST /api/briefing/trigger-push` REST API를 제공하여 스케줄러 상태 확인과 즉시 시험 발송을 지원해야 한다.
+- **FR-25.5**: 웹 콘솔 스케줄 모달(`#schedule-modal`)에 텔레그램 푸시 연동 박스와 `[🔔 텔레그램으로 지금 즉시 발송]` 버튼을 제공해야 한다.
+
 ---
 
 
@@ -191,6 +198,7 @@
 | **FR-22** | `app/templates/index.html`, `app/templates/dev.html`, `app/static/css/style.css` | 모바일 뷰포트 레이아웃 반응형 검증 & cURL 스모크 검증 |
 | **FR-23** | `app/services/briefing_service.py`, `app/routers/web_router.py`, `app/templates/index.html` | Pytest 단위 테스트(`test_briefing_service.py`, `test_web_router.py`) & cURL 스모크 검증(3-13) |
 | **FR-24** | `app/services/briefing_service.py`, `app/routers/web_router.py`, `app/static/js/main.js`, `app/templates/index.html` | Pytest 단위 테스트(`test_briefing_service.py`, `test_web_router.py`) & cURL 스모크 검증(3-13-5, 3-13-6) |
+| **FR-25** | `app/services/briefing_scheduler.py`, `app/services/telegram_service.py`, `app/routers/web_router.py`, `app/main.py` | Pytest 단위 테스트(`test_briefing_scheduler.py`, `test_web_router.py`) & cURL 스모크 검증(3-14) |
 
 
 

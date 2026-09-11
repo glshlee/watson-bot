@@ -366,8 +366,24 @@ else
     exit 1
 fi
 
+echo "  3-14. Testing Telegram Briefing Push Scheduler (ADR-026)..."
+SCHED_STATUS_RES=$(run_curl "$SERVER_URL/api/briefing/scheduler/status")
+if echo "$SCHED_STATUS_RES" | grep -q '"morning_time":"08:30 KST"'; then
+    echo "  ✅ 3-14-1. GET /api/briefing/scheduler/status Passed"
+else
+    echo "  ❌ 3-14-1. GET /api/briefing/scheduler/status Failed: $SCHED_STATUS_RES"
+    exit 1
+fi
 
-
+TRIGGER_PUSH_RES=$(run_curl -X POST "$SERVER_URL/api/briefing/trigger-push" \
+  -H "Content-Type: application/json" \
+  -d '{"mode": "morning"}')
+if echo "$TRIGGER_PUSH_RES" | grep -q '"status":"success"'; then
+    echo "  ✅ 3-14-2. POST /api/briefing/trigger-push Passed (ADR-026 Push Dispatched)"
+else
+    echo "  ❌ 3-14-2. POST /api/briefing/trigger-push Failed: $TRIGGER_PUSH_RES"
+    exit 1
+fi
 
 echo "4. Testing GET /api/telegram/status (ADR-006 Telegram Router)..."
 TG_STATUS=$(run_curl "$SERVER_URL/api/telegram/status")

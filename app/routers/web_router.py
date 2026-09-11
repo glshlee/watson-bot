@@ -177,3 +177,36 @@ def get_briefing_schedule(
     return {"status": "success", "data": result}
 
 
+class TriggerPushRequest(BaseModel):
+    mode: str = "auto"
+    chat_id: str | None = None
+
+
+@router.get("/api/briefing/scheduler/status")
+def get_scheduler_status(request: Request):
+    """정기 브리핑 백그라운드 스케줄러 상태 조회 엔드포인트 (ADR-026)."""
+    from app.services.briefing_scheduler import BriefingScheduler
+
+    scheduler: BriefingScheduler | None = getattr(request.app.state, "briefing_scheduler", None)
+    if not scheduler:
+        scheduler = BriefingScheduler()
+    return {"status": "success", "data": scheduler.get_scheduler_status()}
+
+
+@router.post("/api/briefing/trigger-push")
+async def trigger_briefing_push(
+    request: Request,
+    payload: TriggerPushRequest | None = None,
+):
+    """텔레그램 브리핑 푸시 즉시 발송/테스트 엔드포인트 (ADR-026)."""
+    from app.services.briefing_scheduler import BriefingScheduler
+
+    scheduler: BriefingScheduler | None = getattr(request.app.state, "briefing_scheduler", None)
+    if not scheduler:
+        scheduler = BriefingScheduler()
+    mode = payload.mode if payload else "auto"
+    target_chat_ids = [payload.chat_id] if payload and payload.chat_id else None
+    result = await scheduler.dispatch_briefing(mode=mode, target_chat_ids=target_chat_ids)
+    return {"status": "success", "data": result}
+
+

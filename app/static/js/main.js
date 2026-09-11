@@ -822,6 +822,31 @@ document.addEventListener("DOMContentLoaded", () => {
             `;
         }
 
+        const tgPush = data.telegram_push || {};
+        let tgPushHtml = "";
+        if (tgPush.enabled) {
+            const recipientsStr = (tgPush.recipients || []).join(", ");
+            tgPushHtml = `
+                <div class="schedule-tg-box" style="margin-top: 14px; background: rgba(44, 165, 224, 0.08); border: 1px solid rgba(44, 165, 224, 0.25); border-radius: 10px; padding: 12px 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <div style="font-size: 0.88rem; font-weight: 600; color: #2ca5e0;">
+                            <i class="fa-brands fa-telegram"></i> 텔레그램 자동 푸시 알림 (08:30 / 20:00 KST)
+                        </div>
+                        <span style="font-size: 0.75rem; background: #2ca5e0; color: #fff; padding: 2px 8px; border-radius: 12px;">✅ 활성</span>
+                    </div>
+                    <div style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 6px; line-height: 1.4;">
+                        정기 시각에 왓슨이 텔레그램으로 브리핑을 자동 발송합니다. (수신 Chat ID: <code>${recipientsStr}</code>)
+                    </div>
+                    <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <button id="btn-trigger-push" class="btn-primary" style="font-size: 0.8rem; padding: 6px 12px; background: #2ca5e0; border-color: #2ca5e0;" onclick="window.triggerTelegramTestPush()">
+                            <i class="fa-solid fa-paper-plane"></i> 텔레그램으로 지금 즉시 발송
+                        </button>
+                        <span id="trigger-push-status" style="font-size: 0.8rem; color: var(--text-secondary);"></span>
+                    </div>
+                </div>
+            `;
+        }
+
         scheduleModalBody.innerHTML = `
             <div class="schedule-header-card">
                 <div class="schedule-header-time">
@@ -836,8 +861,45 @@ document.addEventListener("DOMContentLoaded", () => {
                 ${scheduleCardsHtml}
             </div>
             ${todayScheduleHtml}
+            ${tgPushHtml}
         `;
     }
+
+    window.triggerTelegramTestPush = async function() {
+        const statusEl = document.getElementById("trigger-push-status");
+        const btn = document.getElementById("btn-trigger-push");
+        if (btn) btn.disabled = true;
+        if (statusEl) {
+            statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 텔레그램 발송 중...';
+            statusEl.style.color = "var(--text-secondary)";
+        }
+        try {
+            const res = await fetch("/api/briefing/trigger-push", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mode: "auto" })
+            });
+            const json = await res.json();
+            if (res.ok && json.status === "success") {
+                if (statusEl) {
+                    statusEl.innerHTML = `✅ 텔레그램 발송 완료! (${json.data.sent_count}명 수신)`;
+                    statusEl.style.color = "#10b981";
+                }
+            } else {
+                if (statusEl) {
+                    statusEl.innerHTML = `❌ 발송 실패: ${json.detail || "오류"}`;
+                    statusEl.style.color = "#ef4444";
+                }
+            }
+        } catch (e) {
+            if (statusEl) {
+                statusEl.innerHTML = `❌ 오류: ${e.message}`;
+                statusEl.style.color = "#ef4444";
+            }
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    };
 
     window.triggerScheduleBriefing = function(cmd) {
         if (scheduleModal) scheduleModal.classList.add("hidden");

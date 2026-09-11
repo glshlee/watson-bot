@@ -24,7 +24,7 @@ class TelegramService:
     """
 
     def __init__(self, token: str | None = None):
-        self.token = token or settings.TELEGRAM_BOT_TOKEN
+        self.token = token if token is not None else settings.TELEGRAM_BOT_TOKEN
         self.base_url = f"https://api.telegram.org/bot{self.token}" if self.token else ""
         self.allowed_chat_ids = [
             cid.strip() for cid in settings.TELEGRAM_ALLOWED_CHAT_IDS.split(",") if cid.strip()
@@ -65,6 +65,12 @@ class TelegramService:
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 res = await client.post(f"{self.base_url}/sendMessage", json=payload)
+                if res.status_code != 200 and parse_mode:
+                    logger.warning(
+                        f"Telegram sendMessage with parse_mode={parse_mode} failed ({res.status_code}: {res.text}), retrying without parse_mode..."
+                    )
+                    payload.pop("parse_mode", None)
+                    res = await client.post(f"{self.base_url}/sendMessage", json=payload)
                 return res.status_code == 200
         except httpx.HTTPError as e:
             logger.error(f"Failed to send telegram message: {e}")

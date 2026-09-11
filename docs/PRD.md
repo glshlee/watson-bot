@@ -192,6 +192,17 @@
   * `GET /api/briefing/schedule` 경량 JSON 엔드포인트 제공.
   * `/schedule`, `/briefing schedule`, "몇 시에 스케줄링 되어있어?", "스케줄 확인" 질의 시 LLM 지연 없이 0.01초 내 스케줄 표 및 당일 일정 브리핑 반환.
 
+### 3.23. 📲 텔레그램 정기 브리핑 자동 푸시 스케줄러 (Telegram Proactive Briefing Push Scheduler - ADR-026)
+* **24/7 상시 능동형 푸시 발송 (Proactive Push)**:
+  * 질문을 기다리지 않고, 매일 오전 **08:30 KST**(아침 브리핑)와 오후 **20:00 KST**(저녁 일과 회고) 정각에 왓슨이 먼저 스마트폰 텔레그램으로 브리핑 메시지를 자동 푸시 발송.
+  * 일자별(`YYYY-MM-DD`) 발송 완료 상태 추적으로 하루 1회 중복 없는 정확한 발송 보장.
+* **원격 Git 동기화 및 텔레그램 세션 영속화**:
+  * 발송 직전 `git pull`을 수행하여 원격 최신 데이터를 반영하고, 발송된 메시지는 `telegram:{chat_id}` DB 세션에 저장되어 브리핑 직후 끊김 없는 후속 대화 지원.
+* **REST API 및 웹 콘솔 원클릭 테스트**:
+  * `GET /api/briefing/scheduler/status` (스케줄러 상태 및 수신자 수 조회).
+  * `POST /api/briefing/trigger-push` (텔레그램 즉시 발송/시험 전송).
+  * 웹 콘솔 스케줄 모달(`#schedule-modal`)에 텔레그램 연동 상태 표시 및 `[🔔 텔레그램으로 지금 즉시 발송]` 버튼 제공.
+
 ---
 
 ## 4. 시스템 아키텍처 개요 (System Architecture Overview)

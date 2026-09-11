@@ -8,15 +8,19 @@ from fastapi.staticfiles import StaticFiles
 
 from app.db.database import init_db
 from app.routers import settings_router, telegram_router, web_router
+from app.services.briefing_scheduler import BriefingScheduler
 from app.services.telegram_service import TelegramService
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("watson.main")
 
+# Global scheduler instance for router access
+briefing_scheduler = BriefingScheduler()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """FastAPI 수명 주기 관리: DB 마이그레이션 및 텔레그램 봇 폴링 백그라운드 태스크 구동."""
+    """FastAPI 수명 주기 관리: DB 마이그레이션, 텔레그램 폴링 및 정기 브리핑 스케줄러 태스크 구동."""
     init_db()
 
     telegram_service = TelegramService()
@@ -27,7 +31,20 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("ℹ️ Telegram bot token not set. Running in Web Dashboard mode only.")
 
+    logger.info("⏰ Starting background Briefing Scheduler task (08:30 / 20:00 KST)...")
+    app.state.briefing_scheduler = briefing_scheduler
+    scheduler_task = asyncio.create_task(briefing_scheduler.start())
+
     yield
+
+    if scheduler_task:
+        logger.info("🛑 Stopping Briefing Scheduler task...")
+        briefing_scheduler.stop()
+        scheduler_task.cancel()
+        try:
+            await scheduler_task
+        except asyncio.CancelledError:
+            pass
 
     if polling_task:
         logger.info("🛑 Stopping Telegram Bot polling task...")

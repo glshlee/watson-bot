@@ -321,11 +321,22 @@ class BriefingService:
         weekday_str = WEEKDAYS_KR[now_dt.weekday()]
         ctx = self.read_briefing_context(date_obj=now_dt)
 
+        from app.services.telegram_service import TelegramService
+        telegram_service = TelegramService()
+        telegram_push = {
+            "enabled": bool(telegram_service.is_configured() and telegram_service.allowed_chat_ids),
+            "morning_time": "08:30 KST",
+            "evening_time": "20:00 KST",
+            "recipients": telegram_service.allowed_chat_ids,
+            "recipients_count": len(telegram_service.allowed_chat_ids),
+        }
+
         return {
             "current_time": f"{time_str} KST",
             "current_date": f"{date_str} ({weekday_str})",
             "active_mode": active_mode,
             "active_mode_label": "🌅 아침 모드" if active_mode == "morning" else "🌇 저녁 모드",
+            "telegram_push": telegram_push,
             "schedules": [
                 {
                     "id": "morning",
@@ -351,12 +362,13 @@ class BriefingService:
 
     def format_schedule_briefing(self, date_obj: datetime | None = None) -> str:
         """
-        스케줄 확인 요청 시 마크다운 형태의 스케줄 요약 메시지를 반환합니다 (ADR-025).
+        스케줄 확인 요청 시 마크다운 형태의 스케줄 요약 메시지를 반환합니다 (ADR-025, ADR-026).
         """
         info = self.get_schedule_info(date_obj=date_obj)
         cur_time = info["current_time"]
         cur_date = info["current_date"]
         mode_label = info["active_mode_label"]
+        tg_push = info.get("telegram_push", {})
 
         lines = [
             "### ⏰ **왓슨 GTD 브리핑 및 일정 스케줄 안내**\n",
@@ -371,7 +383,15 @@ class BriefingService:
             "  * **자동 감지 구간**: `14:00 ~ 04:59 KST`",
             "  * **주요 내용**: 오늘 완료 작업 요약, 미완료 과제 내일 이월(Rollover), 내일 1순위 과제",
             "",
+            "#### 🔔 **알림 수신 채널 (Notification Channel - ADR-026)**",
         ]
+
+        if tg_push.get("enabled"):
+            chat_str = ", ".join([f"`{cid}`" for cid in tg_push.get("recipients", [])])
+            lines.append(f"* 📱 **텔레그램 자동 푸시 알림**: ✅ 활성화됨 (매일 08:30 / 20:00 KST 자동 발송, 수신 Chat ID: {chat_str})")
+        else:
+            lines.append("* ℹ️ **온디맨드 대화형**: 웹 대시보드 및 텔레그램 질문 시 실시간 브리핑")
+        lines.append("")
 
         if info["today_schedules"]:
             lines.append("#### 📅 **오늘 일일 로그에 등록된 주요 일정 (Schedule)**")

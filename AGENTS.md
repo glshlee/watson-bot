@@ -52,13 +52,14 @@
 * **모바일 뷰포트 레이아웃 안정화 & 컴포넌트 충돌 방지 (ADR-023)**: 모바일(<=768px) 헤더 긴 부제목 숨김, 우측 배지 34x34px 아이콘화 및 GTD 배지 축약으로 상단 겹침을 방지하고, 수동 카테고리 제거(100% AI 자동분류) 및 하단 입력창 슬림화(140px➔65px), Flex Overflow(min-width:0) 차단으로 화면 흔들림과 컴포넌트 밀림을 원천 차단할 것.
 * **아침/저녁 맞춤형 GTD 브리핑 (ADR-024)**: 시간대(KST) 자동 판별 및 명시적 인자(`/briefing morning`, `/briefing evening`)를 지원하고, 아침에는 집중 우선순위 Top 3 및 실행 순서, 저녁에는 완료 하이라이트 및 과제 이월(Rollover)을 LLM 지능형 합성 및 룰 기반 포맷터 듀얼 엔진으로 브리핑할 것.
 * **브리핑 스케줄 UI 시각화 및 타임라인 (ADR-025)**: 아침 08:30(활성 05:00~13:59), 저녁 20:00(활성 14:00~04:59) 정규 시각을 퀵 바 시간 칩(`[🌅 아침 (08:30)]`, `[🌇 저녁 (20:00)]`)과 `[⏰ 스케줄]` 인터랙티브 모달(#schedule-modal)로 시각화하고, 당일 일정 타임라인 및 초고속 API(/api/briefing/schedule)를 제공할 것.
+* **텔레그램 브리핑 자동 푸시 스케줄러 (ADR-026)**: 매일 08:30 KST(아침) 및 20:00 KST(저녁) 정각에 허용된 텔레그램 사용자에게 맞춤 브리핑을 능동 푸시 발송하고, 일자별 중복 방지, Git 사전 동기화, 세션 히스토리 영속화 및 웹 모달 원클릭 테스트(/api/briefing/trigger-push)를 보장할 것.
 * **Explicit User Commit Trigger Only (에이전트 코드 커밋 수칙)**: 코드 수정 및 기능 구현 후 Git 커밋(`git commit`)은 에이전트가 임의로 자동 실행하지 않으며, 오직 **사용자가 명시적으로 "커밋해" 지시를 내렸을 때만** 수행할 것.
 * **Curl-Based Live Verification (필수)**: 모든 코드 수정 후 반드시 `./scripts/smoke_test.sh` cURL 테스트를 실행하여 실제 라이브 API 수신 및 500 에러 부재를 검증할 것.
 * **Self-Verification & Evolution Loop**: 코드 변경 시 `pytest`/`mypy`/`ruff` 및 cURL 검증 수행 후 실패 시 `evolution.md` 지침에 따라 하네스 자가 진화 집행.
 
 ### 4. Progressive Disclosure (상세 문서 참조)
 * **제품 기획서 개요**: `docs/PRD.md` | **기능 요구사항**: `docs/requirements.md`
-* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-025)
+* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-026)
 
 
 ---

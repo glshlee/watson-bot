@@ -124,6 +124,28 @@ def test_get_briefing_schedule_endpoint():
     assert "schedules" in data["data"]
     assert len(data["data"]["schedules"]) == 2
     assert "today_schedules" in data["data"]
+    assert "telegram_push" in data["data"]
+
+
+def test_briefing_scheduler_endpoints():
+    """ADR-026: 정기 브리핑 스케줄러 상태 및 푸시 트리거 엔드포인트 검증."""
+    # 1. Scheduler status
+    res_status = client.get("/api/briefing/scheduler/status")
+    assert res_status.status_code == 200
+    status_data = res_status.json()
+    assert status_data["status"] == "success"
+    assert status_data["data"]["morning_time"] == "08:30 KST"
+    assert status_data["data"]["evening_time"] == "20:00 KST"
+
+    # 2. Trigger push (using mock / safe test)
+    res_trigger = client.post(
+        "/api/briefing/trigger-push",
+        json={"mode": "morning"}
+    )
+    assert res_trigger.status_code == 200
+    trigger_data = res_trigger.json()
+    assert trigger_data["status"] == "success"
+    assert "sent_count" in trigger_data["data"]
 
 
 

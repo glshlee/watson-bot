@@ -216,6 +216,17 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] 모바일 반응형 스타일링 및 캐시 방지 버전(`v=1.3.5`) 일괄 적용
 - [x] 단위 테스트(`test_briefing_service.py`, `test_web_router.py`) 및 `./scripts/smoke_test.sh` 3-13-5, 3-13-6 라이브 검증 완료
 
+### Phase 25: 텔레그램 정기 브리핑 자동 푸시 스케줄러 (ADR-026) - ✅ 완료
+- [x] `BriefingScheduler` 백그라운드 서비스 구현 (매일 08:30 KST 아침 브리핑 및 20:00 KST 저녁 회고 자동 감시 및 능동 푸시)
+- [x] 일자별 발송 이력(`last_dispatched`) 추적으로 하루 1회 중복 발송 차단
+- [x] 푸시 발송 전 원격 Git 저장소 최신화(`git pull`) 및 세션 히스토리(`telegram:{chat_id}`) 자동 영속화
+- [x] `TelegramService.send_message` 마크다운 파싱 오류 시 일반 텍스트 자동 폴백 재시도 방어막 구축
+- [x] FastAPI lifespan 컨텍스트 매니저에 스케줄러 백그라운드 태스크 등록 및 안전 종료 로직 연동
+- [x] `GET /api/briefing/scheduler/status` 및 `POST /api/briefing/trigger-push` REST 엔드포인트 신설
+- [x] 웹 콘솔 스케줄 모달(`#schedule-modal`) 내 텔레그램 푸시 연동 카드 및 `[🔔 텔레그램으로 지금 즉시 발송]` 버튼 제공
+- [x] 단위 테스트(`tests/test_briefing_scheduler.py`, `tests/test_web_router.py`) 및 `./scripts/smoke_test.sh` 3-14 라이브 검증 완료
+
+
 
 
 
