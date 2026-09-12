@@ -245,6 +245,49 @@ else
     exit 1
 fi
 
+echo "  3-8-1. Testing Task Completion (/done - ADR-027)..."
+DONE_RES=$(run_curl -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_butler_session", "message": "/done", "auto_push": false}')
+if echo "$DONE_RES" | grep -q '"intent":"task_complete"'; then
+    echo "  ✅ 3-8-1. Task Completion Passed (intent=task_complete)"
+else
+    echo "  ❌ 3-8-1. Task Completion Failed: $DONE_RES"
+    exit 1
+fi
+
+echo "  3-8-2. Testing Log Status Inspection (기록 여부 질의 - ADR-028)..."
+STATUS_INSPECT_RES=$(run_curl -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_butler_session", "message": "오늘 로그 파일에 기록했어?", "auto_push": false}')
+if echo "$STATUS_INSPECT_RES" | grep -q '"intent":"log_status_inspect"'; then
+    echo "  ✅ 3-8-2. Log Status Inspection Passed (intent=log_status_inspect)"
+else
+    echo "  ❌ 3-8-2. Log Status Inspection Failed: $STATUS_INSPECT_RES"
+    exit 1
+fi
+
+echo "  3-8-3. Testing Two-Phase Draft Review & Confirmation (ADR-029)..."
+DRAFT_SUGGEST_RES=$(run_curl -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_draft_session", "message": "우리 아내 오늘 미역국 끓여줬어. 맛있게 먹었어", "auto_push": false}')
+if echo "$DRAFT_SUGGEST_RES" | grep -q '"intent":"log_suggest"'; then
+    echo "  ✅ 3-8-3a. Draft Review Proposal Passed (intent=log_suggest, Draft Preview Card Generated)"
+else
+    echo "  ❌ 3-8-3a. Draft Review Proposal Failed: $DRAFT_SUGGEST_RES"
+    exit 1
+fi
+
+DRAFT_CONFIRM_RES=$(run_curl -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_draft_session", "message": "이대로 기록해줘", "auto_push": false}')
+if echo "$DRAFT_CONFIRM_RES" | grep -q '"intent":"log_confirm"'; then
+    echo "  ✅ 3-8-3b. Draft Confirmation & Commit Passed (intent=log_confirm, File Written)"
+else
+    echo "  ❌ 3-8-3b. Draft Confirmation Failed: $DRAFT_CONFIRM_RES"
+    exit 1
+fi
+
 echo "  3-9. Testing Dev Agent Chat (/status - ADR-018)..."
 DEV_RES=$(run_curl -X POST "$SERVER_URL/api/dev/chat" \
   -H "Content-Type: application/json" \

@@ -6,6 +6,8 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 
+from app.config import get_now, settings
+
 logger = logging.getLogger("watson.llm")
 
 
@@ -74,22 +76,41 @@ class LLMProvider:
                         category=None,
                     )
 
-            # (1-2) 승인 패턴 검사
+            # (1-2) 승인 패턴 검사 (단순 승인 또는 제안 초안 승인 지시어)
+            # 맥락 역추적("아까 말한 내용...")이나 장문 지시어가 아닌 경우에 한해 초안 확정(log_confirm / log_dual) 처리
+            has_context_backtrace = any(k in prompt_clean for k in ["아까", "방금", "이전", "앞서", "지난", "위에", "내가 말한", "말한 내용"])
             confirm_patterns = [
-                r"(기록|남겨|적어)\s*(해줘|줘|주세요|부탁)",
-                r"^(응|어|네|예|그래|좋아|좋아요|좋습니다|부탁해|해줘|ㅇㅇ|yes|y|ok|sure)(\s+(좋아|그래|해줘|요))?$",
-                r"^(응\s*좋아|응\s*그래|좋아요|좋습니다)$",
+                # "응", "좋아", "응 좋아", "네 좋아요", "ㅇㅇ", "ok", "이대로 좋아", "응 그래"
+                r"^(?:응|어|네|예|그래|좋아|좋아요|좋습니다|부탁해|해줘|ㅇㅇ|yes|y|ok|sure|이대로|그대로|그렇게|맞아)(?:\s+(?:응|어|네|예|그래|좋아|좋아요|좋습니다|부탁해|해줘|ㅇㅇ|yes|y|ok|sure|이대로|그대로|그렇게|맞아))*[\.\!\?\s]*$",
+                # "응 좋아 기록해줘", "응 기록해줘", "이대로 기록해줘", "기록해줘", "네 적어주세요", "등록해줘"
+                r"^(?:응|어|네|예|그래|좋아|좋아요|이대로|그대로|그렇게|\s|,)*\s*(?:기록|남겨|적어|등록|추가|반영)\s*(?:해줘|줘|주세요|부탁|부탁해|해)[\.\!\?\s]*$",
+                # "이대로 해줘", "그렇게 진행해줘"
+                r"^(?:이대로|그대로|그렇게)\s*(?:해줘|부탁해|진행해줘|기록해줘|부탁드립니다)[\.\!\?\s]*$",
             ]
-            for pattern in confirm_patterns:
-                if re.search(pattern, prompt_clean, re.IGNORECASE):
-                    content = pending_log.get("content", prompt_clean)
-                    cat = pending_log.get("category", "Daily Notes & Diary")
+            is_confirmed = not has_context_backtrace and any(re.search(pattern, prompt_clean, re.IGNORECASE) for pattern in confirm_patterns)
+            if is_confirmed:
+                content = pending_log.get("content", prompt_clean)
+                cat = pending_log.get("category", "Daily Notes & Diary")
+                gtd_task = pending_log.get("gtd_task")
+                is_dual = pending_log.get("is_dual", False) or bool(gtd_task)
+                if is_dual and gtd_task:
                     return IntentResult(
-                        intent="log_confirm",
-                        ai_response=f"오늘 자 라이프로그 **[{cat}]** 섹션에 '{content}' 내용을 예쁘게 기록하고 GitHub 동기화를 마쳤습니다! 📝✨",
+                        intent="log_dual",
+                        ai_response=(
+                            f"검토해 주신 소중한 일상은 오늘 자 **[{cat}]**에 기록하고, "
+                            f"실행 태스크(`- [ ] {gtd_task}`)는 **GTD 수집함(inbox.md)**에 등록 후 GitHub 동기화를 마쳤습니다! 📝📥✨"
+                        ),
                         log_content=content,
                         category=cat,
+                        gtd_task_content=gtd_task,
+                        is_dual_log=True,
                     )
+                return IntentResult(
+                    intent="log_confirm",
+                    ai_response=f"오늘 자 라이프로그 **[{cat}]** 섹션에 '{content}' 내용을 예쁘게 기록하고 GitHub 동기화를 마쳤습니다! 📝✨",
+                    log_content=content,
+                    category=cat,
+                )
 
         # -------------------------------------------------------------
         # 2. 명시적 직접 기록 및 맥락 참조 기록 요청 (log_explicit - ADR-010)
@@ -104,23 +125,20 @@ class LLMProvider:
                 category=cat,
             )
 
-        # 2-1. 이전 대화 맥락 참조 기록 ("아까 말한 내용도 기록해줘", "응 오늘 로그에 기록해줘", "방금 이야기 일기에 적어줘" 등 - ADR-010 & ADR-012)
-        record_action_triggers = ["기록해", "적어줘", "남겨줘", "올려줘", "저장해", "써줘", "일기에", "로그에", "메모해"]
-        context_ref_triggers = [
-            "아까 말한", "아까 한", "방금 말한", "방금 한", "이전 이야기", "앞서 말한", "이전 대화",
-            "지난 이야기", "아까 이야기", "방금 이야기", "이전 내용", "이 내용", "그 내용", "이 이야기", "그 이야기"
-        ]
+        # 2-1. 이전 대화 맥락 참조 기록 ("아까 말한 내용도 기록해줘", "응 오늘 로그에 기록해줘", "어제 gtd에 업데이트 해줘 위ㅡ내용" 등 - ADR-010, ADR-012, ADR-028)
+        record_action_pattern = r"(?:기록|적어|남겨|올려|저장|써|메모|넣어|추가|등록|반영|업데이트)\s*(?:해줘|줘|주세요|부탁|해|달라|달라구|하기|하자)"
+        context_ref_pattern = r"(?:아까|방금|이전|앞서|지난|위|위의|위ㅡ|이|그)\s*(?:말한|한|이야기|대화|내용|글|것|거)"
 
-        has_explicit_context_ref = any(crt in prompt_clean for crt in context_ref_triggers) or (
+        has_explicit_context_ref = bool(re.search(context_ref_pattern, prompt_clean)) or (
             any(k in prompt_clean for k in ["아까", "방금", "이전", "앞서"]) and any(k in prompt_clean for k in ["말", "이야기", "내용"])
         )
-        has_record_action = any(rat in prompt_clean for rat in record_action_triggers)
+        has_record_action = bool(re.search(record_action_pattern, prompt_clean))
 
         # "응 오늘 로그에 기록해줘", "오늘 일기에 적어줘", "응 기록해줘"처럼 지시어/접두어만 있고 본문이 없는 경우 감지 (ADR-012)
         stripped_directive = prompt_clean
         stripped_directive = re.sub(r"^(응|어|네|예|그래|좋아|좋아요|오케이|ok|yes)\s*", "", stripped_directive, flags=re.IGNORECASE)
         stripped_directive = re.sub(r"(오늘|오늘자|오늘의|내일|어제)?\s*(라이프\s*로그|로그|일기|다이어리|수집함|인박스)?\s*(?:에|로|을|를)?\s*", "", stripped_directive)
-        stripped_directive = re.sub(r"(기록|적어|남겨|올려|저장|써|메모)\s*(해줘|줘|주세요|부탁해|해|달라)?\s*", "", stripped_directive)
+        stripped_directive = re.sub(r"(기록|적어|남겨|올려|저장|써|메모|넣어|추가|등록|반영|업데이트)\s*(해줘|줘|주세요|부탁해|해|달라|달라구)?\s*", "", stripped_directive)
         stripped_directive = re.sub(r"(이|그)?\s*(내용|이야기|글|것|거|말)?\s*(?:도|은|는|이|가)?\s*", "", stripped_directive)
         is_pure_directive = has_record_action and len(stripped_directive.strip()) <= 2
 
@@ -140,12 +158,69 @@ class LLMProvider:
                 log_body = previous_user_msg
                 cat = self._detect_category(f"{prompt_clean} {log_body}")
                 snippet = log_body[:25] + "..." if len(log_body) > 25 else log_body
+                is_gtd = any(k in prompt_clean.lower() for k in ["gtd", "인박스", "inbox", "수집함", "할일"])
+                if is_gtd:
+                    gtd_task = self._extract_actionable_task(log_body)
+                    return IntentResult(
+                        intent="log_explicit",
+                        ai_response=f"이전 이야기에서 추출한 태스크(`- [ ] {gtd_task}`)를 **GTD 수집함(inbox.md)**에 등록하고 GitHub에 커밋했습니다! 📥🚀",
+                        log_content=f"- [ ] {gtd_task}",
+                        category="GTD Inbox",
+                    )
                 return IntentResult(
                     intent="log_explicit",
                     ai_response=f"나누어 주신 소중한 이야기('{snippet}')를 오늘 자 라이프로그 **[{cat}]**에 기록하고 GitHub에 커밋했습니다! 🕯️📝",
                     log_content=log_body,
                     category=cat,
                 )
+
+        # 2-1-2. 문두 기록 지시어 처리 (e.g. "어제 gtd에 이 내용을 넣어달라구\n[본문]", "오늘 일기에 이거 적어줘: [본문]" - ADR-028)
+        front_record_pattern = (
+            r"^(?:아니\s*)?(?:어제|오늘|오늘자|데일리)?\s*(?:자\s*)?(?:라이프\s*)?"
+            r"(?:로그|일기|다이어리|gtd|인박스|수집함|할일)?\s*(?:에|로)?\s*"
+            r"(?:이\s*내용|이\s*이야기|이\s*글|이거|내용)?\s*(?:을|를|도)?\s*"
+            r"(?:기록해줘|적어줘|남겨줘|넣어줘|넣어달라구|넣어달라|추가해줘|올려줘|등록해줘|반영해줘|메모해줘)[:\s\n]+(.+)"
+        )
+        front_match = re.search(front_record_pattern, prompt_clean, re.DOTALL | re.IGNORECASE)
+        if front_match:
+            body = front_match.group(1).strip()
+            is_ref_body = any(ref in body for ref in ["위 내용", "위의 내용", "이 내용", "그 내용", "위ㅡ내용"]) or len(body) < 5
+            if is_ref_body and history:
+                prev_msg = next(
+                    (
+                        h["content"].strip()
+                        for h in reversed(history)
+                        if h.get("role") == "user"
+                        and len(h.get("content", "").strip()) > 8
+                        and not any(h.get("content", "").strip().startswith(cp) for cp in ["기록해", "푸시", "확인", "동기화", "pull", "push", "sync", "/", "응"])
+                    ),
+                    None,
+                )
+                if prev_msg:
+                    body = prev_msg
+
+            if len(body) > 3:
+                front_prefix = prompt_clean[:front_match.start(1)].lower()
+                is_yesterday = "어제" in front_prefix
+                is_gtd = any(k in front_prefix for k in ["gtd", "인박스", "inbox", "수집함", "할일"])
+                date_label = "어제 자" if is_yesterday else "오늘 자"
+
+                if is_gtd:
+                    gtd_task = self._extract_actionable_task(body)
+                    return IntentResult(
+                        intent="log_explicit",
+                        ai_response=f"요청하신 태스크(`- [ ] {gtd_task}`)를 **GTD 수집함(inbox.md)**에 등록하고 GitHub에 커밋했습니다! 📥🚀",
+                        log_content=f"- [ ] {gtd_task}",
+                        category="GTD Inbox",
+                    )
+                else:
+                    cat = self._detect_category(body)
+                    return IntentResult(
+                        intent="log_explicit",
+                        ai_response=f"보내주신 소중한 일과와 감정을 {date_label} 라이프로그 **[{cat}]**에 즉시 기록하고 GitHub에 커밋했습니다! 📝✨",
+                        log_content=body,
+                        category=cat,
+                    )
 
         # 2-2. 복합 기록 지시 (데일리 로그 + GTD 인박스 동시 기록 - ADR-014)
         # 예: "회사에서 리조트를 신청할 수 있거든? ... 로그와 gtd에 기록해줘."
@@ -218,6 +293,31 @@ class LLMProvider:
                 )
 
         # -------------------------------------------------------------
+        # 2-3-1. GTD 태스크 체크박스 완료 처리 (task_complete - ADR-027)
+        # 예: "/done", "1순위 완료", "1순위 태스크 끝났어", "1번 태스크 완료", "할일 완료", "/done [태스크명]"
+        # -------------------------------------------------------------
+        prompt_lower = prompt_clean.lower()
+        done_shortcuts = ["/done", "done", "1순위 완료", "1순위완료", "1순위 태스크 완료", "1순위 끝", "1순위 끝났어", "1번 완료", "탑 태스크 완료"]
+        is_done_cmd = prompt_lower in done_shortcuts or prompt_lower.startswith("/done ")
+        
+        complete_patterns = [
+            r"^(?:1순위|1번|탑|top)?\s*(?:태스크|할일|과제)?\s*(?:완료했어|완료함|완료|끝났어|끝냈어|체크해줘|체크)[\.\!\?\s]*$",
+            r"^(?:1순위|1번)\s*(?:태스크|할일|과제)\s*(?:완료|체크|해결)",
+        ]
+        is_complete_match = any(re.search(pat, prompt_lower, re.IGNORECASE) for pat in complete_patterns)
+
+        if is_done_cmd or is_complete_match:
+            target_query = ""
+            if prompt_lower.startswith("/done "):
+                target_query = prompt_clean[6:].strip()
+            return IntentResult(
+                intent="task_complete",
+                ai_response="",
+                log_content=target_query,
+                category="GTD",
+            )
+
+        # -------------------------------------------------------------
         # 2-4. GTD 태스크 삭제/제거/완료 처리 의도 (gtd_remove - ADR-020)
         # 예: "tiara_ad는 제거해. 주간보고 아젠다도 제거...", "tiara_ad 빼줘", "할일에서 OO 삭제해줘"
         # -------------------------------------------------------------
@@ -229,6 +329,47 @@ class LLMProvider:
                 ai_response="",
                 log_content=prompt_clean,
                 category="GTD",
+            )
+
+        # -------------------------------------------------------------
+        # 2-4-2. 웹 대시보드 / 접속 URL 질의 (web_url_query)
+        # 예: "웹 주소 알려줘", "웹 링크 알려줘", "대시보드 주소", "접속 링크", "/url", "/web"
+        # -------------------------------------------------------------
+        url_exact = ["/url", "/web", "/link", "/tunnel", "웹주소", "웹링크", "접속주소", "접속링크"]
+        is_url_cmd = prompt_clean.lower() in url_exact
+        url_patterns = [
+            r"^(?:웹|대시보드|콘솔|접속)?\s*(?:주소|링크|url)\s*(?:알려줘|알려|어디야|뭐야|보여줘)?[\.\!\?\s]*$",
+            r"(?:웹\s*대시보드|웹\s*콘솔|접속\s*주소|외부\s*링크)\s*(?:알려줘|알려|확인|링크)",
+        ]
+        is_url_match = is_url_cmd or any(re.search(pat, prompt_clean.lower(), re.IGNORECASE) for pat in url_patterns)
+        if is_url_match and not any(k in prompt_clean for k in ["기록", "적어", "커밋", "삭제"]):
+            url_file = os.path.join(settings.REPO_PATH, "tunnel_url.txt")
+            current_url = ""
+            if os.path.exists(url_file):
+                try:
+                    with open(url_file, "r", encoding="utf-8") as f:
+                        current_url = f.read().strip()
+                except OSError:
+                    pass
+            if current_url:
+                resp = (
+                    "🌐 **Watson 웹 대시보드 접속 주소**\n\n"
+                    f"🔗 {current_url}\n\n"
+                    "• 🏠 **에이전트 허브 포털**: `/`\n"
+                    "• 🤖 **왓슨 비서 콘솔**: `/watson`\n"
+                    "• 💻 **개발 에이전트 DevBot**: `/dev`\n\n"
+                    "💡 브라우저 로그인 창(HTTP Basic)에서 설정된 ID/PW로 접속해 주세요."
+                )
+            else:
+                resp = (
+                    "🌐 현재 외부 Cloudflare Tunnel 주소를 확인할 수 없습니다.\n"
+                    "로컬 환경(`http://localhost:8000`)에 직접 접속하시거나 터널 상태를 확인해 주세요."
+                )
+            return IntentResult(
+                intent="web_url_query",
+                ai_response=resp,
+                log_content=None,
+                category="System",
             )
 
         # -------------------------------------------------------------
@@ -290,7 +431,9 @@ class LLMProvider:
         # -------------------------------------------------------------
         # 4. GTD 레포 원격 동기화 및 최신화 (repo_sync / repo_sync_and_briefing - ADR-009)
         # -------------------------------------------------------------
-        sync_triggers = ["최신화", "동기화", "pull", "sync", "가져와", "업데이트"]
+        sync_triggers = ["최신화", "동기화", "pull", "sync", "가져와"]
+        if "업데이트" in prompt_clean.lower() and not any(k in prompt_clean for k in ["내용", "이야기", "기록", "적어", "넣어", "메모", "위 ", "이 ", "위ㅡ"]):
+            sync_triggers.append("업데이트")
         has_sync = any(st in prompt_clean.lower() for st in sync_triggers)
 
         briefing_triggers = [
@@ -321,6 +464,28 @@ class LLMProvider:
                 ai_response="",
                 log_content=None,
                 category="GTD",
+            )
+
+        # -------------------------------------------------------------
+        # 4-0. 일일 로그 / GTD 파일 기록 여부 및 상태 질의 (log_status_inspect - ADR-028)
+        # 예: "오늘 로그 파일에 기록했어?", "기록했어?", "오늘 일기 적었어?", "기록됐어?", "기록된거 맞아?", "기록 확인"
+        # -------------------------------------------------------------
+        status_patterns = [
+            r"(?:오늘|오늘자|데일리)?\s*(?:라이프\s*)?(?:로그|일기|다이어리|기록|파일)?\s*(?:에|로)?\s*(?:기록했어|적었어|남겼어|썼어|올렸어|들어갔어|반영됐어|반영된거야|기록된거야|기록된\s*거\s*맞아|기록된거\s*맞아|기록\s*됐어|기록\s*됐니|기록됐니|적혔어|적힌거야|저장됐어|저장했어|기록된건가)[\?\.\!\s]*$",
+            r"^(?:오늘|오늘자|오늘의|데일리)?\s*(?:라이프\s*)?(?:기록|일기|로그)\s*(?:확인|점검|체크|상태|확인해줘)[\?\.\!\s]*$",
+            r"^(?:오늘|오늘자|오늘의|데일리)?\s*(?:라이프\s*)?(?:기록|일기|로그)\s*(?:됐어|된거야|된\s*건가|했어|한거야)[\?\.\!\s]*$",
+            r"^(?:오늘\s*)?기록\s*했어[\?\.\!\s]*$",
+            r"^(?:오늘\s*)?기록\s*됐어[\?\.\!\s]*$",
+            r"^(?:오늘\s*)?일기\s*확인해줘[\?\.\!\s]*$",
+            r"^(?:오늘\s*)?로그\s*확인해줘[\?\.\!\s]*$",
+        ]
+        is_status_inspect = any(re.search(pat, prompt_lower, re.IGNORECASE) for pat in status_patterns)
+        if is_status_inspect and not any(k in prompt_lower for k in ["기록해줘", "적어줘", "남겨줘", "올려줘", "저장해줘", "써줘", "삭제", "제거", "푸시"]):
+            return IntentResult(
+                intent="log_status_inspect",
+                ai_response="",
+                log_content=None,
+                category="LifeLog",
             )
 
 
@@ -421,14 +586,25 @@ class LLMProvider:
 
 
         # -------------------------------------------------------------
-        # 4. 일과/사건/생각 감지 및 능동적 기록 제안 (log_suggest)
+        # 4. 일과/사건/생각 감지 및 사전 검토 초안 제안 (log_suggest - ADR-004, ADR-029)
         # -------------------------------------------------------------
-        workout_keywords = ["운동", "헬스", "러닝", "달리기", "벤치", "스쿼트", "풀업", "pt", "산책", "수영", "요가", "만보", "몸무게", "식단"]
-        if any(k in prompt_clean for k in workout_keywords):
+        time_str = get_now().strftime("%H:%M")
+        date_str = get_now().strftime("%Y-%m-%d")
+
+        workout_keywords = ["운동", "헬스", "러닝", "달리기", "벤치", "스쿼트", "풀업", "푸시업", "pt", "산책", "수영", "요가", "만보", "몸무게", "식단"]
+        if any(k in prompt_clean for k in workout_keywords) or is_pushup:
             cat = "Workout & Health"
+            ai_response = (
+                f"건강을 챙기시는 모습이 정말 멋지십니다! 🏋️ 오늘 운동 기록({cat})에 아래 초안대로 **기록해 둘까요?** 📝\n\n"
+                f"---\n"
+                f"### 📝 라이프로그 초안 (`logs/daily/{date_str}.md` [{cat}])\n"
+                f"- [{time_str}] {prompt_clean}\n"
+                f"---\n"
+                f"👉 **'응'** 또는 아래 **[✅ 응, 기록해줘]** 버튼을 눌러주시면 즉시 GitHub에 커밋·푸시합니다! ✨"
+            )
             return IntentResult(
                 intent="log_suggest",
-                ai_response=f"건강을 챙기시는 모습이 정말 멋지십니다! 🏋️ 오늘 운동 기록({cat})에 **'{prompt_clean}'** 내용을 기록해 둘까요?",
+                ai_response=ai_response,
                 log_content=prompt_clean,
                 category=cat,
             )
@@ -436,9 +612,17 @@ class LLMProvider:
         idea_keywords = ["아이디어", "생각", "영감", "깨달음", "고민", "결심", "계획", "배움"]
         if any(k in prompt_clean for k in idea_keywords):
             cat = "Ideas & Thoughts"
+            ai_response = (
+                f"참 흥미롭고 가치 있는 생각이네요! 💡 오늘의 생각 & 아이디어({cat})에 아래 초안대로 **기록해 둘까요?** 📝\n\n"
+                f"---\n"
+                f"### 📝 라이프로그 초안 (`logs/daily/{date_str}.md` [{cat}])\n"
+                f"- [{time_str}] {prompt_clean}\n"
+                f"---\n"
+                f"👉 **'응'** 또는 아래 **[✅ 응, 기록해줘]** 버튼을 눌러주시면 즉시 GitHub에 커밋·푸시합니다! ✨"
+            )
             return IntentResult(
                 intent="log_suggest",
-                ai_response=f"참 흥미롭고 가치 있는 생각이네요! 💡 오늘의 생각 & 아이디어({cat})에 **'{prompt_clean}'** 내용을 적어둘까요?",
+                ai_response=ai_response,
                 log_content=prompt_clean,
                 category=cat,
             )
@@ -446,11 +630,69 @@ class LLMProvider:
         work_keywords = ["미팅", "회의", "프로젝트", "배포", "출시", "통과", "발표", "보고서", "완료", "퇴근", "출근", "업무", "성공"]
         if any(k in prompt_clean for k in work_keywords):
             cat = "Daily Notes & Diary"
+            ai_response = (
+                f"오늘 하루도 정말 수고 많으셨습니다! 💼 오늘의 업무 및 일과({cat})에 아래 초안대로 **기록해 둘까요?** 📝\n\n"
+                f"---\n"
+                f"### 📝 라이프로그 초안 (`logs/daily/{date_str}.md` [{cat}])\n"
+                f"- [{time_str}] {prompt_clean}\n"
+                f"---\n"
+                f"👉 **'응'** 또는 아래 **[✅ 응, 기록해줘]** 버튼을 눌러주시면 즉시 GitHub에 커밋·푸시합니다! ✨"
+            )
             return IntentResult(
                 intent="log_suggest",
-                ai_response=f"오늘 하루도 정말 수고 많으셨습니다! 💼 오늘의 업무 및 일과({cat})에 **'{prompt_clean}'** 내용을 기록해 둘까요?",
+                ai_response=ai_response,
                 log_content=prompt_clean,
                 category=cat,
+            )
+
+        # 4-1. 일상, 가족, 감정, 식사, 케어 등 삶의 기록 사전 검토 제안 (Life Log & GTD - ADR-029)
+        life_keywords = [
+            "아내", "와이프", "남편", "가족", "아이", "아기", "부모님", "엄마", "아빠",
+            "병원", "수술", "진료", "검진", "초음파", "치료", "처방", "간호", "케어",
+            "미역국", "요리", "식사", "아침", "점심", "저녁", "산책", "영화", "데이트", "여행",
+            "마음", "감정", "슬픔", "기쁨", "행복", "위로", "눈물", "사랑", "감사",
+            "일어나서", "다녀왔어", "갔다왔어", "퇴근하고", "끓였어", "차렸어", "먹었어"
+        ]
+        is_life_moment = any(k in prompt_clean for k in life_keywords)
+        if is_life_moment and len(prompt_clean) >= 6:
+            cat = "Daily Notes & Diary"
+            is_comfort_needed = any(k in prompt_clean for k in ["수술", "병원", "초음파", "심장", "슬픔", "아픔", "눈물", "간호", "케어", "미역국"])
+            intro = (
+                "마음이 참 무겁고 애틋하셨을 텐데 소중한 이야기를 나누어 주셔서 감사합니다. 곁에서 두 분을 진심으로 응원합니다. 🕯️\n\n"
+                if is_comfort_needed
+                else "소중한 일상과 마음을 나누어 주셔서 감사합니다. 😊\n\n"
+            )
+
+            gtd_task = self._extract_actionable_task(prompt_clean)
+            has_actionable = any(k in prompt_clean for k in ["챙기", "예약", "사기", "신청", "준비", "방문", "확인", "돌보"]) and len(gtd_task) > 4
+
+            preview_lines = [
+                f"### 📝 라이프로그 초안 (`logs/daily/{date_str}.md` [{cat}])",
+                f"- [{time_str}] {prompt_clean}",
+            ]
+            if has_actionable:
+                preview_lines.extend([
+                    "",
+                    "### 📥 GTD 수집함 초안 (`gtd/inbox.md`)",
+                    f"- [ ] {gtd_task}",
+                ])
+
+            preview_body = "\n".join(preview_lines)
+            ai_response = (
+                f"{intro}"
+                f"말씀해주신 소중한 일과를 아래와 같이 정리했습니다. 이대로 **기록해 둘까요?** 📝\n\n"
+                f"---\n"
+                f"{preview_body}\n"
+                f"---\n"
+                f"👉 **'응'** 또는 아래 **[✅ 응, 기록해줘]** 버튼을 눌러주시면 즉시 GitHub에 커밋·푸시합니다! ✨"
+            )
+            return IntentResult(
+                intent="log_suggest",
+                ai_response=ai_response,
+                log_content=prompt_clean,
+                category=cat,
+                gtd_task_content=gtd_task if has_actionable else None,
+                is_dual_log=has_actionable,
             )
 
         # -------------------------------------------------------------
@@ -521,6 +763,7 @@ class LLMProvider:
                     "- 코드 블록 실행이나 실제 Git 명령, 커밋, 푸시를 절대로 시뮬레이션하거나 대행한 척 거짓말하지 마라.\n"
                     "- 가상의 브랜치나 저장소(origin/private-lifelog 등)를 절대로 지어내지 마라. Git 작업은 백엔드가 직접 집행한다.\n"
                     "- 저장소 푸시/커밋 상태에 대한 질문에는 '백엔드에서 실제 Git 상태를 점검하시려면 /status, /sync, /push 명령어를 사용해 달라'고 정직하게 안내하라.\n"
+                    "- 사용자가 일기나 GTD 파일 기록 여부('기록했어?', '오늘 일기 적었어?' 등)를 묻거나 일상 대화를 나눌 때, 실제 파일에 기록되지 않았음에도 가상으로 '정리해 두었습니다', '기록했습니다'라고 시뮬레이션하거나 거짓말하지 마라. 물리적 마크다운 파일 기록은 백엔드가 직접 집행하므로, '실제 파일 기록 여부는 /today 또는 /gtd로 확인하실 수 있으며, 방금 나누어주신 일과를 실제 파일에 기록하시려면 \"기록해줘\"라고 말씀해 주세요'라고 정직하게 안내하라.\n"
                     "- 절대로 '이야기 잘 들었습니다' 같은 기계적이고 판에 박힌 앵무새 답변을 하지 마라. "
                     "사용자의 질문이나 대화에 귀기울이고 구체적이고 도움이 되는 답변을 정성껏 제공해라.\n\n"
                 )

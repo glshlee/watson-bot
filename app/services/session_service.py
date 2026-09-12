@@ -50,14 +50,26 @@ class SessionService:
         messages.reverse()
         return [{"role": str(msg.role), "content": str(msg.content)} for msg in messages]
 
-    def set_pending_log(self, session_id: str, content: str, category: str = "Daily Notes & Diary") -> None:
+    def set_pending_log(
+        self,
+        session_id: str,
+        content: str,
+        category: str = "Daily Notes & Diary",
+        gtd_task: str | None = None,
+        is_dual: bool = False,
+    ) -> None:
         """비서가 제안한 보류 라이프로그 후보를 세션에 저장합니다."""
         session = self.get_or_create_session(session_id)
-        payload = json.dumps({"content": content, "category": category}, ensure_ascii=False)
+        data: dict[str, Any] = {"content": content, "category": category}
+        if gtd_task:
+            data["gtd_task"] = gtd_task
+        if is_dual:
+            data["is_dual"] = is_dual
+        payload = json.dumps(data, ensure_ascii=False)
         session.pending_log = payload  # type: ignore[assignment]
         self.db.commit()
 
-    def get_pending_log(self, session_id: str) -> dict[str, str] | None:
+    def get_pending_log(self, session_id: str) -> dict[str, Any] | None:
         """세션에 보류 중인 라이프로그 후보를 조회합니다."""
         session = self.get_or_create_session(session_id)
         pending = getattr(session, "pending_log", None)

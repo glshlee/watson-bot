@@ -1,8 +1,11 @@
+import os
+import re
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.config import get_now
+from app.config import get_app_timezone, get_now
 from app.services.agent_service import AgentService
 from app.services.briefing_service import BriefingService
 from app.services.git_service import GitService
@@ -102,6 +105,8 @@ class SupervisorService:
                 session_id=session_id,
                 content=suggested_content,
                 category=suggested_cat,
+                gtd_task=intent_res.gtd_task_content,
+                is_dual=intent_res.is_dual_log,
             )
 
         elif intent_res.intent == "log_reject":
@@ -136,6 +141,54 @@ class SupervisorService:
                 )
             else:
                 final_response = "제거할 일치하는 GTD 항목을 찾지 못했습니다. 현재 등록된 할 일 명칭을 다시 확인해 주세요. 📋"
+
+        elif intent_res.intent == "task_complete":
+            # (A-4) GTD 태스크 완료 처리 (ADR-027)
+            query = intent_res.log_content or ""
+            date_str = get_now().strftime("%Y-%m-%d")
+            push_res = ""
+
+            if query:
+                completed = self.agent_service.complete_matching_tasks([query])
+                if completed:
+                    bullets = "\n".join(f"• - [x] {t}" for t in completed)
+                    commit_msg = f"feat(gtd): complete {len(completed)} tasks ({date_str}) [{session_id}]"
+                    if auto_push:
+                        p_success, p_msg = self.git_service.commit(commit_msg)
+                        if p_success:
+                            p_ok, p_out = self.git_service.push()
+                            push_res = f"\n\n🚀 **원격 저장소 반영**: {p_out}"
+                            push_success = p_ok
+                    else:
+                        self.git_service.commit(commit_msg)
+                    final_response = (
+                        f"🎉 **GTD 태스크 완료 처리**\n\n"
+                        f"{bullets}{push_res}"
+                    )
+                else:
+                    final_response = f"'{query}'와 일치하는 미완료 GTD 태스크를 찾지 못했습니다. 📋"
+            else:
+                res = self.agent_service.complete_top_task()
+                if res.get("success"):
+                    task_name = res["task"]
+                    file_name = res["file_name"]
+                    commit_msg = f"feat(gtd): complete top task - {task_name} ({date_str}) [{session_id}]"
+                    if auto_push:
+                        p_success, p_msg = self.git_service.commit(commit_msg)
+                        if p_success:
+                            p_ok, p_out = self.git_service.push()
+                            push_res = f"\n\n🚀 **원격 저장소 반영**: {p_out}"
+                            push_success = p_ok
+                    else:
+                        self.git_service.commit(commit_msg)
+                    final_response = (
+                        f"🎉 **1순위 태스크 완료!**\n\n"
+                        f"- [x] {task_name}\n"
+                        f"📁 대상 파일: `{file_name}`\n"
+                        f"GitHub에 안전하게 커밋 및 푸시되었습니다. 수고하셨습니다! ✨{push_res}"
+                    )
+                else:
+                    final_response = "👏 축하합니다! 현재 등록된 미완료 1순위 태스크가 없습니다. 오늘 할 일을 모두 마치셨거나 수집함이 비어있습니다. 📋"
 
         elif intent_res.intent == "repo_commit":
             # (D-5) 명시적 로컬 Git 커밋 명령 (ADR-020)
@@ -219,8 +272,62 @@ class SupervisorService:
             # (D-3d) 브리핑 스케줄 및 오늘 주요 일정 시간표 확인 (ADR-025)
             final_response = self.briefing_service.format_schedule_briefing(date_obj=get_now())
 
+        elif intent_res.intent == "log_status_inspect":
+            # (D-6a) 당일 라이프로그 물리적 기록 여부 정밀 점검 및 보고 (ADR-028)
+            now = get_now()
+            date_str = now.strftime("%Y-%m-%d")
+            filepath = self.agent_service.get_lifelog_filepath(now)
+            has_file = os.path.exists(filepath)
+
+            has_journal_entry = False
+            file_content = ""
+            if has_file:
+                try:
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        file_content = f.read().strip()
+                    has_journal_entry = bool(re.search(r"-\s*\[\d{2}:\d{2}\]", file_content))
+                except OSError:
+                    pass
+
+            if has_file and has_journal_entry:
+                rel_path = os.path.relpath(filepath, self.agent_service.base_dir)
+                mtime = datetime.fromtimestamp(os.path.getmtime(filepath), tz=get_app_timezone()).strftime("%H:%M:%S")
+                final_response = (
+                    f"✅ **네, 오늘({date_str}) 일일 로그 파일에 정상 기록되어 있습니다.**\n\n"
+                    f"* **파일 경로**: `{rel_path}` (최종 수정: `{mtime}`)\n\n"
+                    f"---\n\n"
+                    f"{file_content}"
+                )
+            else:
+                rel_path = os.path.relpath(filepath, self.agent_service.base_dir) if has_file else f"logs/daily/{date_str}.md"
+                recent_user_msg = None
+                if history:
+                    for h in reversed(history):
+                        if h.get("role") == "user" and len(h.get("content", "").strip()) > 5:
+                            c = h.get("content", "").strip()
+                            if not any(c.startswith(cmd) for cmd in ["/", "기록", "확인", "푸시", "동기화", "오늘 로그", "오늘 일기"]):
+                                recent_user_msg = c
+                                break
+
+                if recent_user_msg:
+                    snippet = recent_user_msg[:35] + "..." if len(recent_user_msg) > 35 else recent_user_msg
+                    cat = self.llm_provider._detect_category(recent_user_msg)
+                    self.session_service.set_pending_log(session_id=session_id, content=recent_user_msg, category=cat)
+                    final_response = (
+                        f"ℹ️ **아직 오늘({date_str}) 일일 로그 파일에 기록되지 않았습니다.**\n\n"
+                        f"* **대상 파일**: `{rel_path}`\n\n"
+                        f"직전에 말씀해주신 이야기('{snippet}')를 오늘 라이프로그에 기록해 드릴까요?\n"
+                        f"👉 **'응'** 또는 **'기록해줘'**라고 말씀하시면 즉시 파일에 작성하고 커밋합니다! ✍️"
+                    )
+                else:
+                    final_response = (
+                        f"ℹ️ **아직 오늘({date_str}) 일일 로그 파일에 작성된 기록이 없습니다.**\n\n"
+                        f"* **대상 파일**: `{rel_path}`\n\n"
+                        f"오늘 있었던 일과나 마음, 메모를 남겨주시면 즉시 마크다운 파일에 기록하고 GitHub에 커밋해 드립니다! ✍️"
+                    )
+
         elif intent_res.intent == "daily_log_inspect":
-            # (D-6) 오늘 일일 로그 파일 즉시 조회 (ADR-022)
+            # (D-6b) 오늘 일일 로그 파일 즉시 조회 (ADR-022)
             final_response = self.agent_service.read_daily_log(date_obj=get_now())
 
         elif intent_res.intent == "gtd_inspect":

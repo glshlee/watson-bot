@@ -148,11 +148,14 @@ class BriefingScheduler:
             sent_count = 0
             successful_recipients: list[str] = []
 
+            reply_markup = self.telegram_service.get_briefing_keyboard(mode=resolved_mode)
+
             for cid in recipients:
                 try:
                     sent = await self.telegram_service.send_message(
                         chat_id=cid,
                         text=message_text,
+                        reply_markup=reply_markup,
                         parse_mode="Markdown",
                     )
                     if sent:

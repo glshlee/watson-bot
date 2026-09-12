@@ -58,6 +58,8 @@ async def test_dispatch_briefing_morning(mock_telegram_service, tmp_path):
             call_args_list = mock_telegram_service.send_message.call_args_list
             assert call_args_list[0].kwargs["chat_id"] == "8023809363"
             assert "왓슨 정기 아침 브리핑" in call_args_list[0].kwargs["text"]
+            assert "reply_markup" in call_args_list[0].kwargs
+            assert "inline_keyboard" in call_args_list[0].kwargs["reply_markup"]
             assert call_args_list[1].kwargs["chat_id"] == "9999999999"
 
 

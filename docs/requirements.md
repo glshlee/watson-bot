@@ -151,6 +151,24 @@
 - **FR-25.4**: `GET /api/briefing/scheduler/status` 및 `POST /api/briefing/trigger-push` REST API를 제공하여 스케줄러 상태 확인과 즉시 시험 발송을 지원해야 한다.
 - **FR-25.5**: 웹 콘솔 스케줄 모달(`#schedule-modal`)에 텔레그램 푸시 연동 박스와 `[🔔 텔레그램으로 지금 즉시 발송]` 버튼을 제공해야 한다.
 
+### FR-26: 텔레그램 인터랙티브 인라인 키보드 및 원클릭 태스크 조작 (ADR-027)
+- **FR-26.1**: 아침 브리핑(`task_done_top1`, `action_sync`, `action_show_tasks`, `action_push`) 및 저녁 회고(`action_prompt_diary`, `action_sync`, `action_push`, `action_show_next`)에 대응하는 2x2 규격의 인터랙티브 인라인 키보드를 자동 부착해야 한다.
+- **FR-26.2**: `AgentService.complete_top_task()`는 `gtd/next_actions.md`, 당일 일일 로그, `gtd/inbox.md` 순으로 첫 번째 미완료 항목(`- [ ]`)을 `- [x]`로 안전하게 완료 처리하고 Git 커밋 및 푸시를 실행해야 한다.
+- **FR-26.3**: 텔레그램 `/done` 및 `/done [태스크명]` 슬래시 커맨드를 지원하여 대화형 또는 수동 완료 처리가 가능해야 한다.
+- **FR-26.4**: 콜백 쿼리 수신 시 `answer_callback_query`를 통해 0.1초 내 터치 토스트 응답을 전달하고, 실행 결과를 세션 히스토리에 영속화해야 한다.
+
+### FR-27: 기록 여부 결정론적 검사 및 문두 지시어 라우팅 (ADR-028)
+- **FR-27.1**: `LLMProvider`에 `log_status_inspect` 인텐트를 신설하여 `"오늘 로그 파일에 기록했어?"`, `"기록했어?"`, `"오늘 일기 적었어?"`, `"기록 확인"` 등 기록 여부 질의를 LLM 대화로 넘기지 않고 물리적 디스크 검사 파이프라인으로 라우팅해야 한다.
+- **FR-27.2**: `SupervisorService`는 실제 당일 일일 로그(`logs/daily/YYYY-MM-DD.md`) 파일 및 본문 엔트리(`- [HH:MM]`) 존재 여부를 검사하여, 존재할 경우 전문과 수정시각을 보고하고, 미작성 시 정직하게 안내함과 동시에 직전 사용자 대화를 역추적하여 "응" 원클릭 기록 승인을 유도해야 한다.
+- **FR-27.3**: 문장 시작부에 지시어가 위치하는 문두 기록 패턴(`front_record_pattern`)과 구어체 액션 정규식(`record_action_pattern`)을 지원하여 `"어제 gtd에 이 내용을 넣어달라구 [본문]"`, `"업데이트 해줘 위 내용"` 등의 지시어를 누락 없이 실제 파일 기록으로 연계해야 한다.
+- **FR-27.4**: `LLMProvider._call_ai_engine` 시스템 프롬프트에 가상 시뮬레이션 기록 답변 금지 가드레일을 적용하여 언어모델의 환각을 원천 차단해야 한다.
+
+### FR-28: 2단계 사전 검토 및 원터치 승인 워크플로우 (ADR-029)
+- **FR-28.1**: 운동, 생각/아이디어, 일상/업무, 가족/식사/병원 등 삶의 일과 감지 시 즉각적인 물리 파일 기록 및 커밋을 지양하고, `log_suggest` 인텐트를 통해 정제된 타임스탬프(`- [HH:MM]`), 저장 경로, 카테고리를 포함한 마크다운 초안 카드(Draft Preview Card)를 사용자에게 사전에 제시해야 한다.
+- **FR-28.2**: 제안 시 세션 메타데이터(`pending_log`)에 본문, 카테고리, GTD 액션 태스크, 듀얼 로깅 여부를 SQLite에 보관하고, 승인("응", "좋아", "이대로 해줘", 버튼 클릭) 시 단일/듀얼 기록을 실행하며 `pending_log`를 초기화해야 한다.
+- **FR-28.3**: 텔레그램에서는 인라인 버튼(`[✅ 응, 기록해줘]`, `[❌ 아니야]`)을 부착하고, 웹 대시보드(`/watson`)에서는 퀵 액션 버튼(`[응, 기록해줘]`, `[아니야]`)을 동적 제공하여 무타자 원터치 승인/거절을 지원해야 한다.
+- **FR-28.4**: 파워유저를 위한 패스트트랙(`/log [내용]`)을 유지하여 2단계 검토 없이 0초 만에 직접 물리 기록 및 Git 커밋·푸시를 집행할 수 있어야 한다.
+
 ---
 
 
@@ -199,6 +217,10 @@
 | **FR-23** | `app/services/briefing_service.py`, `app/routers/web_router.py`, `app/templates/index.html` | Pytest 단위 테스트(`test_briefing_service.py`, `test_web_router.py`) & cURL 스모크 검증(3-13) |
 | **FR-24** | `app/services/briefing_service.py`, `app/routers/web_router.py`, `app/static/js/main.js`, `app/templates/index.html` | Pytest 단위 테스트(`test_briefing_service.py`, `test_web_router.py`) & cURL 스모크 검증(3-13-5, 3-13-6) |
 | **FR-25** | `app/services/briefing_scheduler.py`, `app/services/telegram_service.py`, `app/routers/web_router.py`, `app/main.py` | Pytest 단위 테스트(`test_briefing_scheduler.py`, `test_web_router.py`) & cURL 스모크 검증(3-14) |
+| **FR-26** | `app/services/telegram_service.py`, `app/services/agent_service.py`, `app/services/briefing_scheduler.py`, `app/services/supervisor_service.py` | Pytest 단위 테스트(`test_telegram_service.py`, `test_agent_service.py`, `test_briefing_scheduler.py`) & cURL 검증(3-8-1) |
+| **FR-27** | `app/services/llm_provider.py`, `app/services/supervisor_service.py`, `app/services/agent_service.py` | Pytest 단위 테스트(`test_llm_provider.py`, `test_supervisor_service.py`) & cURL 스모크 검증(3-8-2) |
+| **FR-28** | `app/services/llm_provider.py`, `app/services/supervisor_service.py`, `app/services/session_service.py`, `app/services/telegram_service.py`, `app/static/js/main.js` | Pytest 단위 테스트(`test_llm_provider.py`, `test_supervisor_service.py`) & cURL 스모크 검증(3-8-3) |
+
 
 
 

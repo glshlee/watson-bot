@@ -2,6 +2,7 @@ import logging
 import os
 import re
 from datetime import datetime
+from typing import Any
 
 from app.config import get_app_timezone, get_now
 
@@ -484,6 +485,127 @@ class AgentService:
 
         matched_keywords = list(set(matched_keywords))
         return self.remove_gtd_tasks(matched_keywords)
+
+    def complete_top_task(self) -> dict[str, Any]:
+        """
+        GTD 저장소(gtd/next_actions.md, 당일 일일 로그, gtd/inbox.md 순)에서
+        첫 번째 미완료 태스크('- [ ]')를 찾아 '- [x]'로 완료 처리합니다 (ADR-027).
+        """
+        today_log = self.get_lifelog_filepath()
+        target_files = [
+            os.path.join(self.base_dir, "gtd", "next_actions.md"),
+            today_log,
+            self.get_gtd_inbox_filepath(),
+        ]
+
+        for filepath in target_files:
+            if not os.path.exists(filepath):
+                continue
+
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+            except OSError as e:
+                logger.warning(f"Failed to read {filepath}: {e}")
+                continue
+
+            for i, line in enumerate(lines):
+                line_s = line.strip()
+                if line_s.startswith("- [ ]"):
+                    # 태스크 내용 추출
+                    task_raw = line_s[5:].strip()
+                    task_clean = re.sub(r"[\*`]", "", task_raw).strip()
+
+                    # - [ ] -> - [x] 교체 (기존 들여쓰기 유지)
+                    indent = line[: line.find("- [ ]")]
+                    lines[i] = f"{indent}- [x] {task_raw}\n"
+
+                    try:
+                        with open(filepath, "w", encoding="utf-8") as f:
+                            f.writelines(lines)
+                        logger.info(f"Completed top task '{task_clean}' in {filepath}")
+                        return {
+                            "success": True,
+                            "task": task_clean,
+                            "file_path": filepath,
+                            "file_name": os.path.basename(filepath),
+                        }
+                    except OSError as e:
+                        logger.error(f"Failed to write completed task to {filepath}: {e}")
+                        return {"success": False, "task": None, "reason": str(e)}
+
+        return {
+            "success": False,
+            "task": None,
+            "reason": "no_pending_tasks",
+        }
+
+    def complete_matching_tasks(self, keywords: list[str]) -> list[str]:
+        """
+        키워드와 일치하는 미완료 태스크('- [ ]')들을 찾아 '- [x]'로 완료 처리합니다 (ADR-027).
+        """
+        today_log = self.get_lifelog_filepath()
+        target_files = [
+            os.path.join(self.base_dir, "gtd", "next_actions.md"),
+            today_log,
+            self.get_gtd_inbox_filepath(),
+        ]
+
+        clean_keywords = [
+            k.strip().lower()
+            for k in keywords
+            if len(k.strip()) >= 2 and k.strip().lower() not in ["완료", "해결", "체크", "끝", "할일", "태스크"]
+        ]
+        if not clean_keywords:
+            return []
+
+        completed_tasks: list[str] = []
+
+        for filepath in target_files:
+            if not os.path.exists(filepath):
+                continue
+
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+            except OSError:
+                continue
+
+            file_modified = False
+            new_lines = []
+
+            for line in lines:
+                line_s = line.strip()
+                if line_s.startswith("- [ ]"):
+                    line_lower = line_s.lower()
+                    matched = False
+                    for kw in clean_keywords:
+                        kw_nospace = kw.replace(" ", "")
+                        line_nospace = line_lower.replace(" ", "")
+                        if kw in line_lower or kw_nospace in line_nospace:
+                            matched = True
+                            task_raw = line_s[5:].strip()
+                            task_clean = re.sub(r"[\*`]", "", task_raw).strip()
+                            indent = line[: line.find("- [ ]")]
+                            new_lines.append(f"{indent}- [x] {task_raw}\n")
+                            if task_clean and task_clean not in completed_tasks:
+                                completed_tasks.append(task_clean)
+                            file_modified = True
+                            break
+                    if not matched:
+                        new_lines.append(line)
+                else:
+                    new_lines.append(line)
+
+            if file_modified:
+                try:
+                    with open(filepath, "w", encoding="utf-8") as f:
+                        f.writelines(new_lines)
+                    logger.info(f"Completed tasks in {filepath}: {completed_tasks}")
+                except OSError as e:
+                    logger.error(f"Failed to write to {filepath}: {e}")
+
+        return completed_tasks
 
     def read_daily_log(self, date_obj: datetime | None = None) -> str:
         """

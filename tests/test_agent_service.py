@@ -238,4 +238,43 @@ def test_read_daily_log_and_gtd_files():
         shutil.rmtree(temp_dir)
 
 
+def test_complete_top_task_and_matching():
+    temp_dir = tempfile.mkdtemp()
+    try:
+        gtd_dir = os.path.join(temp_dir, "gtd")
+        os.makedirs(gtd_dir, exist_ok=True)
+        next_file = os.path.join(gtd_dir, "next_actions.md")
+        inbox_file = os.path.join(gtd_dir, "inbox.md")
+
+        with open(next_file, "w", encoding="utf-8") as f:
+            f.write("# Next Actions\n- [ ] 우선순위 1번 과제\n- [ ] 우선순위 2번 과제\n")
+        with open(inbox_file, "w", encoding="utf-8") as f:
+            f.write("# Inbox\n- [ ] 인박스 대기 항목\n")
+
+        service = AgentService(base_dir=temp_dir)
+
+        # 1. Complete top task
+        res = service.complete_top_task()
+        assert res["success"] is True
+        assert res["task"] == "우선순위 1번 과제"
+        assert res["file_name"] == "next_actions.md"
+
+        with open(next_file, "r", encoding="utf-8") as f:
+            content = f.read()
+        assert "- [x] 우선순위 1번 과제" in content
+        assert "- [ ] 우선순위 2번 과제" in content
+
+        # 2. Complete matching task by keyword
+        completed = service.complete_matching_tasks(["인박스 대기"])
+        assert len(completed) == 1
+        assert "인박스 대기 항목" in completed[0]
+
+        with open(inbox_file, "r", encoding="utf-8") as f:
+            inbox_content = f.read()
+        assert "- [x] 인박스 대기 항목" in inbox_content
+    finally:
+        shutil.rmtree(temp_dir)
+
+
+
 

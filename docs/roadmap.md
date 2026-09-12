@@ -226,6 +226,34 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] 웹 콘솔 스케줄 모달(`#schedule-modal`) 내 텔레그램 푸시 연동 카드 및 `[🔔 텔레그램으로 지금 즉시 발송]` 버튼 제공
 - [x] 단위 테스트(`tests/test_briefing_scheduler.py`, `tests/test_web_router.py`) 및 `./scripts/smoke_test.sh` 3-14 라이브 검증 완료
 
+### Phase 26: 텔레그램 인터랙티브 인라인 키보드 및 원클릭 태스크 조작 (ADR-027) - ✅ 완료
+- [x] `TelegramService.get_briefing_keyboard()` 구현 (아침: 1순위 완료/동기화/전체할일/푸시, 저녁: 일기쓰기/동기화/푸시/내일할일)
+- [x] `AgentService.complete_top_task()` 및 `complete_matching_tasks()` 결정론적 체크박스 완료(`- [x]`) 엔진 구현
+- [x] 텔레그램 인라인 콜백 쿼리 라우팅(`task_done_top1`, `action_sync`, `action_push`, `action_show_tasks`, `action_show_next`, `action_prompt_diary`) 및 0.1초 고속 토스트 응답
+- [x] `/done` 및 `/done [태스크명]` 슬래시 커맨드 및 `LLMProvider` `task_complete` 인텐트 연동
+- [x] `BriefingScheduler.dispatch_briefing` 및 텔레그램 대화 브리핑 시 인라인 키보드 자동 부착
+- [x] 단위 테스트(`test_telegram_service.py`, `test_agent_service.py`, `test_briefing_scheduler.py`) 및 `./scripts/smoke_test.sh` 3-8-1 라이브 검증 완료
+
+### Phase 27: 기록 여부 결정론적 검사 및 문두 기록 지시어 라우팅 (ADR-028) - ✅ 완료
+- [x] `LLMProvider`에 `log_status_inspect` 인텐트 신설 ("오늘 로그 파일에 기록했어?", "기록했어?", "일기 적었어?", "기록 확인" 등 질의의 LLM 가상 시뮬레이션 원천 차단)
+- [x] `SupervisorService` 물리적 디스크 검사 파이프라인 구현 (파일/기록 존재 시 실제 전문 보고, 미작성 시 직전 대화 역추적 스니펫 제시 및 "응" 원클릭 기록 승인 유도)
+- [x] 문두 기록 지시어 패턴(`front_record_pattern`) 신설 ("어제 gtd에 이 내용을 넣어달라구 [본문]", "오늘 일기에 이거 적어줘: [본문]" 등)
+- [x] 구어체 액션 정규식(`record_action_pattern`) 및 컨텍스트 안전 `sync_triggers` 필터링 적용 ("업데이트 해줘 위 내용" 오분류 차단)
+- [x] `_call_ai_engine` 시스템 프롬프트에 가상 시뮬레이션 기록 금지 엄격 가드레일 추가
+- [x] 단위 테스트(`test_llm_provider.py`, `test_supervisor_service.py`), 린트/타입 검사 및 `./scripts/smoke_test.sh` 3-8-2 라이브 검증 완료
+
+### Phase 28: 2단계 사전 검토 및 원터치 승인 워크플로우 (ADR-029) - ✅ 완료
+- [x] 운동, 생각, 일상/업무, 가족/식사/병원 등 삶의 일과 감지 시 마크다운 초안 카드(Draft Preview Card) 사전 제안 파이프라인 구현 (`log_suggest`)
+- [x] 타임스탬프(`- [HH:MM]`), 저장될 대상 파일 경로, 카테고리 명시 및 GTD 액션 과제 동시 감지 초안 지원
+- [x] SQLite 세션 메타데이터에 `pending_log` (`content`, `category`, `gtd_task`, `is_dual`) 영속화
+- [x] 텔레그램 인라인 버튼(`[✅ 응, 기록해줘]`, `[❌ 아니야]`) 및 콜백 쿼리 라우팅(`confirm_log`, `reject_log`) 연동
+- [x] 웹 대시보드(`/watson`) 퀵 액션 버튼(`[응, 기록해줘]`, `[아니야]`) 동적 렌더링 및 원터치 처리
+- [x] 복합 승인 정규식 패턴(`confirm_patterns`) 고도화 ("응", "좋아", "응 좋아", "이대로 기록해줘", "응 좋아 기록해줘" 등 완벽 대응) 및 맥락 역추적 안전 가드
+- [x] 파워유저용 패스트트랙(`/log [내용]`) 직통 기록 유지
+- [x] 단위 테스트(`test_llm_provider.py`, `test_supervisor_service.py`), 린트/타입 검사 및 `./scripts/smoke_test.sh` 3-8-3 라이브 검증 완료
+
+
+
 
 
 

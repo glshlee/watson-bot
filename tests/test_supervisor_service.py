@@ -382,6 +382,59 @@ def test_supervisor_inspection_shortcuts(db_session):
         shutil.rmtree(temp_dir)
 
 
+def test_supervisor_log_status_inspect_workflow(db_session):
+    temp_dir = tempfile.mkdtemp()
+    try:
+        supervisor = SupervisorService(db=db_session, base_dir=temp_dir)
+        session_id = "inspect_test_session"
+
+        # 1. 사용자 일과 대화
+        supervisor.process_user_request(
+            session_id=session_id,
+            user_message="오늘은 아침에 일어나서 와이프를 위한 미역국을 끓였어",
+            channel="telegram",
+            auto_push=False,
+        )
+
+        # 2. 기록 여부 질의 (아직 물리적 파일 없음)
+        res_inspect1 = supervisor.process_user_request(
+            session_id=session_id,
+            user_message="오늘 로그 파일에 기록했어?",
+            channel="telegram",
+            auto_push=False,
+        )
+        assert res_inspect1["intent"] == "log_status_inspect"
+        assert "아직 오늘" in res_inspect1["ai_response"]
+        assert "기록되지 않았습니다" in res_inspect1["ai_response"]
+        assert "미역국" in res_inspect1["ai_response"]
+        # pending_log가 설정되어 있어야 함
+        assert res_inspect1["pending_log"] is not None
+
+        # 3. 사용자 승인 ("응")
+        res_confirm = supervisor.process_user_request(
+            session_id=session_id,
+            user_message="응",
+            channel="telegram",
+            auto_push=False,
+        )
+        assert res_confirm["intent"] == "log_confirm"
+        assert res_confirm["filepath"] is not None
+
+        # 4. 기록 후 다시 기록 여부 질의 (물리적 파일 존재 확인)
+        res_inspect2 = supervisor.process_user_request(
+            session_id=session_id,
+            user_message="오늘 로그 파일에 기록했어?",
+            channel="telegram",
+            auto_push=False,
+        )
+        assert res_inspect2["intent"] == "log_status_inspect"
+        assert "정상 기록되어 있습니다" in res_inspect2["ai_response"]
+        assert "미역국" in res_inspect2["ai_response"]
+    finally:
+        shutil.rmtree(temp_dir)
+
+
+
 
 
 

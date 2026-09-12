@@ -140,3 +140,134 @@ async def test_telegram_photo_message(db_session, tmp_path):
         args, _ = mock_send.call_args
         assert "사진" in args[1]
 
+
+def test_telegram_briefing_keyboards():
+    service = TelegramService(token="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz")
+    morning_kb = service.get_briefing_keyboard(mode="morning")
+    assert "inline_keyboard" in morning_kb
+    buttons = [btn["callback_data"] for row in morning_kb["inline_keyboard"] for btn in row]
+    assert "task_done_top1" in buttons
+    assert "action_sync" in buttons
+    assert "action_show_tasks" in buttons
+    assert "action_push" in buttons
+
+    evening_kb = service.get_briefing_keyboard(mode="evening")
+    assert "inline_keyboard" in evening_kb
+    evening_buttons = [btn["callback_data"] for row in evening_kb["inline_keyboard"] for btn in row]
+    assert "action_prompt_diary" in evening_buttons
+    assert "action_sync" in evening_buttons
+    assert "action_push" in evening_buttons
+    assert "action_show_next" in evening_buttons
+
+
+@pytest.mark.anyio
+async def test_telegram_callback_task_done_top1(db_session, tmp_path):
+    service = TelegramService(token="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz")
+    service.allowed_chat_ids = []
+
+    # GTD next_actions.md 파일 생성
+    gtd_dir = tmp_path / "gtd"
+    gtd_dir.mkdir(parents=True, exist_ok=True)
+    next_file = gtd_dir / "next_actions.md"
+    next_file.write_text("# Next Actions\n- [ ] 텔레그램 1순위 테스트 태스크\n", encoding="utf-8")
+
+    callback_update = {
+        "update_id": 10,
+        "callback_query": {
+            "id": "cb_top1",
+            "from": {"id": 12345},
+            "data": "task_done_top1",
+        },
+    }
+
+    with (
+        patch("app.services.settings_service.SettingsService.get_gtd_path", return_value=str(tmp_path)),
+        patch("app.services.git_service.GitService.commit", return_value=(True, "commit ok")),
+        patch("app.services.git_service.GitService.push", return_value=(True, "push ok")),
+        patch.object(service, "answer_callback_query", new_callable=AsyncMock) as mock_ans,
+        patch.object(service, "send_message", new_callable=AsyncMock) as mock_send,
+    ):
+        await service.process_update(callback_update, db_session)
+        mock_ans.assert_called_once()
+        mock_send.assert_called_once()
+        sent_text = mock_send.call_args[0][1]
+        assert "1순위 태스크 완료" in sent_text
+        assert "텔레그램 1순위 테스트 태스크" in sent_text
+
+    # 파일 내 체크박스가 - [x] 로 변경되었는지 확인
+    updated_content = next_file.read_text(encoding="utf-8")
+    assert "- [x] 텔레그램 1순위 테스트 태스크" in updated_content
+
+
+@pytest.mark.anyio
+async def test_telegram_callback_action_sync_and_push(db_session, tmp_path):
+    service = TelegramService(token="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz")
+    service.allowed_chat_ids = []
+
+    # 1. action_sync callback
+    sync_update = {
+        "update_id": 11,
+        "callback_query": {
+            "id": "cb_sync",
+            "from": {"id": 12345},
+            "data": "action_sync",
+        },
+    }
+
+    with (
+        patch("app.services.settings_service.SettingsService.get_gtd_path", return_value=str(tmp_path)),
+        patch("app.services.git_service.GitService.pull", return_value=(True, "pull ok")),
+        patch.object(service, "answer_callback_query", new_callable=AsyncMock) as mock_ans,
+        patch.object(service, "send_message", new_callable=AsyncMock) as mock_send,
+    ):
+        await service.process_update(sync_update, db_session)
+        mock_ans.assert_called_once()
+        mock_send.assert_called_once()
+        assert "동기화" in mock_send.call_args[0][1]
+
+    # 2. action_push callback
+    push_update = {
+        "update_id": 12,
+        "callback_query": {
+            "id": "cb_push",
+            "from": {"id": 12345},
+            "data": "action_push",
+        },
+    }
+
+    with (
+        patch("app.services.settings_service.SettingsService.get_gtd_path", return_value=str(tmp_path)),
+        patch("app.services.git_service.GitService.push", return_value=(True, "push ok")),
+        patch.object(service, "answer_callback_query", new_callable=AsyncMock) as mock_ans,
+        patch.object(service, "send_message", new_callable=AsyncMock) as mock_send,
+    ):
+        await service.process_update(push_update, db_session)
+        mock_ans.assert_called_once()
+        mock_send.assert_called_once()
+        assert "푸시" in mock_send.call_args[0][1]
+
+
+@pytest.mark.anyio
+async def test_telegram_command_url(db_session, tmp_path):
+    service = TelegramService(token="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz")
+    service.allowed_chat_ids = []
+
+    update = {
+        "update_id": 13,
+        "message": {
+            "chat": {"id": 12345},
+            "text": "/url",
+        },
+    }
+
+    with (
+        patch.object(service, "_get_tunnel_url", return_value="https://test-tunnel.trycloudflare.com"),
+        patch.object(service, "send_message", new_callable=AsyncMock) as mock_send,
+    ):
+        await service.process_update(update, db_session)
+        mock_send.assert_called_once()
+        args, _ = mock_send.call_args
+        assert "https://test-tunnel.trycloudflare.com" in args[1]
+
+
+

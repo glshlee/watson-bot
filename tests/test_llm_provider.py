@@ -81,3 +81,76 @@ def test_llm_provider_dual_logging_and_task_extraction():
     assert "여행" in res.gtd_task_content
     assert "용현집" in res.gtd_task_content
 
+
+def test_llm_provider_log_status_inspect():
+    provider = LLMProvider()
+    queries = [
+        "오늘 로그 파일에 기록했어?",
+        "오늘 로그에 기록했어?",
+        "오늘 일기 적었어?",
+        "기록했어?",
+        "기록됐어?",
+        "기록된거 맞아?",
+        "기록 확인",
+        "오늘 기록 확인",
+        "일기 확인해줘",
+        "기록 됐니?",
+    ]
+    for q in queries:
+        res = provider.analyze_and_respond(q)
+        assert res.intent == "log_status_inspect", f"Failed for query '{q}': got {res.intent}"
+
+
+def test_llm_provider_front_placed_directive():
+    provider = LLMProvider()
+    prompt = (
+        "아니 어제 gtd에 이 내용을 넣어달라구\n\n"
+        "어제 이야기를 좀 해도 될까. 어제 와이프랑 산부인과에 초음파를 보러 갔는데, 아기가 심장이 멈췄대. "
+        "그래서 급하게 병원을 잡아서 소파술을 하고왔어."
+    )
+    res = provider.analyze_and_respond(prompt)
+    assert res.intent == "log_explicit"
+    assert "산부인과" in res.log_content or "소파술" in res.log_content
+    assert res.category == "GTD Inbox"
+
+
+def test_llm_provider_update_context_directive_not_sync():
+    provider = LLMProvider()
+    history = [
+        {"role": "user", "content": "어제 와이프랑 산부인과에 초음파를 보러 갔는데 소파술을 하고 왔어."},
+        {"role": "assistant", "content": "정말 가슴 아프셨겠습니다. 위로를 드립니다."},
+    ]
+    prompt = "어제 gtd에 업데이트 해줘 위ㅡ내용"
+    res = provider.analyze_and_respond(prompt, history=history)
+    assert res.intent == "log_explicit"
+    assert "산부인과" in res.log_content
+
+
+def test_llm_provider_life_moment_draft_preview():
+    provider = LLMProvider()
+    prompt = "오늘은 아침에 일어나서 와이프를 위한 미역국을 끓였어"
+    res = provider.analyze_and_respond(prompt)
+    assert res.intent == "log_suggest"
+    assert res.category == "Daily Notes & Diary"
+    assert "라이프로그 초안" in res.ai_response
+    assert "미역국" in res.ai_response
+    assert "기록해 둘까요" in res.ai_response
+
+
+def test_llm_provider_dual_confirm_from_pending():
+    provider = LLMProvider()
+    pending = {
+        "content": "아내 수술 후 퇴원 및 저녁 미역국 식사",
+        "category": "Daily Notes & Diary",
+        "gtd_task": "아내 신체 회복을 위한 영양식 및 보온 챙기기",
+        "is_dual": True,
+    }
+    for confirm_prompt in ["응", "이대로 해줘", "좋아", "이대로 기록해줘", "응 좋아"]:
+        res = provider.analyze_and_respond(confirm_prompt, pending_log=pending)
+        assert res.intent == "log_dual", f"Failed for {confirm_prompt}"
+        assert res.is_dual_log is True
+        assert "영양식" in (res.gtd_task_content or "")
+
+
+
+
