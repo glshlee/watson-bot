@@ -184,8 +184,11 @@
 ### FR-31: GTD 스킬 명세 동기화 및 태스크 완료 시 데일리 로그 수술적 이관 (ADR-032)
 - **FR-31.1**: 미완료 할 일은 오직 `gtd/` 디렉토리 5개 상태 파일(`inbox.md`, `next_actions.md` 등)에서만 보관(SSOT)하고, 데일리 로그(`logs/daily/YYYY-MM-DD.md`)는 미완료 할 일을 남기거나 이월(Rollover)하지 않아야 한다.
 - **FR-31.2**: 태스크 완료("완료했어", "/done", 1순위 완료 등) 시 `AgentService`는 `gtd/` 파일에서 해당 항목을 완전히 잘라내어(Cut) 제거하고, 당일 데일리 로그(`logs/daily/YYYY-MM-DD.md`)의 `## ✅ 오늘 완료한 일 (Completed GTD Tasks)` 섹션으로 `- [x]` 형태로 안전하게 이관(Paste)해야 한다 (`transfer_completed_task_to_daily_log`).
-- **FR-31.3**: `LLMProvider`는 연결된 GTD 경로의 `skills/gtd-assistant/SKILL.md`를 감지하여 핵심 행동 강령(SSOT, Surgical Transfer)을 시스템 프롬프트에 `[적용 스킬: gtd-assistant]`로 자동 주입하고, `agy` CLI 호출 시 서브프로세스 `cwd`를 사용자의 GTD 경로(`GTD_PATH`)로 설정하여 CLI 네이티브 스킬 자동 로딩을 보장해야 한다.
-- **FR-31.4**: 헬스장, 스쿼트, 푸시업 등 운동 일과 발화는 문장 내 "완료" 키워드가 포함되어 있어도 `task_complete`로 오인되지 않고 운동 라이프로그 초안(`log_suggest`)으로 안전하게 분류되어야 한다.
+### FR-32: 아침 브리핑 실시간 날씨·미세먼지 통합 및 자연어 기상 질의 연동 (ADR-033)
+- **FR-32.1**: `BriefingService`의 아침 브리핑(`mode == "morning"`) 및 08:30 KST 텔레그램 푸시 시 최상단 인사말 직후 실시간 날씨(기온, 체감, 강수확률, 우산 소지 팁), 대기질(PM10/PM2.5 수치), 출근 버스 정보를 필수 통합 렌더링해야 한다.
+- **FR-32.2**: `BriefingService.generate_briefing`의 LLM 프롬프트에 실시간 기상 데이터를 제공하고, AI 응답 필터에서 부적절한 `"날씨"` 배제 조건을 제거하여 AI가 날씨와 GTD 일정을 조화롭게 브리핑할 수 있도록 보장해야 한다.
+- **FR-32.3**: "날씨 브리핑", "날씨 정보", "미세먼지 수치", "대기질 정보", `/weather` 등 자연어 기상 질의 시 `commute_inspect` (`log_content="weather"`)로 즉시 라우팅하여 단독 기상 브리핑 카드를 반환해야 한다.
+- **FR-32.4**: "안녕하세요! 오늘 날씨 좋네요" 등 인사가 포함된 일상 발화는 기상 카드 대신 자연스러운 대화(`chat_only`)로 분리 유지해야 한다.
 
 ---
 
@@ -241,6 +244,7 @@
 | **FR-29** | `app/services/commute_config_service.py`, `app/routers/settings_router.py`, `app/templates/index.html`, `app/static/js/main.js` | Pytest 단위 테스트(`test_commute_config_service.py`) & cURL 스모크 검증(6) |
 | **FR-30** | `app/services/llm_provider.py`, `app/services/agent_service.py`, `app/services/supervisor_service.py` | Pytest 단위 테스트(`test_task_completion_and_meta_guard.py`) & cURL 스모크 검증(7) |
 | **FR-31** | `app/services/agent_service.py`, `app/services/llm_provider.py`, `app/services/supervisor_service.py` | Pytest 단위 테스트(`test_agent_service.py`, `test_task_completion_and_meta_guard.py`) & cURL 검증 |
+| **FR-32** | `app/services/briefing_service.py`, `app/services/commute_config_service.py`, `app/services/llm_provider.py` | Pytest 단위 테스트(`test_briefing_service.py`, `test_commute_config_service.py`) & cURL 검증 |
 
 
 

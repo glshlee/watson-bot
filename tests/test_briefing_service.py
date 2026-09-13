@@ -68,6 +68,9 @@ def test_read_briefing_context_and_generate_morning_briefing():
         md = res["markdown"]
 
         assert "Watson Morning Briefing" in md
+        assert "오늘의 날씨 & 미세먼지" in md
+        assert "미세먼지" in md
+        assert "강수확률" in md
         assert "오늘의 집중 우선순위 Top 3" in md
         assert "Phase 24 브리핑 기능 구현 배포" in md
         assert "추천 실행 순서 (Schedule & Flow)" in md

@@ -6,6 +6,7 @@ from typing import Any
 
 from app.config import get_now
 from app.services.agent_service import AgentService
+from app.services.commute_config_service import CommuteConfigService
 from app.services.git_service import GitService
 from app.services.llm_provider import LLMProvider
 from app.services.settings_service import SettingsService
@@ -17,8 +18,9 @@ WEEKDAYS_KR = ["월요일", "화요일", "수요일", "목요일", "금요일", 
 
 class BriefingService:
     """
-    아침 및 저녁 맞춤형 GTD 브리핑 생성 서비스 (ADR-024).
+    아침 및 저녁 맞춤형 GTD 브리핑 생성 서비스 (ADR-024, ADR-033).
     - 시간대(KST) 및 명시적 인자에 따른 Morning / Evening 모드 자동 감지
+    - 아침 브리핑 상단에 실시간 날씨, 미세먼지 및 출근 교통 현황 통합 (ADR-033)
     - GTD 수집함(inbox.md), 다음 행동(next_actions.md), 당일 데일리 로그 수집
     - 지능형 LLM 브리핑 합성 및 결정론적 룰 기반 폴백 듀얼 엔진
     """
@@ -28,12 +30,14 @@ class BriefingService:
         base_dir: str | None = None,
         llm_provider: LLMProvider | None = None,
         git_service: GitService | None = None,
+        commute_config_service: CommuteConfigService | None = None,
     ):
         self.settings_service = SettingsService()
         self.base_dir = base_dir or self.settings_service.get_gtd_path()
         self.agent_service = AgentService(base_dir=self.base_dir)
         self.llm_provider = llm_provider or LLMProvider()
         self.git_service = git_service or GitService(repo_path=self.base_dir)
+        self.commute_config_service = commute_config_service or CommuteConfigService()
 
     def detect_briefing_mode(self, override_mode: str | None = None, date_obj: datetime | None = None) -> str:
         """
@@ -168,10 +172,16 @@ class BriefingService:
             ordered_actions = urgent + normal
             top_3 = ordered_actions[:3]
 
+            weather_card = self.commute_config_service.get_morning_weather_card()
+
             lines = [
                 f"### 🌅 **Watson Morning Briefing** (`{date_str} {weekday_str}`) ☀️\n",
                 "활기찬 아침입니다! 오늘 하루 집중해야 할 핵심 우선순위와 일정을 정리해 드립니다.\n",
             ]
+
+            if weather_card:
+                lines.append(weather_card)
+                lines.append("")
 
             lines.append("#### 🎯 **오늘의 집중 우선순위 Top 3**")
             if top_3:
@@ -263,15 +273,18 @@ class BriefingService:
             try:
                 date_label = f"{context['date_str']} ({context['weekday_str']})"
                 if active_mode == "morning":
+                    weather_card = self.commute_config_service.get_morning_weather_card()
+                    weather_prompt_part = f"- 오늘의 실시간 날씨 및 미세먼지 정보:\n{weather_card}\n\n" if weather_card else ""
                     prompt = (
                         f"너는 사용자의 든든한 개인 AI 비서 왓슨(Watson)이다.\n"
-                        f"오늘은 {date_label}이다. 아래 GTD 참고 데이터를 바탕으로 친절하고 명쾌하게 [Morning Briefing]을 작성하라.\n\n"
+                        f"오늘은 {date_label}이다. 아래 날씨, 미세먼지 및 GTD 참고 데이터를 바탕으로 친절하고 명쾌하게 [Morning Briefing]을 작성하라.\n\n"
                         f"[참고 데이터]\n"
+                        f"{weather_prompt_part}"
                         f"- GTD Inbox:\n{context['raw_inbox'] or '(비어 있음)'}\n"
                         f"- Next Actions:\n{context['raw_next_actions'] or '(비어 있음)'}\n"
                         f"- 오늘 일정 및 메모:\n{context['raw_daily_log'] or '(기록 없음)'}\n\n"
                         f"[작성 가이드라인]\n"
-                        f"1. 활기차고 차분한 어조로 오늘의 시작을 엽니다.\n"
+                        f"1. 활기차고 차분한 어조로 오늘의 시작을 열며, 상단에 오늘의 날씨(기온, 하늘상태, 우산 필요 여부 등)와 미세먼지 정보를 친절하게 안내하세요.\n"
                         f"2. '🎯 오늘의 집중 우선순위 Top 3'를 명확하게 선정하세요.\n"
                         f"3. 오전/오후 시간대별 추천 실행 순서를 간결하게 정리하세요.\n"
                         f"4. Inbox에 방치된 미분류 항목이 있다면 한두 개 정리 권유를 포함하세요.\n"
@@ -294,7 +307,10 @@ class BriefingService:
                     )
 
                 ai_res = self.llm_provider._call_ai_engine(prompt=prompt)
-                if ai_res and len(ai_res) > 80 and not any(f in ai_res for f in ["날씨", "시간", "이야기 들려주세요"]):
+                if ai_res and len(ai_res) > 80 and not any(f in ai_res for f in ["시간이 필요", "이야기 들려주세요"]):
+                    # 만약 AI 브리핑에 날씨 섹션이 누락되었다면 상단에 실시간 날씨 카드 보강
+                    if active_mode == "morning" and "날씨" not in ai_res and weather_card:
+                        ai_res = f"{weather_card}\n\n{ai_res}"
                     logger.info(f"Generated AI-enhanced briefing for mode={active_mode}")
                     return {
                         "mode": active_mode,

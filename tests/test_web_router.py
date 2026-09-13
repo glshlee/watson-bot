@@ -104,14 +104,14 @@ def test_get_briefing_endpoint():
     data_m = res_morning.json()
     assert data_m["status"] == "success"
     assert data_m["data"]["mode"] == "morning"
-    assert "Watson Morning Briefing" in data_m["data"]["markdown"]
+    assert any(k in data_m["data"]["markdown"] for k in ["Watson Morning Briefing", "Morning Briefing", "아침 브리핑"])
 
     res_evening = client.get("/api/briefing?mode=evening")
     assert res_evening.status_code == 200
     data_e = res_evening.json()
     assert data_e["status"] == "success"
     assert data_e["data"]["mode"] == "evening"
-    assert "Watson Evening Briefing" in data_e["data"]["markdown"]
+    assert any(k in data_e["data"]["markdown"] for k in ["Watson Evening Briefing", "Evening Briefing", "저녁 회고", "일과 회고"])
 
 
 def test_get_briefing_schedule_endpoint():

@@ -277,8 +277,14 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] `LLMProvider`에 GTD 저장소 내 `skills/gtd-assistant/SKILL.md` 행동 강령(SSOT, Surgical Transfer) 파싱 및 시스템 프롬프트 자동 주입(`_load_skill_instructions`) 연동
 - [x] `_call_ai_engine`의 `agy` CLI 호출 시 서브프로세스 `cwd`를 사용자의 GTD 저장소 경로(`GTD_PATH`)로 지정하여 Antigravity CLI의 네이티브 스킬 자동 탐색 및 로딩 보장
 - [x] 헬스장/스쿼트/푸시업 등 운동 일과 발화가 `task_complete`로 오인되지 않도록 가드레일 분리
-- [x] 사용자 GTD 저장소(`life_log`) 내 미이관 완료 태스크(`민방위 사이버 교육 이수 여부 확인 🛡️💻`)를 `logs/daily/2026-09-13.md`로 수술적 이관 완료
 - [x] 단위 테스트(`tests/test_agent_service.py`, `tests/test_telegram_service.py`, `tests/test_task_completion_and_meta_guard.py`), Ruff/Mypy 검사 및 `./scripts/smoke_test.sh` 전체 통과 완료
+
+### Phase 32: 아침 브리핑 실시간 날씨·미세먼지 통합 및 자연어 기상 질의 연동 (ADR-033) - ✅ 완료
+- [x] `CommuteConfigService`에 `get_morning_weather_card()` 및 `get_standalone_weather_card()` 구현
+- [x] `BriefingService`의 아침 브리핑(`mode == "morning"`) 상단에 실시간 날씨(기온, 체감, 강수확률/우산 팁), 대기질(PM10/PM2.5), 출근 버스 도착 정보 기본 통합 탑재
+- [x] `generate_briefing`의 LLM 프롬프트에 기상 데이터 주입 및 기존 `"날씨"` 배제 필터 버그 수정, AI 응답 내 날씨 누락 시 상단 자동 보강(Patch) 탑재
+- [x] `LLMProvider` 및 `SupervisorService`에 자연어 기상 질의("날씨 브리핑", "날씨 정보", "미세먼지 수치", `/weather`) 연동 및 인사/잡담(`chat_only`) 안전 분리
+- [x] 단위 테스트(`tests/test_briefing_service.py`, `tests/test_commute_config_service.py`, `tests/test_web_router.py`), Ruff/Mypy 검사 및 `./scripts/smoke_test.sh` 전체 통과 완료
 
 
 

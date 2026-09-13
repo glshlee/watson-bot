@@ -229,3 +229,54 @@ class CommuteConfigService:
                 "next_bus": f"{bus_next_min}분 후",
             },
         }
+
+    def get_morning_weather_card(self) -> str:
+        """
+        아침 정기 브리핑 상단에 통합 삽입할 실시간 날씨, 미세먼지 및 출근 버스 요약 블록을 반환합니다 (ADR-033).
+        """
+        preview = self.generate_preview()
+        w = preview["weather_summary"]
+        t = preview["transit_summary"]
+        cfg = self.get_config()
+
+        lines = [
+            f"#### 📍 **오늘의 날씨 & 미세먼지 ({w['location']})**",
+            f"• 🌤️ **날씨**: {w['sky']} (기온: **{w['temp']}** / 체감: **{w['feels_like']}**)",
+            f"• ☔ **강수확률**: **{w['rain_prob']}** (우산 불필요 ☀️)",
+            f"• 🟢 **미세먼지**: **{w['pm10']}** | 초미세: **{w['pm25']}** ({w['station']} 기준)",
+        ]
+
+        if cfg.get("bus_stop_name") and cfg.get("bus_route_name"):
+            lines.append(
+                f"• 🚌 **출근길 버스**: **{t['stop_name']}** ➔ **{t['route_name']}** ({t['status']})"
+            )
+
+        return "\n".join(lines)
+
+    def get_standalone_weather_card(self) -> str:
+        """
+        자연어 날씨/미세먼지 질의 시 사용자에게 즉각 제공할 단독 실시간 기상 브리핑 카드를 반환합니다 (ADR-033).
+        """
+        preview = self.generate_preview()
+        w = preview["weather_summary"]
+        t = preview["transit_summary"]
+        now = get_now()
+        date_str = now.strftime("%Y-%m-%d %A")
+
+        lines = [
+            f"🌤️ **[실시간 날씨 & 미세먼지 브리핑]** (`{w['location']}` 기준)\n",
+            f"📅 **기준 일시**: {date_str} {now.strftime('%H:%M')} KST\n",
+            "📍 **날씨 및 기온**",
+            f"• 상태: {w['sky']}",
+            f"• 기온: **{w['temp']}** (체감 온도: **{w['feels_like']}**)",
+            f"• 강수확률: **{w['rain_prob']}** (우산 불필요 ☀️)\n",
+            f"🟢 **대기질 (에어코리아 {w['station']} 기준)**",
+            f"• 미세먼지 (PM10): **{w['pm10']}**",
+            f"• 초미세먼지 (PM2.5): **{w['pm25']}**\n",
+            "🚌 **출근길 버스 정보**",
+            f"• 탑승: **{t['stop_name']}** ➔ **{t['route_name']}**",
+            f"• 도착 예정: **{t['status']}** (다음 버스: {t['next_bus']})\n",
+            "✨ 상쾌하고 쾌적한 하루 보내세요!",
+        ]
+        return "\n".join(lines)
+

@@ -654,15 +654,22 @@ class LLMProvider:
                 category="GTD",
             )
 
-        # (C) 출근길 날씨·미세먼지·버스 브리핑 설정 및 미리보기 (/commute - ADR-030)
-        is_commute_cmd = prompt_lower.startswith(("/commute", "/bus", "/weather"))
+        # (C) 출근길 날씨·미세먼지·버스 브리핑 설정 및 실시간 날씨 질의 (/commute, /weather - ADR-030, ADR-033)
+        is_commute_cmd = prompt_lower.startswith(("/commute", "/bus", "/weather", "/air"))
         is_commute_nlp = any(k in prompt_lower for k in ["출근길", "출근 버스", "버스 언제", "버스 도착", "버스 정보", "우리 동네 날씨", "우리지역 날씨", "출근길 날씨"])
-        if is_commute_cmd or is_commute_nlp:
-            is_preview = any(k in prompt_lower for k in ["test", "preview", "미리보기", "테스트", "언제 와", "언제와", "도착 정보", "지금"])
+        has_greeting = any(g in prompt_lower for g in ["안녕", "반가워", "하이", "좋은 아침"])
+        is_weather_info_query = any(k in prompt_lower for k in ["날씨 브리핑", "날씨 정보", "미세먼지 정보", "미세먼지 수치", "대기질 정보", "오늘 날씨 정보", "날씨랑 미세먼지"]) or (
+            any(k in prompt_lower for k in ["미세먼지", "초미세먼지", "대기질"]) and any(q in prompt_lower for q in ["어때", "알려", "확인", "보여", "수치", "상태"])
+        )
+        if (is_commute_cmd or is_commute_nlp or is_weather_info_query) and not has_greeting:
+            is_preview = any(k in prompt_lower for k in [
+                "test", "preview", "미리보기", "테스트", "언제 와", "언제와", "도착 정보", "지금",
+                "날씨", "미세먼지", "대기질", "초미세"
+            ])
             return IntentResult(
                 intent="commute_inspect",
                 ai_response="",
-                log_content="preview" if is_preview else "status",
+                log_content="weather" if (is_weather_info_query or "weather" in prompt_lower) else ("preview" if is_preview else "status"),
                 category="Commute",
             )
 

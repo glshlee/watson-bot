@@ -282,7 +282,9 @@ class SupervisorService:
         elif intent_res.intent == "commute_inspect":
             # (D-3e) 출근길 모닝 브리핑 설정 및 실시간 카드 프리뷰 (ADR-030)
             cfg = self.commute_config_service.get_masked_config()
-            if intent_res.log_content == "preview":
+            if intent_res.log_content == "weather":
+                final_response = self.commute_config_service.get_standalone_weather_card()
+            elif intent_res.log_content == "preview":
                 preview_data = self.commute_config_service.generate_preview()
                 final_response = preview_data["markdown"]
             else:
