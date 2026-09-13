@@ -457,4 +457,43 @@ else
     exit 1
 fi
 
+echo "6. Testing Commute & Weather Briefing Settings Interface (ADR-030)..."
+COMMUTE_GET=$(run_curl "$SERVER_URL/api/settings/commute")
+if echo "$COMMUTE_GET" | grep -q '"location_name"'; then
+    echo "  ✅ 6-1. GET /api/settings/commute Passed"
+else
+    echo "  ❌ 6-1. GET /api/settings/commute Failed: $COMMUTE_GET"
+    exit 1
+fi
+
+COMMUTE_PREVIEW=$(run_curl -X POST "$SERVER_URL/api/settings/commute/preview" \
+  -H "Content-Type: application/json" \
+  -d '{"config": {"location_name": "서산시 대산읍", "bus_stop_name": "대산정류장", "bus_route_name": "900", "send_time": "07:30"}}')
+if echo "$COMMUTE_PREVIEW" | grep -q '"900번"'; then
+    echo "  ✅ 6-2. POST /api/settings/commute/preview Passed (Real-time Card Generated)"
+else
+    echo "  ❌ 6-2. POST /api/settings/commute/preview Failed: $COMMUTE_PREVIEW"
+    exit 1
+fi
+
+COMMUTE_POST=$(run_curl -X POST "$SERVER_URL/api/settings/commute" \
+  -H "Content-Type: application/json" \
+  -d '{"location_name": "서울 강남구 역삼동", "bus_stop_name": "역삼역", "bus_route_name": "146", "send_time": "07:30", "enabled": true, "weekdays_only": true, "public_data_api_key": "TEST_KEY_12345", "use_mock_fallback": true}')
+if echo "$COMMUTE_POST" | grep -q '"success":true'; then
+    echo "  ✅ 6-3. POST /api/settings/commute Passed (Config Saved & Masked)"
+else
+    echo "  ❌ 6-3. POST /api/settings/commute Failed: $COMMUTE_POST"
+    exit 1
+fi
+
+COMMUTE_CHAT=$(run_curl -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_commute_session", "message": "/commute", "auto_push": false}')
+if echo "$COMMUTE_CHAT" | grep -q '"intent":"commute_inspect"'; then
+    echo "  ✅ 6-4. Watson /commute Passed (intent=commute_inspect)"
+else
+    echo "  ❌ 6-4. Watson /commute Failed: $COMMUTE_CHAT"
+    exit 1
+fi
+
 echo "🎉 All Curl Smoke Tests Passed Successfully!"

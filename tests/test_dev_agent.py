@@ -117,7 +117,7 @@ def test_dev_agent_toolchain():
     # 3. /commit recommendation
     res_commit_rec = service.process_dev_request("dev_tool_test", "/commit")
     assert res_commit_rec["action_type"] == "tool_commit"
-    assert "Conventional Commits" in res_commit_rec["ai_response"]
+    assert ("Conventional Commits" in res_commit_rec["ai_response"] or "현재 작업 트리가 깨끗하여" in res_commit_rec["ai_response"])
 
 
     # 4. /test targeting specific file

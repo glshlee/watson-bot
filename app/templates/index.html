@@ -86,6 +86,10 @@
                     <button id="clear-chat-btn" class="badge btn-clear-chat" title="현재 세션 대화 내용 비우기">
                         <i class="fa-solid fa-broom"></i> <span class="desktop-only">대화 비우기</span>
                     </button>
+                    <div id="commute-settings-badge" class="badge commute-badge" title="클릭하여 출근길 날씨 & 버스 브리핑 설정">
+                        <i class="fa-solid fa-bus"></i> <span id="commute-status-text">출근: 07:30</span>
+                        <button id="change-commute-btn" class="commute-edit-btn" title="출근 브리핑 설정"><i class="fa-solid fa-gear"></i></button>
+                    </div>
                     <div id="gtd-storage-badge" class="badge gtd-badge" title="클릭하여 GTD 작업 디렉토리 설정">
                         <i class="fa-solid fa-folder-tree"></i> <span id="gtd-path-text">GTD: 로딩 중...</span>
                         <button id="change-gtd-btn" class="gtd-edit-btn" title="GTD 저장소 변경"><i class="fa-solid fa-gear"></i></button>
@@ -198,6 +202,133 @@
                 </div>
             </div>
 
+            <!-- Commute & Weather Briefing Settings Modal (ADR-030) -->
+            <div id="commute-modal" class="modal hidden">
+                <div class="modal-content commute-modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fa-solid fa-bus"></i> 출근길 날씨 · 미세먼지 · 버스 브리핑 설정</h3>
+                        <button id="close-commute-modal-btn" class="close-btn">&times;</button>
+                    </div>
+                    <div class="modal-body" id="commute-modal-body">
+                        <p class="modal-desc">
+                            와이프분의 상쾌한 출근길을 위해, 매일 아침 우리 동네 실시간 날씨, 미세먼지 수치, 그리고 출근 버스 도착 정보를 맞춤형으로 브리핑합니다.
+                        </p>
+                        
+                        <form id="commute-settings-form">
+                            <!-- Section 1: 동네 & 날씨 -->
+                            <div class="commute-form-section">
+                                <div class="section-title"><i class="fa-solid fa-cloud-sun"></i> 1. 우리 동네 (날씨 & 대기질)</div>
+                                <div class="form-grid-2">
+                                    <div class="form-group">
+                                        <label for="commute-location-input">동네/지역 명칭:</label>
+                                        <input type="text" id="commute-location-input" placeholder="예: 서울 강남구 역삼동" required />
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="commute-station-input">대기 측정소명 (에어코리아):</label>
+                                        <input type="text" id="commute-station-input" placeholder="예: 강남구" />
+                                    </div>
+                                </div>
+                                <div class="form-grid-2">
+                                    <div class="form-group">
+                                        <label for="commute-grid-x">기상청 격자 X 좌표:</label>
+                                        <input type="number" id="commute-grid-x" placeholder="61" />
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="commute-grid-y">기상청 격자 Y 좌표:</label>
+                                        <input type="number" id="commute-grid-y" placeholder="125" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section 2: 출근길 버스 -->
+                            <div class="commute-form-section">
+                                <div class="section-title"><i class="fa-solid fa-bus-simple"></i> 2. 출근길 버스 정보</div>
+                                <div class="form-grid-2">
+                                    <div class="form-group">
+                                        <label for="commute-stop-name">탑승 정류소명:</label>
+                                        <input type="text" id="commute-stop-name" placeholder="예: 역삼역" required />
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="commute-stop-id">정류소 번호 / ARS ID:</label>
+                                        <input type="text" id="commute-stop-id" placeholder="예: 23284" />
+                                    </div>
+                                </div>
+                                <div class="form-grid-2">
+                                    <div class="form-group">
+                                        <label for="commute-route-name">버스 노선 번호:</label>
+                                        <input type="text" id="commute-route-name" placeholder="예: 146" required />
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="commute-city-code">도시 구분 (시/도):</label>
+                                        <select id="commute-city-code" class="form-select">
+                                            <option value="11">서울특별시 (11)</option>
+                                            <option value="31">경기도 (31)</option>
+                                            <option value="28">인천광역시 (28)</option>
+                                            <option value="34">충청남도 (34)</option>
+                                            <option value="99">기타 공공데이터 전국 (TAGO)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section 3: 스케줄 & 알림 -->
+                            <div class="commute-form-section">
+                                <div class="section-title"><i class="fa-solid fa-clock"></i> 3. 발송 스케줄 및 옵션</div>
+                                <div class="form-grid-2">
+                                    <div class="form-group">
+                                        <label for="commute-send-time">발송 희망 시각 (KST):</label>
+                                        <input type="time" id="commute-send-time" value="07:30" required />
+                                    </div>
+                                    <div class="form-group" style="justify-content: center;">
+                                        <div class="checkbox-row" style="margin-top: 15px;">
+                                            <label class="switch-label">
+                                                <input type="checkbox" id="commute-enabled" checked />
+                                                <span class="switch-text"><strong>출근 브리핑 활성화</strong></span>
+                                            </label>
+                                        </div>
+                                        <div class="checkbox-row" style="margin-top: 8px;">
+                                            <label class="switch-label">
+                                                <input type="checkbox" id="commute-weekdays-only" checked />
+                                                <span class="switch-text">평일(월~금)만 발송</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section 4: 공공데이터 API 키 -->
+                            <div class="commute-form-section">
+                                <div class="section-title"><i class="fa-solid fa-key"></i> 4. 공공데이터포털(data.go.kr) API 연동</div>
+                                <div class="form-group">
+                                    <label for="commute-api-key">공공데이터 일반 인증키 (ServiceKey):</label>
+                                    <input type="password" id="commute-api-key" placeholder="공공데이터포털 디코딩/인코딩 키 (미입력 시 스마트 시뮬레이션 모드)" autocomplete="off" />
+                                    <span class="field-hint">💡 키가 없어도 시뮬레이션(Mock) 모드로 즉시 작동하며, 언제든 키를 등록할 수 있습니다.</span>
+                                </div>
+                                <div class="checkbox-row">
+                                    <label class="switch-label">
+                                        <input type="checkbox" id="commute-mock-fallback" checked />
+                                        <span class="switch-text">외부 API 장애/점검 시 스마트 시뮬레이션 자동 폴백 허용</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </form>
+
+                        <!-- Real-time Preview Area -->
+                        <div id="commute-preview-section" class="commute-preview-section hidden">
+                            <div class="preview-header">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> <strong>실시간 브리핑 카드 미리보기</strong>
+                            </div>
+                            <div id="commute-preview-content" class="commute-preview-content"></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="btn-commute-preview" type="button" class="btn-info"><i class="fa-solid fa-magnifying-glass"></i> 실시간 미리보기</button>
+                        <button id="cancel-commute-btn" type="button" class="btn-secondary">닫기</button>
+                        <button id="save-commute-btn" type="button" class="btn-primary"><i class="fa-solid fa-floppy-disk"></i> 설정 저장</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Chat Console Area -->
             <div class="chat-console-wrapper">
                 <div id="chat-messages" class="chat-messages-container">
@@ -212,8 +343,9 @@
 
                 <!-- Input Box Bar -->
                 <div class="chat-input-wrapper">
-                    <!-- Quick Shortcut Chips Bar (ADR-022, ADR-024, ADR-025) -->
+                    <!-- Quick Shortcut Chips Bar (ADR-022, ADR-024, ADR-025, ADR-030) -->
                     <div class="watson-quick-bar">
+                        <button type="button" class="watson-chip-btn" id="btn-commute-view" title="출근길 날씨·미세먼지·버스 정보 설정"><i class="fa-solid fa-bus"></i> 🚌 출근길 설정</button>
                         <button type="button" class="watson-chip-btn" id="btn-schedule-view" title="브리핑 스케줄 및 오늘 일정 확인"><i class="fa-solid fa-clock"></i> ⏰ 스케줄</button>
                         <button type="button" class="watson-chip-btn" data-cmd="/briefing morning" title="오늘 아침 우선순위 및 일정 브리핑 (스케줄: 08:30 KST)"><i class="fa-solid fa-sun"></i> 🌅 아침 (08:30)</button>
                         <button type="button" class="watson-chip-btn" data-cmd="/briefing evening" title="오늘 하루 일과 회고 및 이월 점검 (스케줄: 20:00 KST)"><i class="fa-solid fa-moon"></i> 🌇 저녁 (20:00)</button>

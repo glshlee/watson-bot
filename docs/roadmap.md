@@ -252,6 +252,17 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] 파워유저용 패스트트랙(`/log [내용]`) 직통 기록 유지
 - [x] 단위 테스트(`test_llm_provider.py`, `test_supervisor_service.py`), 린트/타입 검사 및 `./scripts/smoke_test.sh` 3-8-3 라이브 검증 완료
 
+### Phase 29: 출근길 맞춤형 브리핑 설정 인터페이스 및 동적 연동 (ADR-030) - ✅ 완료
+- [x] `CommuteConfigService` 신설: 거주지, 기상청 격자 좌표, 에어코리아 측정소, 출근 버스(정류소명/ID, 노선 번호, 도시코드), 발송 시각(`07:30`), 공공데이터 API 키 관리 및 `config/commute_config.json` 영속화
+- [x] API 키 안전 마스킹(`****`) 및 기존 등록 키 보존 로직 구현
+- [x] REST API 엔드포인트(`GET/POST /api/settings/commute`, `POST /api/settings/commute/preview`) 구축
+- [x] 웹 대시보드 상단 헤더 배지(`#commute-settings-badge`), 퀵바 칩(`[🚌 출근길 설정]`), 인터랙티브 모달(`#commute-modal`) 구현
+- [x] 모달 내 실시간 브리핑 카드 미리보기(`[🔍 실시간 미리보기]`) 및 원터치 저장/토스트 연동
+- [x] `SupervisorService` 및 `LLMProvider`에 `commute_inspect` 인텐트, 슬래시 커맨드(`/commute`, `/commute test`), 자연어 질의 연계
+- [x] DevBot 콘솔(`/dev`) 퀵바에 `/commute (출근길)` 칩 추가
+- [x] 공공데이터 키 미등록/외부 장애 시 스마트 시뮬레이션(Mock) 폴백 지원
+- [x] 단위 테스트(`tests/test_commute_config_service.py`) 및 `./scripts/smoke_test.sh` 6단계(6-1 ~ 6-4) 라이브 검증 완료
+
 
 
 

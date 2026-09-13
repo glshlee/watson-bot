@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.config import get_app_timezone, get_now
 from app.services.agent_service import AgentService
 from app.services.briefing_service import BriefingService
+from app.services.commute_config_service import CommuteConfigService
 from app.services.git_service import GitService
 from app.services.llm_provider import LLMProvider
 from app.services.session_service import SessionService
@@ -18,6 +19,7 @@ class SupervisorService:
     def __init__(self, db: Session, base_dir: str | None = None):
         self.session_service = SessionService(db)
         self.settings_service = SettingsService()
+        self.commute_config_service = CommuteConfigService()
         self.base_dir = base_dir or self.settings_service.get_gtd_path()
         self.agent_service = AgentService(base_dir=self.base_dir)
         self.git_service = GitService(repo_path=self.base_dir)
@@ -271,6 +273,27 @@ class SupervisorService:
         elif intent_res.intent == "briefing_schedule_inspect":
             # (D-3d) 브리핑 스케줄 및 오늘 주요 일정 시간표 확인 (ADR-025)
             final_response = self.briefing_service.format_schedule_briefing(date_obj=get_now())
+
+        elif intent_res.intent == "commute_inspect":
+            # (D-3e) 출근길 모닝 브리핑 설정 및 실시간 카드 프리뷰 (ADR-030)
+            cfg = self.commute_config_service.get_masked_config()
+            if intent_res.log_content == "preview":
+                preview_data = self.commute_config_service.generate_preview()
+                final_response = preview_data["markdown"]
+            else:
+                active_str = f"✅ 활성 ({cfg['send_time']} KST)" if cfg.get("enabled") else "⏸️ 비활성"
+                days_str = "평일(월~금) 아침" if cfg.get("weekdays_only") else "매일 아침"
+                api_mode = "✅ API 인증키 등록됨" if cfg.get("has_api_key") else "💡 스마트 시뮬레이션 모드 (API 키 미등록)"
+                final_response = (
+                    f"🚌 **출근길 날씨·미세먼지·버스 브리핑 설정 (ADR-030)**\n\n"
+                    f"• **상태**: {active_str} ({days_str})\n"
+                    f"• **우리 동네**: `{cfg.get('location_name')}` (측정소: `{cfg.get('air_station_name')}`, 격자: `{cfg.get('grid_x')},{cfg.get('grid_y')}`)\n"
+                    f"• **출근길 버스**: `{cfg.get('bus_stop_name')}` (정류소ID: `{cfg.get('bus_stop_id')}`) ➔ **{cfg.get('bus_route_name')}번**\n"
+                    f"• **공공데이터 연동**: {api_mode}\n\n"
+                    f"💡 **실행 및 설정 안내:**\n"
+                    f"• `/commute test`: 현재 설정으로 실시간 브리핑 카드 즉시 생성 미리보기\n"
+                    f"• 웹 대시보드 상단의 **[🚌 출근 브리핑]** 버튼을 통해 상세 정보를 쉽게 수정할 수 있습니다!"
+                )
 
         elif intent_res.intent == "log_status_inspect":
             # (D-6a) 당일 라이프로그 물리적 기록 여부 정밀 점검 및 보고 (ADR-028)

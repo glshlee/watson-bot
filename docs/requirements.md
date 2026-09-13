@@ -169,6 +169,13 @@
 - **FR-28.3**: 텔레그램에서는 인라인 버튼(`[✅ 응, 기록해줘]`, `[❌ 아니야]`)을 부착하고, 웹 대시보드(`/watson`)에서는 퀵 액션 버튼(`[응, 기록해줘]`, `[아니야]`)을 동적 제공하여 무타자 원터치 승인/거절을 지원해야 한다.
 - **FR-28.4**: 파워유저를 위한 패스트트랙(`/log [내용]`)을 유지하여 2단계 검토 없이 0초 만에 직접 물리 기록 및 Git 커밋·푸시를 집행할 수 있어야 한다.
 
+### FR-29: 출근길 맞춤형 브리핑 설정 인터페이스 및 동적 연동 (ADR-030)
+- **FR-29.1**: `CommuteConfigService`를 구축하여 거주 지역(동네명, 기상 격자 X/Y 좌표, 대기 측정소명), 출근길 버스(탑승 정류소명, 정류소 ID, 버스 노선 번호, 도시코드), 정기 발송 시각(`07:30` KST, 평일 전용 토글), 공공데이터포털 API 키를 `config/commute_config.json`에 안전하게 영속화해야 한다.
+- **FR-29.2**: RESTful API(`GET/POST /api/settings/commute`, `POST /api/settings/commute/preview`)를 제공하여 설정 조회(API 키 마스킹 포함), 설정 저장, 실시간 카드 렌더링 미리보기를 지원해야 한다.
+- **FR-29.3**: 웹 콘솔 상단 헤더 배지(`[🚌 출근: 07:30]`), 퀵바 칩(`[🚌 출근길 설정]`), 인터랙티브 모달(`#commute-modal`)을 제공하여 타이핑 없이 1클릭으로 설정을 열람/수정하고 모달 내에서 실시간으로 브리핑 카드를 테스트할 수 있어야 한다.
+- **FR-29.4**: 대화형 슬래시 명령어(`/commute`, `/commute test`) 및 자연어 질의("출근길", "우리 동네 날씨", "버스 언제 와")를 지원하여 현재 설정 현황 및 실시간 브리핑 카드를 즉시 확인할 수 있어야 한다.
+- **FR-29.5**: 공공데이터 API 키 미등록 또는 외부 서버 장애 시에도 스마트 시뮬레이션(Mock) 모드로 자동 폴백되어 시스템이 중단되지 않아야 한다.
+
 ---
 
 
@@ -220,6 +227,7 @@
 | **FR-26** | `app/services/telegram_service.py`, `app/services/agent_service.py`, `app/services/briefing_scheduler.py`, `app/services/supervisor_service.py` | Pytest 단위 테스트(`test_telegram_service.py`, `test_agent_service.py`, `test_briefing_scheduler.py`) & cURL 검증(3-8-1) |
 | **FR-27** | `app/services/llm_provider.py`, `app/services/supervisor_service.py`, `app/services/agent_service.py` | Pytest 단위 테스트(`test_llm_provider.py`, `test_supervisor_service.py`) & cURL 스모크 검증(3-8-2) |
 | **FR-28** | `app/services/llm_provider.py`, `app/services/supervisor_service.py`, `app/services/session_service.py`, `app/services/telegram_service.py`, `app/static/js/main.js` | Pytest 단위 테스트(`test_llm_provider.py`, `test_supervisor_service.py`) & cURL 스모크 검증(3-8-3) |
+| **FR-29** | `app/services/commute_config_service.py`, `app/routers/settings_router.py`, `app/templates/index.html`, `app/static/js/main.js` | Pytest 단위 테스트(`test_commute_config_service.py`) & cURL 스모크 검증(6) |
 
 
 

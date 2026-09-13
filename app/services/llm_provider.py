@@ -538,6 +538,18 @@ class LLMProvider:
                 category="GTD",
             )
 
+        # (C) 출근길 날씨·미세먼지·버스 브리핑 설정 및 미리보기 (/commute - ADR-030)
+        is_commute_cmd = prompt_lower.startswith(("/commute", "/bus", "/weather"))
+        is_commute_nlp = any(k in prompt_lower for k in ["출근길", "출근 버스", "버스 언제", "버스 도착", "버스 정보", "우리 동네 날씨", "우리지역 날씨", "출근길 날씨"])
+        if is_commute_cmd or is_commute_nlp:
+            is_preview = any(k in prompt_lower for k in ["test", "preview", "미리보기", "테스트", "언제 와", "언제와", "도착 정보", "지금"])
+            return IntentResult(
+                intent="commute_inspect",
+                ai_response="",
+                log_content="preview" if is_preview else "status",
+                category="Commute",
+            )
+
         # -------------------------------------------------------------
         # 4-2. GTD 할 일 / 일정 / 브리핑 요청 (task_briefing - ADR-008, ADR-024, ADR-025)
         # -------------------------------------------------------------

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "send_time": "07:30",
+  "weekdays_only": true,
+  "location_name": "서울 강남구 역삼동",
+  "grid_x": 61,
+  "grid_y": 125,
+  "air_station_name": "강남구",
+  "bus_stop_name": "역삼역",
+  "bus_stop_id": "23284",
+  "bus_route_name": "146",
+  "bus_route_id": "",
+  "city_code": "11",
+  "public_data_api_key": "",
+  "use_mock_fallback": true,
+  "updated_at": ""
+}
