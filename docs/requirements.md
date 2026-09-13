@@ -176,6 +176,13 @@
 - **FR-29.4**: 대화형 슬래시 명령어(`/commute`, `/commute test`) 및 자연어 질의("출근길", "우리 동네 날씨", "버스 언제 와")를 지원하여 현재 설정 현황 및 실시간 브리핑 카드를 즉시 확인할 수 있어야 한다.
 - **FR-29.5**: 공공데이터 API 키 미등록 또는 외부 서버 장애 시에도 스마트 시뮬레이션(Mock) 모드로 자동 폴백되어 시스템이 중단되지 않아야 한다.
 
+### FR-30: 구어체 태스크 완료 인식 고도화 및 항의·메타 피드백 가드레일 (ADR-031)
+- **FR-30.1**: "민방위 사이버교육은 완료했어", "사이버교육 다했어", "보고서 제출 끝났어" 등 일상 구어체 완료 발화를 정확히 감지하여 `task_complete` 인텐트로 라우팅해야 한다.
+- **FR-30.2**: `[태스크] 완료 gtd에 기록해/반영해` 지시 시 신규 미완료 태스크 생성을 원천 차단하고 기존 GTD 태스크의 완료(`- [x]`) 처리로 우선 라우팅해야 한다.
+- **FR-30.3**: "아니 이미 인박스에 있다면서. 그래서 완료했다고 말한건데?" 등 봇의 이전 동작에 대한 항의/정정 발화 감지 시 일기 초안(`log_suggest`)으로 오인 제안하지 않고, 대화 히스토리를 역추적하여 원래 요청 태스크를 찾아 자동 복구 및 정중히 사과해야 한다.
+- **FR-30.4**: `AgentService.complete_matching_tasks`는 서술어("완료했어", "끝났어", "해결함", "은/는/이/가")를 자동 정제하고 2글자 이상 세부 토큰으로 분해하여 유연하고 안전하게 GTD 태스크를 매칭해야 한다.
+- **FR-30.5**: `work_keywords`에서 단독 "완료" 키워드를 제거하고 업무 복합어 정규식으로 안전화하여 오탐을 원천 차단해야 한다.
+
 ---
 
 
@@ -228,6 +235,7 @@
 | **FR-27** | `app/services/llm_provider.py`, `app/services/supervisor_service.py`, `app/services/agent_service.py` | Pytest 단위 테스트(`test_llm_provider.py`, `test_supervisor_service.py`) & cURL 스모크 검증(3-8-2) |
 | **FR-28** | `app/services/llm_provider.py`, `app/services/supervisor_service.py`, `app/services/session_service.py`, `app/services/telegram_service.py`, `app/static/js/main.js` | Pytest 단위 테스트(`test_llm_provider.py`, `test_supervisor_service.py`) & cURL 스모크 검증(3-8-3) |
 | **FR-29** | `app/services/commute_config_service.py`, `app/routers/settings_router.py`, `app/templates/index.html`, `app/static/js/main.js` | Pytest 단위 테스트(`test_commute_config_service.py`) & cURL 스모크 검증(6) |
+| **FR-30** | `app/services/llm_provider.py`, `app/services/agent_service.py`, `app/services/supervisor_service.py` | Pytest 단위 테스트(`test_task_completion_and_meta_guard.py`) & cURL 스모크 검증(7) |
 
 
 

@@ -113,6 +113,59 @@ class LLMProvider:
                 )
 
         # -------------------------------------------------------------
+        # 1-0. 메타 피드백 / 항의 / 정정 발화 가드레일 (meta_feedback - ADR-031)
+        # 예: "아니 이미 인박스에 있다면서. 그래서 완료했다고 말한건데?", "왜 또 등록해?", "그게 아니고 완료한 거라고"
+        # -------------------------------------------------------------
+        meta_protest_patterns = [
+            r"^(?:아니\s*)?(?:이미|벌써)?\s*.*?(?:있다면서|있잖아|했다면서|했잖아|말했잖아|그게\s*아니|왜\s*또|왜\s*새로|왜\s*등록|말한\s*건데|말한거야|말한건가|무슨\s*소리|이게\s*뭐야|그게\s*아닌데|누가\s*등록|등록하라는게\s*아니)",
+            r"^(?:아니|그게\s*아니라)\s*.*?(?:완료|끝|해결|삭제|제거).*?(?:말한|한\s*건데|거야|잖아)",
+            r".*?(?:있다면서|했다면서|말했잖아|그게\s*아니라|말한\s*건데|말한거야)[\?\!\.\s]*$",
+        ]
+        is_meta_protest = any(re.search(pat, prompt_clean, re.IGNORECASE) for pat in meta_protest_patterns)
+        if is_meta_protest:
+            # 사용자가 이전 봇의 잘못된 등록에 항의하며 완료/삭제를 원하고 있는 경우 지능형 자동 복구
+            if any(k in prompt_clean for k in ["완료", "끝", "해결", "체크", "다했"]):
+                target_query = ""
+                m_task = re.search(r"([가-힣a-zA-Z0-9\s]{2,25}?)\s*(?:완료했다고|완료한|끝났다고|해결했다고|완료)", prompt_clean)
+                if m_task and len(m_task.group(1).strip()) >= 2:
+                    t_cand = m_task.group(1).strip()
+                    if not any(k in t_cand for k in ["아니", "인박스", "이미", "그래서", "말한"]):
+                        target_query = t_cand
+                if not target_query and history:
+                    for h in reversed(history):
+                        if h.get("role") == "user":
+                            prev_content = h.get("content", "").strip()
+                            cleaned_prev = re.sub(r"(완료\s*gtd에\s*기록해|완료했어|완료|끝났어|gtd에\s*기록해|기록해)[\.\!\?\s]*$", "", prev_content).strip()
+                            cleaned_prev = re.sub(r"[은는이가을를도]$", "", cleaned_prev).strip()
+                            if len(cleaned_prev) >= 2 and not any(k in cleaned_prev for k in ["아니", "인박스", "이미", "/", "briefing", "schedule"]):
+                                target_query = cleaned_prev
+                                break
+
+                return IntentResult(
+                    intent="task_complete",
+                    ai_response="",
+                    log_content=target_query,
+                    category="GTD",
+                )
+            elif any(k in prompt_clean for k in ["삭제", "제거", "빼", "지워"]):
+                return IntentResult(
+                    intent="gtd_remove",
+                    ai_response="",
+                    log_content=prompt_clean,
+                    category="GTD",
+                )
+            else:
+                return IntentResult(
+                    intent="chat_only",
+                    ai_response=(
+                        "아, 제가 말씀하신 맥락을 오해하고 잘못 처리해 드렸던 것 같습니다. 죄송합니다! 🙇‍♂️\n\n"
+                        "요청하시려던 작업이나 확인이 필요한 내용이 있다면 다시 편하게 말씀해 주세요. 즉시 의도에 맞게 챙겨드리겠습니다!"
+                    ),
+                    log_content=None,
+                    category=None,
+                )
+
+        # -------------------------------------------------------------
         # 2. 명시적 직접 기록 및 맥락 참조 기록 요청 (log_explicit - ADR-010)
         # -------------------------------------------------------------
         if prompt_clean.startswith("/log "):
@@ -222,6 +275,60 @@ class LLMProvider:
                         category=cat,
                     )
 
+        # -------------------------------------------------------------
+        # 2-1-3. GTD 태스크 체크박스 완료 처리 (task_complete - ADR-027, ADR-031)
+        # 예: "/done", "1순위 완료", "민방위 사이버교육은 완료했어", "자료조사 완료 gtd에 기록해", "사이버교육 다했어"
+        # -------------------------------------------------------------
+        prompt_lower = prompt_clean.lower()
+        done_shortcuts = ["/done", "done", "1순위 완료", "1순위완료", "1순위 태스크 완료", "1순위 끝", "1순위 끝났어", "1번 완료", "탑 태스크 완료"]
+        is_done_cmd = prompt_lower in done_shortcuts or prompt_lower.startswith("/done ")
+
+        # A. "~ 완료 gtd에 기록해/반영해" 등 태스크 완료 GTD 반영 패턴 (ADR-031)
+        complete_gtd_record_pattern = (
+            r"^(.*?)(?:은|는|이|가|도)?\s*(?:완료|해결|끝|체크)\s*(?:처리)?\s*(?:도|는|은)?\s*"
+            r"(?:오늘\s*)?(?:자\s*)?(?:gtd|인박스|inbox|수집함|할일|next\s*actions)?\s*(?:에|로|도)?\s*"
+            r"(?:기록해줘|기록해|적어줘|남겨줘|반영해줘|반영해|체크해줘|체크해|체크)[\.\!\?\s]*$"
+        )
+        complete_gtd_match = re.search(complete_gtd_record_pattern, prompt_clean, re.IGNORECASE)
+
+        # B. 구어체 태스크 완료 보고 패턴 (e.g. "민방위 사이버교육은 완료했어", "사이버교육 다했어", "보고서 작성 마쳤어") (ADR-031)
+        colloquial_complete_pattern = (
+            r"^(.*?)(?:은|는|이|가|도)?\s*"
+            r"(?:완료했어|완료함|완료|끝났어|끝냈어|끝냄|다했어|다했다|해결했어|해결함|해결|마쳤어|마침|해치웠어|체크해줘|체크함|체크)[\.\!\?\s]*$"
+        )
+        colloquial_match = re.search(colloquial_complete_pattern, prompt_clean, re.IGNORECASE)
+
+        is_complete_target = False
+        target_query = ""
+
+        if is_done_cmd:
+            is_complete_target = True
+            if prompt_lower.startswith("/done "):
+                target_query = prompt_clean[6:].strip()
+        elif complete_gtd_match:
+            is_complete_target = True
+            target_query = complete_gtd_match.group(1).strip()
+        elif colloquial_match and len(colloquial_match.group(1).strip()) <= 45:
+            raw_target = colloquial_match.group(1).strip()
+            daily_summary_keywords = ["오늘", "하루", "일과", "업무", "퇴근", "출근"]
+            words = raw_target.split()
+            is_pure_summary = len(words) > 0 and all(k in daily_summary_keywords for k in words)
+            if not is_pure_summary and not any(k in raw_target for k in ["아니", "인박스", "이미"]):
+                is_complete_target = True
+                target_query = raw_target
+
+        if is_complete_target:
+            target_query = re.sub(r"^(응|어|네|예|그래|좋아|오늘|오늘자|자|gtd|인박스|할일|태스크)\s*", "", target_query).strip()
+            target_query = re.sub(r"[은는이가을를도]$", "", target_query).strip()
+            if target_query in ["1순위", "1번", "탑", "top", "첫번째", "태스크", "할일", "과제", ""]:
+                target_query = ""
+            return IntentResult(
+                intent="task_complete",
+                ai_response="",
+                log_content=target_query,
+                category="GTD",
+            )
+
         # 2-2. 복합 기록 지시 (데일리 로그 + GTD 인박스 동시 기록 - ADR-014)
         # 예: "회사에서 리조트를 신청할 수 있거든? ... 로그와 gtd에 기록해줘."
         dual_pattern = r"[\s,.]*(?:이\s*내용|이\s*이야기|이\s*글|이거|이것도)?\s*(?:오늘\s*)?(?:자\s*)?(?:데일리\s*)?(?:라이프\s*)?(?:로그\s*와|로그\s*랑|일기\s*와|일기\s*랑|다이어리\s*와|다이어리\s*랑)\s*(?:gtd\s*에?|할일\s*(?:에|에?도)?|인박스\s*에?|수집함\s*에?)\s*(?:둘\s*다|모두|함께|동시에)?\s*(?:에|로|을|를|도)?\s*(?:기록해줘|적어줘|남겨줘|넣어줘|추가해줘|올려줘|등록해줘|기록해|메모해줘)[\.\!\?\s]*$"
@@ -255,6 +362,16 @@ class LLMProvider:
             matched_suffix = single_end_match.group(0).lower()
 
             if any(k in matched_suffix for k in ["gtd", "인박스", "inbox", "수집함", "할일"]):
+                # 혹시 본문에 완료/해결/체크가 포함되어 있다면 신규 생성이 아닌 task_complete로 우회 (ADR-031)
+                if any(w in cleaned_body for w in ["완료", "끝", "해결", "체크"]):
+                    pure_task = re.sub(r"(완료|끝|해결|체크)[\.\!\?\s]*$", "", cleaned_body).strip()
+                    pure_task = re.sub(r"[은는이가을를도]$", "", pure_task).strip()
+                    return IntentResult(
+                        intent="task_complete",
+                        ai_response="",
+                        log_content=pure_task,
+                        category="GTD",
+                    )
                 gtd_task = self._extract_actionable_task(cleaned_body)
                 return IntentResult(
                     intent="log_explicit",
@@ -293,32 +410,7 @@ class LLMProvider:
                 )
 
         # -------------------------------------------------------------
-        # 2-3-1. GTD 태스크 체크박스 완료 처리 (task_complete - ADR-027)
-        # 예: "/done", "1순위 완료", "1순위 태스크 끝났어", "1번 태스크 완료", "할일 완료", "/done [태스크명]"
-        # -------------------------------------------------------------
-        prompt_lower = prompt_clean.lower()
-        done_shortcuts = ["/done", "done", "1순위 완료", "1순위완료", "1순위 태스크 완료", "1순위 끝", "1순위 끝났어", "1번 완료", "탑 태스크 완료"]
-        is_done_cmd = prompt_lower in done_shortcuts or prompt_lower.startswith("/done ")
-        
-        complete_patterns = [
-            r"^(?:1순위|1번|탑|top)?\s*(?:태스크|할일|과제)?\s*(?:완료했어|완료함|완료|끝났어|끝냈어|체크해줘|체크)[\.\!\?\s]*$",
-            r"^(?:1순위|1번)\s*(?:태스크|할일|과제)\s*(?:완료|체크|해결)",
-        ]
-        is_complete_match = any(re.search(pat, prompt_lower, re.IGNORECASE) for pat in complete_patterns)
-
-        if is_done_cmd or is_complete_match:
-            target_query = ""
-            if prompt_lower.startswith("/done "):
-                target_query = prompt_clean[6:].strip()
-            return IntentResult(
-                intent="task_complete",
-                ai_response="",
-                log_content=target_query,
-                category="GTD",
-            )
-
-        # -------------------------------------------------------------
-        # 2-4. GTD 태스크 삭제/제거/완료 처리 의도 (gtd_remove - ADR-020)
+        # 2-4. GTD 태스크 삭제/제거 의도 (gtd_remove - ADR-020)
         # 예: "tiara_ad는 제거해. 주간보고 아젠다도 제거...", "tiara_ad 빼줘", "할일에서 OO 삭제해줘"
         # -------------------------------------------------------------
         remove_triggers = ["제거", "삭제", "빼줘", "빼", "지워", "지워줘", "제외", "제외해", "완료 처리", "해결 완료"]
@@ -639,8 +731,9 @@ class LLMProvider:
                 category=cat,
             )
 
-        work_keywords = ["미팅", "회의", "프로젝트", "배포", "출시", "통과", "발표", "보고서", "완료", "퇴근", "출근", "업무", "성공"]
-        if any(k in prompt_clean for k in work_keywords):
+        work_keywords = ["미팅", "회의", "프로젝트", "배포", "출시", "통과", "발표", "보고서", "퇴근", "출근", "업무", "성공"]
+        has_work_complete = bool(re.search(r"(?:업무|프로젝트|작업|개발|배포|테스트|회의|보고서)\s*(?:성공|완료|끝)", prompt_clean))
+        if any(k in prompt_clean for k in work_keywords) or has_work_complete:
             cat = "Daily Notes & Diary"
             ai_response = (
                 f"오늘 하루도 정말 수고 많으셨습니다! 💼 오늘의 업무 및 일과({cat})에 아래 초안대로 **기록해 둘까요?** 📝\n\n"

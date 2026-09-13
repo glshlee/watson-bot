@@ -496,4 +496,38 @@ else
     exit 1
 fi
 
+echo "7. Testing Task Completion & Meta-Feedback Guardrail (ADR-031)..."
+# 7-1. 구어체 태스크 완료 보고
+COMPLETE_CHAT_1=$(run_curl -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_task_session", "message": "민방위 사이버교육은 완료했어.", "auto_push": false}')
+if echo "$COMPLETE_CHAT_1" | grep -q '"intent":"task_complete"'; then
+    echo "  ✅ 7-1. Colloquial Task Completion Passed (intent=task_complete)"
+else
+    echo "  ❌ 7-1. Colloquial Task Completion Failed: $COMPLETE_CHAT_1"
+    exit 1
+fi
+
+# 7-2. 완료 gtd에 기록해 지시 시 신규 미완료 태스크 생성 방지
+COMPLETE_CHAT_2=$(run_curl -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_task_session", "message": "민방위 사이버교육 완료 gtd에 기록해.", "auto_push": false}')
+if echo "$COMPLETE_CHAT_2" | grep -q '"intent":"task_complete"'; then
+    echo "  ✅ 7-2. Task Complete GTD Directive Passed (intent=task_complete)"
+else
+    echo "  ❌ 7-2. Task Complete GTD Directive Failed: $COMPLETE_CHAT_2"
+    exit 1
+fi
+
+# 7-3. 사용자 메타 항의 시 log_suggest 오인 방지 및 지능형 복구
+PROTEST_CHAT=$(run_curl -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_task_session", "message": "아니 이미 인박스에 있다면서. 그래서 완료했다고 말한건데?", "auto_push": false}')
+if echo "$PROTEST_CHAT" | grep -qv '"intent":"log_suggest"'; then
+    echo "  ✅ 7-3. Meta-Feedback Protest Guardrail Passed (No false log_suggest proposal)"
+else
+    echo "  ❌ 7-3. Meta-Feedback Protest Guardrail Failed: $PROTEST_CHAT"
+    exit 1
+fi
+
 echo "🎉 All Curl Smoke Tests Passed Successfully!"

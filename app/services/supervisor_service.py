@@ -163,8 +163,11 @@ class SupervisorService:
                             push_success = p_ok
                     else:
                         self.git_service.commit(commit_msg)
+                    apology = ""
+                    if any(k in user_message for k in ["있다면서", "했잖아", "말했잖아", "말한건데", "아니 이미", "그게 아니라"]):
+                        apology = "오해하여 잘못 안내해 드려 죄송합니다! 🙇‍♂️ 기존 GTD 항목을 찾아 즉시 완료 처리했습니다.\n\n"
                     final_response = (
-                        f"🎉 **GTD 태스크 완료 처리**\n\n"
+                        f"{apology}🎉 **GTD 태스크 완료 처리**\n\n"
                         f"{bullets}{push_res}"
                     )
                 else:

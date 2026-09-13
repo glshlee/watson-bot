@@ -263,6 +263,16 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] 공공데이터 키 미등록/외부 장애 시 스마트 시뮬레이션(Mock) 폴백 지원
 - [x] 단위 테스트(`tests/test_commute_config_service.py`) 및 `./scripts/smoke_test.sh` 6단계(6-1 ~ 6-4) 라이브 검증 완료
 
+### Phase 30: 구어체 태스크 완료 인식 고도화 및 항의·메타 피드백 가드레일 (ADR-031) - ✅ 완료
+- [x] `LLMProvider`에 구어체 태스크 완료 보고 패턴(`colloquial_complete_pattern`) 지원 ("민방위 사이버교육은 완료했어", "사이버교육 다했어", "보고서 제출 끝났어" 등)
+- [x] `[태스크] 완료 gtd에 기록해/반영해` 지시 시 신규 할 일 생성 차단 및 `task_complete` 인텐트로 최우선 라우팅
+- [x] 사용자 항의 / 메타 피드백 가드레일(`meta_protest_patterns`) 구축 ("아니 이미 인박스에 있다면서. 그래서 완료했다고 말한건데?" 등)
+- [x] 항의 발화 감지 시 일기 초안(`log_suggest`) 오탐을 100% 방지하고, 이전 대화 히스토리(`history`) 역추적으로 의도된 태스크를 자동 발췌하여 지능형 복구 및 정중한 사과 응답 연계
+- [x] `AgentService.complete_matching_tasks`의 서술어("완료했어", "끝났어", "해결함", "은/는/이/가") 자동 strip 및 2글자 이상 세부 토큰 분해 매칭 구현
+- [x] `work_keywords`에서 단독 "완료" 키워드를 제거하고 업무 복합어 정규식으로 안전화
+- [x] 단위 테스트(`tests/test_task_completion_and_meta_guard.py`), 린트/타입 검사 및 `./scripts/smoke_test.sh` 7단계(7-1 ~ 7-3) 라이브 검증 완료
+
+
 
 
 

@@ -542,7 +542,8 @@ class AgentService:
 
     def complete_matching_tasks(self, keywords: list[str]) -> list[str]:
         """
-        키워드와 일치하는 미완료 태스크('- [ ]')들을 찾아 '- [x]'로 완료 처리합니다 (ADR-027).
+        키워드와 일치하는 미완료 태스크('- [ ]')들을 찾아 '- [x]'로 완료 처리합니다 (ADR-027, ADR-031).
+        구어체 어미('완료했어', '끝났어')를 정제하고 2글자 이상 세부 토큰으로 유연하게 매칭합니다.
         """
         today_log = self.get_lifelog_filepath()
         target_files = [
@@ -551,9 +552,26 @@ class AgentService:
             self.get_gtd_inbox_filepath(),
         ]
 
+        expanded_keywords: list[str] = []
+        for kw in keywords:
+            kw_clean = kw.strip().lower()
+            # 서술어, 조사, 어미 정제 ("완료했어", "끝났어", "해결함", "은/는/이/가")
+            kw_pure = re.sub(r"(완료했어|완료함|완료|끝났어|끝냈어|끝|해결했어|해결함|해결|체크해줘|체크함|체크|다했어|다했다|마쳤어|마침)[\.\!\?\s]*$", "", kw_clean).strip()
+            kw_pure = re.sub(r"[은는이가을를도]$", "", kw_pure).strip()
+            if len(kw_pure) >= 2 and kw_pure not in ["완료", "해결", "체크", "끝", "할일", "태스크"] and kw_pure not in expanded_keywords:
+                expanded_keywords.append(kw_pure)
+            # 2글자 이상 세부 토큰 추출
+            for token in kw_pure.split():
+                token_clean = token.strip()
+                if (
+                    len(token_clean) >= 2
+                    and token_clean not in ["은", "는", "이", "가", "을", "를", "의", "에", "로", "과", "와"]
+                    and token_clean not in expanded_keywords
+                ):
+                    expanded_keywords.append(token_clean)
+
         clean_keywords = [
-            k.strip().lower()
-            for k in keywords
+            k for k in (expanded_keywords or keywords)
             if len(k.strip()) >= 2 and k.strip().lower() not in ["완료", "해결", "체크", "끝", "할일", "태스크"]
         ]
         if not clean_keywords:
