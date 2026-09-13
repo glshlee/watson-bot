@@ -181,7 +181,11 @@
 - **FR-30.2**: `[태스크] 완료 gtd에 기록해/반영해` 지시 시 신규 미완료 태스크 생성을 원천 차단하고 기존 GTD 태스크의 완료(`- [x]`) 처리로 우선 라우팅해야 한다.
 - **FR-30.3**: "아니 이미 인박스에 있다면서. 그래서 완료했다고 말한건데?" 등 봇의 이전 동작에 대한 항의/정정 발화 감지 시 일기 초안(`log_suggest`)으로 오인 제안하지 않고, 대화 히스토리를 역추적하여 원래 요청 태스크를 찾아 자동 복구 및 정중히 사과해야 한다.
 - **FR-30.4**: `AgentService.complete_matching_tasks`는 서술어("완료했어", "끝났어", "해결함", "은/는/이/가")를 자동 정제하고 2글자 이상 세부 토큰으로 분해하여 유연하고 안전하게 GTD 태스크를 매칭해야 한다.
-- **FR-30.5**: `work_keywords`에서 단독 "완료" 키워드를 제거하고 업무 복합어 정규식으로 안전화하여 오탐을 원천 차단해야 한다.
+### FR-31: GTD 스킬 명세 동기화 및 태스크 완료 시 데일리 로그 수술적 이관 (ADR-032)
+- **FR-31.1**: 미완료 할 일은 오직 `gtd/` 디렉토리 5개 상태 파일(`inbox.md`, `next_actions.md` 등)에서만 보관(SSOT)하고, 데일리 로그(`logs/daily/YYYY-MM-DD.md`)는 미완료 할 일을 남기거나 이월(Rollover)하지 않아야 한다.
+- **FR-31.2**: 태스크 완료("완료했어", "/done", 1순위 완료 등) 시 `AgentService`는 `gtd/` 파일에서 해당 항목을 완전히 잘라내어(Cut) 제거하고, 당일 데일리 로그(`logs/daily/YYYY-MM-DD.md`)의 `## ✅ 오늘 완료한 일 (Completed GTD Tasks)` 섹션으로 `- [x]` 형태로 안전하게 이관(Paste)해야 한다 (`transfer_completed_task_to_daily_log`).
+- **FR-31.3**: `LLMProvider`는 연결된 GTD 경로의 `skills/gtd-assistant/SKILL.md`를 감지하여 핵심 행동 강령(SSOT, Surgical Transfer)을 시스템 프롬프트에 `[적용 스킬: gtd-assistant]`로 자동 주입하고, `agy` CLI 호출 시 서브프로세스 `cwd`를 사용자의 GTD 경로(`GTD_PATH`)로 설정하여 CLI 네이티브 스킬 자동 로딩을 보장해야 한다.
+- **FR-31.4**: 헬스장, 스쿼트, 푸시업 등 운동 일과 발화는 문장 내 "완료" 키워드가 포함되어 있어도 `task_complete`로 오인되지 않고 운동 라이프로그 초안(`log_suggest`)으로 안전하게 분류되어야 한다.
 
 ---
 
@@ -236,6 +240,7 @@
 | **FR-28** | `app/services/llm_provider.py`, `app/services/supervisor_service.py`, `app/services/session_service.py`, `app/services/telegram_service.py`, `app/static/js/main.js` | Pytest 단위 테스트(`test_llm_provider.py`, `test_supervisor_service.py`) & cURL 스모크 검증(3-8-3) |
 | **FR-29** | `app/services/commute_config_service.py`, `app/routers/settings_router.py`, `app/templates/index.html`, `app/static/js/main.js` | Pytest 단위 테스트(`test_commute_config_service.py`) & cURL 스모크 검증(6) |
 | **FR-30** | `app/services/llm_provider.py`, `app/services/agent_service.py`, `app/services/supervisor_service.py` | Pytest 단위 테스트(`test_task_completion_and_meta_guard.py`) & cURL 스모크 검증(7) |
+| **FR-31** | `app/services/agent_service.py`, `app/services/llm_provider.py`, `app/services/supervisor_service.py` | Pytest 단위 테스트(`test_agent_service.py`, `test_task_completion_and_meta_guard.py`) & cURL 검증 |
 
 
 

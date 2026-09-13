@@ -255,8 +255,18 @@
   * 이전 대화 히스토리를 역추적하여 사용자가 원래 요청했던 태스크 완료/삭제 작업을 즉시 자동 복구하고 정중한 사과 응답 제공.
 * **유연한 토큰 매칭 및 서술어 자동 정제 (`complete_matching_tasks`)**:
   * 키워드에서 "완료했어", "끝났어", 조사 등을 자동 strip하고 2글자 이상 세부 토큰으로 분해하여 띄어쓰기나 어순이 달라도 GTD 태스크를 100% 매칭.
-* **업무 키워드 단독 `완료` 오탐 원천 차단**:
-  * `work_keywords`에서 단독 "완료"를 제거하고 업무 복합어 정규식으로 안전화.
+### 3.29. 📂 GTD 스킬 명세 동기화 및 태스크 완료 시 데일리 로그 수술적 이관 (Surgical Task Transfer - ADR-032)
+* **스킬 행동 강령(Rules) 완벽 준수 및 단일 진실 공급원(SSOT) 분리**:
+  * 미완료 할 일은 오직 `gtd/` 디렉토리 내 5개 상태 파일(`inbox.md`, `next_actions.md` 등)에서만 보관(SSOT).
+  * 데일리 로그(`logs/daily/YYYY-MM-DD.md`)는 미완료 할 일을 남기거나 이월(Rollover)하지 않으며, 실제 완료된 성과만 모음.
+* **결정론적 수술적 이동 (Surgical Transfer)**:
+  * 태스크 완료("완료했어", "/done", 1순위 완료 등) 시 `gtd/` 파일에서 해당 항목을 **잘라내어(Cut)** 물리적으로 완전히 제거.
+  * 당일 데일리 로그(`logs/daily/YYYY-MM-DD.md`)의 `## ✅ 오늘 완료한 일 (Completed GTD Tasks)` 섹션으로 `- [x]` 형태로 **이동(Paste)** 집행 (`transfer_completed_task_to_daily_log`).
+* **Antigravity 네이티브 스킬 연동 및 시스템 프롬프트 자동 주입**:
+  * `LLMProvider`가 GTD 경로 내 `skills/gtd-assistant/SKILL.md`를 자동 감지하여 핵심 행동 강령을 시스템 프롬프트에 `[적용 스킬: gtd-assistant]`로 상시 주입.
+  * `agy` CLI 호출 시 서브프로세스 작업 디렉토리(`cwd`)를 사용자의 GTD 저장소 경로(`GTD_PATH`)로 지정하여 CLI의 네이티브 스킬 자동 탐색 및 로딩 지원.
+* **운동 일지 발화와 태스크 완료의 분리 가드레일**:
+  * 헬스장/스쿼트/푸시업 등 운동 일과 발화는 "완료" 키워드가 포함되어도 `task_complete`로 오인되지 않고 운동 라이프로그 초안(`log_suggest`)으로 안전하게 진입.
 
 ---
 

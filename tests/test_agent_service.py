@@ -261,8 +261,15 @@ def test_complete_top_task_and_matching():
 
         with open(next_file, "r", encoding="utf-8") as f:
             content = f.read()
-        assert "- [x] 우선순위 1번 과제" in content
+        assert "우선순위 1번 과제" not in content
         assert "- [ ] 우선순위 2번 과제" in content
+
+        # 데일리 로그에 이관되었는지 확인 (ADR-032)
+        daily_log_path = service.get_lifelog_filepath()
+        assert os.path.exists(daily_log_path)
+        with open(daily_log_path, "r", encoding="utf-8") as f:
+            daily_content = f.read()
+        assert "- [x] 우선순위 1번 과제" in daily_content
 
         # 2. Complete matching task by keyword
         completed = service.complete_matching_tasks(["인박스 대기"])
@@ -271,7 +278,11 @@ def test_complete_top_task_and_matching():
 
         with open(inbox_file, "r", encoding="utf-8") as f:
             inbox_content = f.read()
-        assert "- [x] 인박스 대기 항목" in inbox_content
+        assert "인박스 대기 항목" not in inbox_content
+
+        with open(daily_log_path, "r", encoding="utf-8") as f:
+            daily_content2 = f.read()
+        assert "- [x] 인박스 대기 항목" in daily_content2
     finally:
         shutil.rmtree(temp_dir)
 

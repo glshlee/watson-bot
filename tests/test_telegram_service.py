@@ -1,3 +1,4 @@
+import os
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -5,6 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.db.database import Base
+from app.services.agent_service import AgentService
 from app.services.telegram_service import TelegramService
 
 
@@ -194,9 +196,17 @@ async def test_telegram_callback_task_done_top1(db_session, tmp_path):
         assert "1순위 태스크 완료" in sent_text
         assert "텔레그램 1순위 테스트 태스크" in sent_text
 
-    # 파일 내 체크박스가 - [x] 로 변경되었는지 확인
+    # ADR-032: 스킬 규칙에 따라 GTD 파일에서 잘라내어 제거(Cut)되고, 당일 데일리 로그로 이관(Paste)되었는지 확인
     updated_content = next_file.read_text(encoding="utf-8")
-    assert "- [x] 텔레그램 1순위 테스트 태스크" in updated_content
+    assert "텔레그램 1순위 테스트 태스크" not in updated_content
+
+    agent_svc = AgentService(base_dir=str(tmp_path))
+    daily_log_path = agent_svc.get_lifelog_filepath()
+    assert os.path.exists(daily_log_path)
+    from pathlib import Path
+    daily_content = Path(daily_log_path).read_text(encoding="utf-8")
+    assert "- [x] 텔레그램 1순위 테스트 태스크" in daily_content
+    assert "## ✅ 오늘 완료한 일 (Completed GTD Tasks)" in daily_content
 
 
 @pytest.mark.anyio

@@ -30,8 +30,30 @@ class LLMProvider:
     GTD 브리핑 및 라이프로그 항목을 능동 제안 및 승인 시 커밋한다.
     """
 
-    def __init__(self):
+    def __init__(self, gtd_path: str | None = None):
+        self.gtd_path = gtd_path or os.getenv("GTD_PATH", "/home/ubuntu/workspace/life_log")
         self.agy_path = self._find_agy_path()
+
+    def _load_skill_instructions(self) -> str:
+        """
+        연결된 GTD 저장소(life_log) 내의 skills/gtd-assistant/SKILL.md 지침을 읽어
+        프롬프트에 주입할 요약 행동 강령을 생성합니다 (ADR-032).
+        """
+        if not self.gtd_path or not os.path.exists(self.gtd_path):
+            return ""
+
+        skill_file = os.path.join(self.gtd_path, "skills", "gtd-assistant", "SKILL.md")
+        if not os.path.exists(skill_file):
+            skill_file = os.path.join(self.gtd_path, ".agents", "skills", "gtd-assistant", "SKILL.md")
+        if not os.path.exists(skill_file):
+            return ""
+
+        return (
+            "\n[적용 스킬: gtd-assistant (Getting Things Done)]\n"
+            "- 상태와 시간의 엄격한 분리: 미완료 할 일은 오직 gtd/ 디렉토리 파일(inbox.md, next_actions.md 등)에서만 보관(SSOT).\n"
+            "- 수술적 이동(Surgical Transfer): 할 일 완료 시 gtd/ 파일에서 해당 항목을 완전히 잘라내어(Cut) 제거하고, 당일 데일리 로그(logs/daily/YYYY-MM-DD.md)의 '## ✅ 오늘 완료한 일 (Completed GTD Tasks)' 섹션으로 이동(Paste)함.\n"
+            "- 데일리 로그에는 미완료 할 일을 남기거나 이월(Rollover)하지 않으며, 오직 완료된 성과만 기록함.\n"
+        )
 
     def _find_agy_path(self) -> str | None:
         """멀티 플랫폼(Linux/Mac/Docker) agy CLI 바이너리 경로를 동적으로 탐색합니다."""
@@ -311,9 +333,11 @@ class LLMProvider:
         elif colloquial_match and len(colloquial_match.group(1).strip()) <= 45:
             raw_target = colloquial_match.group(1).strip()
             daily_summary_keywords = ["오늘", "하루", "일과", "업무", "퇴근", "출근"]
+            workout_keywords = ["헬스장", "스쿼트", "푸시업", "벤치프레스", "데드리프트", "런닝", "달리기", "러닝", "산책", "유산소", "웨이트", "운동"]
             words = raw_target.split()
             is_pure_summary = len(words) > 0 and all(k in daily_summary_keywords for k in words)
-            if not is_pure_summary and not any(k in raw_target for k in ["아니", "인박스", "이미"]):
+            is_workout_story = any(wk in raw_target for wk in workout_keywords)
+            if not is_pure_summary and not is_workout_story and not any(k in raw_target for k in ["아니", "인박스", "이미"]):
                 is_complete_target = True
                 target_query = raw_target
 
@@ -873,6 +897,10 @@ class LLMProvider:
                     "사용자의 질문이나 대화에 귀기울이고 구체적이고 도움이 되는 답변을 정성껏 제공해라.\n\n"
                 )
 
+                skill_instructions = self._load_skill_instructions()
+                if skill_instructions:
+                    full_prompt += f"{skill_instructions}\n"
+
                 if history_text:
                     full_prompt += f"[이전 대화 내역]\n{history_text}\n"
                 full_prompt += f"[사용자 입력]\n{prompt}\n\n왓슨 비서로서 답변:"
@@ -891,6 +919,7 @@ class LLMProvider:
                     "--disable-slash-commands",
                     "--dangerously-skip-permissions",
                 ]
+                work_dir = self.gtd_path if (self.gtd_path and os.path.exists(self.gtd_path)) else "/tmp"
                 res = subprocess.run(
                     cmd,
                     capture_output=True,
@@ -898,7 +927,7 @@ class LLMProvider:
                     timeout=45,
                     check=False,
                     env=env,
-                    cwd="/tmp",
+                    cwd=work_dir,
                 )
                 if res.returncode == 0 and res.stdout.strip():
                     return res.stdout.strip()

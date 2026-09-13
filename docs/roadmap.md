@@ -269,8 +269,16 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] 사용자 항의 / 메타 피드백 가드레일(`meta_protest_patterns`) 구축 ("아니 이미 인박스에 있다면서. 그래서 완료했다고 말한건데?" 등)
 - [x] 항의 발화 감지 시 일기 초안(`log_suggest`) 오탐을 100% 방지하고, 이전 대화 히스토리(`history`) 역추적으로 의도된 태스크를 자동 발췌하여 지능형 복구 및 정중한 사과 응답 연계
 - [x] `AgentService.complete_matching_tasks`의 서술어("완료했어", "끝났어", "해결함", "은/는/이/가") 자동 strip 및 2글자 이상 세부 토큰 분해 매칭 구현
-- [x] `work_keywords`에서 단독 "완료" 키워드를 제거하고 업무 복합어 정규식으로 안전화
 - [x] 단위 테스트(`tests/test_task_completion_and_meta_guard.py`), 린트/타입 검사 및 `./scripts/smoke_test.sh` 7단계(7-1 ~ 7-3) 라이브 검증 완료
+
+### Phase 31: GTD 스킬 명세 동기화 및 태스크 완료 시 데일리 로그 수술적 이관 (ADR-032) - ✅ 완료
+- [x] `AgentService`에 `transfer_completed_task_to_daily_log` 메서드 구현 (당일 일일 로그 `logs/daily/YYYY-MM-DD.md` 생성 및 `## ✅ 오늘 완료한 일 (Completed GTD Tasks)` 섹션에 `- [x]` 형태로 이관)
+- [x] `AgentService.complete_top_task` 및 `complete_matching_tasks` 고도화: `gtd/` 파일(`inbox.md`, `next_actions.md`)에서 완료 항목을 물리적으로 완전히 **잘라내어(Cut)** 삭제하고, 오늘 날짜 데일리 로그로 **이동(Paste)**하는 수술적 이동(Surgical Transfer) 집행
+- [x] `LLMProvider`에 GTD 저장소 내 `skills/gtd-assistant/SKILL.md` 행동 강령(SSOT, Surgical Transfer) 파싱 및 시스템 프롬프트 자동 주입(`_load_skill_instructions`) 연동
+- [x] `_call_ai_engine`의 `agy` CLI 호출 시 서브프로세스 `cwd`를 사용자의 GTD 저장소 경로(`GTD_PATH`)로 지정하여 Antigravity CLI의 네이티브 스킬 자동 탐색 및 로딩 보장
+- [x] 헬스장/스쿼트/푸시업 등 운동 일과 발화가 `task_complete`로 오인되지 않도록 가드레일 분리
+- [x] 사용자 GTD 저장소(`life_log`) 내 미이관 완료 태스크(`민방위 사이버 교육 이수 여부 확인 🛡️💻`)를 `logs/daily/2026-09-13.md`로 수술적 이관 완료
+- [x] 단위 테스트(`tests/test_agent_service.py`, `tests/test_telegram_service.py`, `tests/test_task_completion_and_meta_guard.py`), Ruff/Mypy 검사 및 `./scripts/smoke_test.sh` 전체 통과 완료
 
 
 

@@ -23,7 +23,7 @@ class SupervisorService:
         self.base_dir = base_dir or self.settings_service.get_gtd_path()
         self.agent_service = AgentService(base_dir=self.base_dir)
         self.git_service = GitService(repo_path=self.base_dir)
-        self.llm_provider = LLMProvider()
+        self.llm_provider = LLMProvider(gtd_path=self.base_dir)
         self.briefing_service = BriefingService(
             base_dir=self.base_dir,
             llm_provider=self.llm_provider,
@@ -167,7 +167,8 @@ class SupervisorService:
                     if any(k in user_message for k in ["있다면서", "했잖아", "말했잖아", "말한건데", "아니 이미", "그게 아니라"]):
                         apology = "오해하여 잘못 안내해 드려 죄송합니다! 🙇‍♂️ 기존 GTD 항목을 찾아 즉시 완료 처리했습니다.\n\n"
                     final_response = (
-                        f"{apology}🎉 **GTD 태스크 완료 처리**\n\n"
+                        f"{apology}🎉 **GTD 태스크 완료 및 일일 로그 이관**\n\n"
+                        f"스킬 규칙에 따라 GTD 목록에서 완료 처리 후 오늘({date_str}) 데일리 로그로 안전하게 이관했습니다:\n"
                         f"{bullets}{push_res}"
                     )
                 else:
@@ -186,10 +187,11 @@ class SupervisorService:
                             push_success = p_ok
                     else:
                         self.git_service.commit(commit_msg)
+                    transferred_msg = f"📁 `{file_name}`에서 완료 후 오늘({date_str}) 데일리 로그로 이관되었습니다." if res.get("transferred_to_daily") else f"📁 대상 파일: `{file_name}`"
                     final_response = (
                         f"🎉 **1순위 태스크 완료!**\n\n"
                         f"- [x] {task_name}\n"
-                        f"📁 대상 파일: `{file_name}`\n"
+                        f"{transferred_msg}\n"
                         f"GitHub에 안전하게 커밋 및 푸시되었습니다. 수고하셨습니다! ✨{push_res}"
                     )
                 else:

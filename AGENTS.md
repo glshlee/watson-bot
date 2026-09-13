@@ -58,13 +58,14 @@
 * **2단계 사전 검토 & 원터치 승인 워크플로우 (ADR-029)**: 일과/감정/태스크 감지 시 즉시 커밋하지 않고 명확한 마크다운 초안 카드(시간/경로/본문)를 사전 제시하고, 텔레그램 인라인/웹 퀵 버튼 및 승인 발화("응", "이대로 해줘") 시 1회 원자적 커밋을 집행하며, /log 패스트트랙을 보장할 것.
 * **출근길 맞춤형 브리핑 설정 & 프리뷰 (ADR-030)**: 거주지(날씨/미세먼지), 출근 버스(정류소/노선), 발송 시각(07:30) 및 공공데이터 키를 웹 모달(#commute-modal) 및 REST API로 동적 설정하고, 실시간 프리뷰 및 /commute 연동을 보장할 것.
 * **구어체 태스크 완료 & 항의 가드레일 (ADR-031)**: "민방위 사이버교육은 완료했어" 등 구어체 완료 발화 감지 시 GTD 태스크를 찾아 - [x] 즉시 완료 처리하고, "완료 gtd에 기록해" 시 신규 할 일 오등록 차단 및 사용자 항의/메타 피드백 감지 시 일기 초안 오탐 방지 및 맥락 역추적 자동 복구를 집행할 것.
+* **GTD 스킬 명세 동기화 & 수술적 이관 (ADR-032)**: GTD 수집함(SSOT)과 데일리 로그의 역할을 엄격히 분리하고, 태스크 완료 시 GTD 파일에서 잘라내어(Cut) 오늘 날짜 데일리 로그(`logs/daily/YYYY-MM-DD.md`)로 이동(Paste)하는 수술적 이관(Surgical Transfer)을 집행하며, AGY CLI 작업 디렉토리 바인딩 및 시스템 프롬프트 스킬 주입을 보장할 것.
 * **Explicit User Commit Trigger Only (에이전트 코드 커밋 수칙)**: 코드 수정 및 기능 구현 후 Git 커밋(`git commit`)은 에이전트가 임의로 자동 실행하지 않으며, 오직 **사용자가 명시적으로 "커밋해" 지시를 내렸을 때만** 수행할 것.
 * **Curl-Based Live Verification (필수)**: 모든 코드 수정 후 반드시 `./scripts/smoke_test.sh` cURL 테스트를 실행하여 실제 라이브 API 수신 및 500 에러 부재를 검증할 것.
 * **Self-Verification & Evolution Loop**: 코드 변경 시 `pytest`/`mypy`/`ruff` 및 cURL 검증 수행 후 실패 시 `evolution.md` 지침에 따라 하네스 자가 진화 집행.
 
 ### 4. Progressive Disclosure (상세 문서 참조)
 * **제품 기획서 개요**: `docs/PRD.md` | **기능 요구사항**: `docs/requirements.md`
-* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-031)
+* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-032)
 
 
 ---

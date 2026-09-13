@@ -486,10 +486,109 @@ class AgentService:
         matched_keywords = list(set(matched_keywords))
         return self.remove_gtd_tasks(matched_keywords)
 
+    def transfer_completed_task_to_daily_log(
+        self,
+        task_text: str,
+        date_obj: datetime | None = None,
+    ) -> bool:
+        """
+        완료된 GTD 태스크를 당일 데일리 로그(logs/daily/YYYY-MM-DD.md)의
+        '## ✅ 오늘 완료한 일 (Completed GTD Tasks)' 섹션으로 이관(Surgical Transfer)합니다 (ADR-032).
+        """
+        date_obj = self._normalize_datetime(date_obj)
+        filepath = self.get_lifelog_filepath(date_obj)
+        current_date_str = date_obj.strftime("%Y-%m-%d")
+
+        if not os.path.exists(filepath):
+            if self.has_daily_logs_structure():
+                initial_template = f"""# {current_date_str}
+
+## 📝 오늘 하루 일상 및 기록 (Daily Journal)
+
+## 📅 주요 일정 (Schedule)
+
+## ✅ 오늘 완료한 일 (Completed GTD Tasks)
+
+## 💡 순간 메모 / 캡처 (Capture)
+"""
+            else:
+                initial_template = f"""# 📅 Life Log - {current_date_str}
+
+## 📝 Daily Notes & Diary
+
+## 🏋️ Workout & Health
+
+## ✅ 오늘 완료한 일 (Completed GTD Tasks)
+
+## 💡 Ideas & Thoughts
+
+## 🖼️ Media & Attachments
+"""
+            try:
+                with open(filepath, "w", encoding="utf-8") as f:
+                    f.write(initial_template)
+            except OSError as e:
+                logger.error(f"Failed to create daily log for task transfer: {e}")
+                return False
+
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+        except OSError as e:
+            logger.error(f"Failed to read daily log {filepath}: {e}")
+            return False
+
+        clean_task = task_text.strip()
+        if clean_task.startswith(("- [ ]", "- [x]")):
+            clean_task = clean_task[5:].strip()
+        new_task_line = f"- [x] {clean_task}\n"
+
+        # 중복 검사: 데일리 로그에 이미 완료 형태로 존재하는지 확인
+        clean_task_norm = re.sub(r"\s+", " ", clean_task.lower())
+        for line in lines:
+            line_s = line.strip()
+            if line_s.startswith("- [x]"):
+                line_norm = re.sub(r"\s+", " ", line_s[5:].strip().lower())
+                if clean_task_norm in line_norm or line_norm in clean_task_norm:
+                    logger.info(f"Task already completed in daily log: {clean_task}")
+                    return True
+
+        # 완료 섹션 헤더 탐색
+        target_idx = -1
+        target_headers = [
+            "## ✅ 오늘 완료한 일",
+            "## 🎯 오늘 한 일",
+            "## 완료한 일",
+            "## Completed Tasks",
+            "## 📝 오늘 하루 일상 및 기록",
+        ]
+        for i, line in enumerate(lines):
+            for th in target_headers:
+                if th.lower() in line.lower():
+                    target_idx = i
+                    break
+            if target_idx != -1:
+                break
+
+        if target_idx != -1:
+            lines.insert(target_idx + 1, new_task_line)
+        else:
+            lines.append(f"\n## ✅ 오늘 완료한 일 (Completed GTD Tasks)\n{new_task_line}")
+
+        try:
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.writelines(lines)
+            logger.info(f"Surgically transferred completed task to daily log {filepath}: {clean_task}")
+            return True
+        except OSError as e:
+            logger.error(f"Failed to write transferred task to {filepath}: {e}")
+            return False
+
     def complete_top_task(self) -> dict[str, Any]:
         """
         GTD 저장소(gtd/next_actions.md, 당일 일일 로그, gtd/inbox.md 순)에서
-        첫 번째 미완료 태스크('- [ ]')를 찾아 '- [x]'로 완료 처리합니다 (ADR-027).
+        첫 번째 미완료 태스크('- [ ]')를 찾아 완료 처리하고, 스킬 규칙에 따라
+        GTD 파일에서 잘라내어 오늘 날짜 데일리 로그로 이관(Surgical Transfer)합니다 (ADR-027, ADR-032).
         """
         today_log = self.get_lifelog_filepath()
         target_files = [
@@ -512,27 +611,37 @@ class AgentService:
             for i, line in enumerate(lines):
                 line_s = line.strip()
                 if line_s.startswith("- [ ]"):
-                    # 태스크 내용 추출
                     task_raw = line_s[5:].strip()
                     task_clean = re.sub(r"[\*`]", "", task_raw).strip()
 
-                    # - [ ] -> - [x] 교체 (기존 들여쓰기 유지)
-                    indent = line[: line.find("- [ ]")]
-                    lines[i] = f"{indent}- [x] {task_raw}\n"
+                    is_gtd_file = (os.path.abspath(filepath) != os.path.abspath(today_log))
+                    if is_gtd_file:
+                        # GTD 파일에서는 잘라내어(Cut) 삭제
+                        lines.pop(i)
+                    else:
+                        # 일일 로그 파일인 경우 해당 파일 내에서 - [x] 로 교체
+                        indent = line[: line.find("- [ ]")]
+                        lines[i] = f"{indent}- [x] {task_raw}\n"
 
                     try:
                         with open(filepath, "w", encoding="utf-8") as f:
                             f.writelines(lines)
-                        logger.info(f"Completed top task '{task_clean}' in {filepath}")
-                        return {
-                            "success": True,
-                            "task": task_clean,
-                            "file_path": filepath,
-                            "file_name": os.path.basename(filepath),
-                        }
+                        logger.info(f"Completed top task '{task_clean}' from {filepath}")
                     except OSError as e:
-                        logger.error(f"Failed to write completed task to {filepath}: {e}")
+                        logger.error(f"Failed to update task in {filepath}: {e}")
                         return {"success": False, "task": None, "reason": str(e)}
+
+                    # GTD 파일에서 잘라낸 경우 데일리 로그로 수술적 이관(Paste)
+                    if is_gtd_file:
+                        self.transfer_completed_task_to_daily_log(task_raw)
+
+                    return {
+                        "success": True,
+                        "task": task_clean,
+                        "file_path": filepath,
+                        "file_name": os.path.basename(filepath),
+                        "transferred_to_daily": is_gtd_file,
+                    }
 
         return {
             "success": False,
@@ -542,8 +651,9 @@ class AgentService:
 
     def complete_matching_tasks(self, keywords: list[str]) -> list[str]:
         """
-        키워드와 일치하는 미완료 태스크('- [ ]')들을 찾아 '- [x]'로 완료 처리합니다 (ADR-027, ADR-031).
-        구어체 어미('완료했어', '끝났어')를 정제하고 2글자 이상 세부 토큰으로 유연하게 매칭합니다.
+        키워드와 일치하는 미완료 태스크('- [ ]')들을 찾아 완료 처리합니다 (ADR-027, ADR-031, ADR-032).
+        스킬 규칙에 따라 GTD 상태 파일(inbox.md, next_actions.md)에서는 해당 항목을 잘라내어(Cut) 제거하고,
+        당일 데일리 로그(logs/daily/YYYY-MM-DD.md)의 '## ✅ 오늘 완료한 일 (Completed GTD Tasks)'로 이관(Paste)합니다.
         """
         today_log = self.get_lifelog_filepath()
         target_files = [
@@ -591,6 +701,8 @@ class AgentService:
 
             file_modified = False
             new_lines = []
+            is_gtd_file = (os.path.abspath(filepath) != os.path.abspath(today_log))
+            tasks_to_transfer: list[str] = []
 
             for line in lines:
                 line_s = line.strip()
@@ -604,8 +716,14 @@ class AgentService:
                             matched = True
                             task_raw = line_s[5:].strip()
                             task_clean = re.sub(r"[\*`]", "", task_raw).strip()
-                            indent = line[: line.find("- [ ]")]
-                            new_lines.append(f"{indent}- [x] {task_raw}\n")
+                            if is_gtd_file:
+                                # GTD 파일: 해당 줄 제거(Cut), 데일리 로그 이관 큐에 추가
+                                tasks_to_transfer.append(task_raw)
+                            else:
+                                # 데일리 로그 파일: 해당 파일 내에서 - [x] 로 변환
+                                indent = line[: line.find("- [ ]")]
+                                new_lines.append(f"{indent}- [x] {task_raw}\n")
+
                             if task_clean and task_clean not in completed_tasks:
                                 completed_tasks.append(task_clean)
                             file_modified = True
@@ -619,9 +737,13 @@ class AgentService:
                 try:
                     with open(filepath, "w", encoding="utf-8") as f:
                         f.writelines(new_lines)
-                    logger.info(f"Completed tasks in {filepath}: {completed_tasks}")
+                    logger.info(f"Processed task completion in {filepath}: {completed_tasks}")
                 except OSError as e:
                     logger.error(f"Failed to write to {filepath}: {e}")
+
+                # GTD 파일에서 잘라낸 태스크들을 당일 데일리 로그로 수술적 이관
+                for t_raw in tasks_to_transfer:
+                    self.transfer_completed_task_to_daily_log(t_raw)
 
         return completed_tasks
 

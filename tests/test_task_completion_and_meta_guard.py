@@ -75,8 +75,17 @@ def test_complete_matching_tasks_fuzzy_and_predicate_stripping(temp_gtd_env):
     assert len(completed) >= 1
     assert any("민방위 사이버 교육" in t for t in completed)
 
-    # 2. 실제 inbox.md 파일에 - [x] 로 반영되었는지 확인
+    # 2. ADR-032: 스킬 규칙에 따라 inbox.md 파일에서는 잘라내어(Cut) 제거되었는지 확인
     inbox_file = os.path.join(temp_gtd_env, "gtd", "inbox.md")
     with open(inbox_file, "r", encoding="utf-8") as f:
         content = f.read()
-    assert "- [x] 민방위 사이버 교육 이수 여부 확인 🛡️💻" in content
+    assert "민방위 사이버 교육 이수 여부 확인" not in content
+    assert "- [ ] 구매 목록: 두루마리 휴지, 커피원두, 고양이모래 🛒" in content
+
+    # 3. ADR-032: 당일 데일리 로그 파일의 '## ✅ 오늘 완료한 일 (Completed GTD Tasks)'에 이관(Paste)되었는지 확인
+    daily_log_file = agent_service.get_lifelog_filepath()
+    assert os.path.exists(daily_log_file)
+    with open(daily_log_file, "r", encoding="utf-8") as f:
+        daily_content = f.read()
+    assert "- [x] 민방위 사이버 교육 이수 여부 확인 🛡️💻" in daily_content
+    assert "## ✅ 오늘 완료한 일 (Completed GTD Tasks)" in daily_content
