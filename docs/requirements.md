@@ -190,6 +190,13 @@
 - **FR-32.3**: "날씨 브리핑", "날씨 정보", "미세먼지 수치", "대기질 정보", `/weather` 등 자연어 기상 질의 시 `commute_inspect` (`log_content="weather"`)로 즉시 라우팅하여 단독 기상 브리핑 카드를 반환해야 한다.
 - **FR-32.4**: "안녕하세요! 오늘 날씨 좋네요" 등 인사가 포함된 일상 발화는 기상 카드 대신 자연스러운 대화(`chat_only`)로 분리 유지해야 한다.
 
+### FR-33: 동네 설정 스마트 지오코딩 및 대화형 위치 변경 (Smart Location Geocoding & Conversational Setup - ADR-034)
+- **FR-33.1**: 서울 25개 자치구, 주요 동(금호동, 판교, 상암동 등), 경기/인천/광역시 주요 도시를 망라하는 결정론적 스마트 지오코딩 엔진(`GeoService.resolve_location`)을 제공해야 한다.
+- **FR-33.2**: 사용자가 입력한 자연어 문장("우리 동네 성동구 금호동으로 설정해줘", "동네는 성동구 금호동인데 이렇게 그냥 설정하면 되는거야?", `/location 성동구 금호동`)에서 동네명을 정밀 추출하여 기상청 단기예보 격자 X/Y, 에어코리아 대기 측정소명, 시도 코드를 자동 매핑하고 `config/commute_config.json`에 즉시 영속화해야 한다.
+- **FR-33.3**: 동네 설정 완료 즉시 변경된 지역 기준의 실시간 기상 브리핑 프리뷰 카드를 반환하여 정상 반영 여부를 즉각 확인할 수 있어야 한다.
+- **FR-33.4**: `/location`, "우리 동네 어디로 되어있어?" 등 현재 거주지 조회 요청 시 현재 설정값 및 변경 방법을 안내해야 한다.
+- **FR-33.5**: 웹 대시보드 모달(`#commute-modal`) 내 `POST /api/settings/commute/resolve-location` 엔드포인트 및 `[자동 찾기]` 버튼(`#btn-resolve-location`)을 제공하여 원클릭 자동 채움을 지원해야 한다.
+
 ---
 
 
@@ -245,6 +252,7 @@
 | **FR-30** | `app/services/llm_provider.py`, `app/services/agent_service.py`, `app/services/supervisor_service.py` | Pytest 단위 테스트(`test_task_completion_and_meta_guard.py`) & cURL 스모크 검증(7) |
 | **FR-31** | `app/services/agent_service.py`, `app/services/llm_provider.py`, `app/services/supervisor_service.py` | Pytest 단위 테스트(`test_agent_service.py`, `test_task_completion_and_meta_guard.py`) & cURL 검증 |
 | **FR-32** | `app/services/briefing_service.py`, `app/services/commute_config_service.py`, `app/services/llm_provider.py` | Pytest 단위 테스트(`test_briefing_service.py`, `test_commute_config_service.py`) & cURL 검증 |
+| **FR-33** | `app/services/geo_service.py`, `app/services/commute_config_service.py`, `app/services/llm_provider.py`, `app/services/supervisor_service.py`, `app/routers/settings_router.py` | Pytest 단위 테스트(`test_geo_service.py`) & cURL 스모크 검증(6-5, 6-6) |
 
 
 

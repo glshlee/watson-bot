@@ -496,6 +496,28 @@ else
     exit 1
 fi
 
+echo "  6-5. Testing Smart Location Geocoding API (ADR-034)..."
+RESOLVE_RES=$(run_curl -X POST "$SERVER_URL/api/settings/commute/resolve-location" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "성동구 금호동"}')
+if echo "$RESOLVE_RES" | grep -q '"location_name":"서울 성동구 금호동"' && echo "$RESOLVE_RES" | grep -q '"air_station_name":"성동구"'; then
+    echo "  ✅ 6-5. POST /api/settings/commute/resolve-location Passed (ADR-034 Auto-Mapped)"
+else
+    echo "  ❌ 6-5. Location Resolve API Failed: $RESOLVE_RES"
+    exit 1
+fi
+
+echo "  6-6. Testing Conversational Location Setup (/location - ADR-034)..."
+LOC_CHAT=$(run_curl -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_commute_session", "message": "/location 성동구 금호동", "auto_push": false}')
+if echo "$LOC_CHAT" | grep -q '"intent":"location_set"' && echo "$LOC_CHAT" | grep -q '서울 성동구 금호동'; then
+    echo "  ✅ 6-6. Conversational /location Passed (intent=location_set, Mapped to 성동구 금호동)"
+else
+    echo "  ❌ 6-6. Conversational Location Setup Failed: $LOC_CHAT"
+    exit 1
+fi
+
 echo "7. Testing Task Completion & Meta-Feedback Guardrail (ADR-031)..."
 # 7-1. 구어체 태스크 완료 보고
 COMPLETE_CHAT_1=$(run_curl -X POST "$SERVER_URL/api/chat" \

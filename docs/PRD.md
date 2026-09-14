@@ -275,6 +275,17 @@
 * **자연어 기상 질의 지원 (`/weather`, `/commute`)**:
   * "오늘 날씨 어때?", "날씨랑 미세먼지 알려줘", "미세먼지 수치 확인" 등 질문 시 즉시 실시간 기상 카드를 제공하고, 일상 인사("안녕하세요! 오늘 날씨 좋네요")는 자연스러운 대화(`chat_only`)로 분리 유지.
 
+### 3.31. 📍 동네 설정 스마트 지오코딩 및 대화형 위치 변경 연동 (Smart Location Geocoding & Conversational Setup - ADR-034)
+* **한국 주요 행정구역 스마트 지오코딩 엔진 (`GeoService`)**:
+  * 서울 25개 자치구 전체 좌표 및 측정소 완비, 주요 동(금호동, 상암동, 판교동 등) ➔ 자치구/시 스마트 역매핑.
+  * 자연어 문장에서 불필요한 조사("우리 동네는", "으로 설정해줘")를 절삭하고 정규화된 `location_name`, `grid_x`, `grid_y`, `air_station_name`, `city_code`를 0.001초 내 결정론적 매핑.
+* **대화형 동네 변경 인텐트 (`location_set`, `location_inspect`)**:
+  * `/location [동네명]`, `/동네 [동네명]`, "우리 동네 성동구 금호동으로 설정해줘", "동네는 성동구 금호동인데 이렇게 그냥 설정하면 되는거야?" 등 일상 대화로 즉시 동네 변경 및 영속화.
+  * 동네 변경 즉시 해당 지역 기준의 실시간 기상 브리핑 프리뷰 카드를 반환하여 사용자 안도감 제공.
+  * `/location`, "우리 동네 어디로 되어있어?" 등 현재 거주지 조회 및 변경 안내 지원.
+* **웹 콘솔 자동 좌표 찾기 연동**:
+  * `POST /api/settings/commute/resolve-location` API 및 `#commute-modal` 내 `[<i class="fa-solid fa-wand-magic-sparkles"></i> 자동 찾기]` 버튼으로 동네 명칭 입력 시 원터치 자동 채움 지원.
+
 ---
 
 ## 4. 시스템 아키텍처 개요 (System Architecture Overview)

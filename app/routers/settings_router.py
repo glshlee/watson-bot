@@ -113,3 +113,21 @@ def preview_commute_card(payload: CommutePreviewRequest | None = None) -> dict[s
     custom = payload.config.model_dump() if (payload and payload.config) else None
     result = service.generate_preview(custom_config=custom)
     return result
+
+
+class ResolveLocationRequest(BaseModel):
+    query: str = Field(..., description="사용자가 입력한 동네/지역 검색어")
+
+
+@router.post("/commute/resolve-location")
+def resolve_commute_location(payload: ResolveLocationRequest) -> dict[str, Any]:
+    """
+    동네 검색어를 스마트 지오코딩하여 격자 좌표와 대기 측정소를 반환합니다 (ADR-034).
+    """
+    from app.services.geo_service import GeoService
+
+    resolved = GeoService.resolve_location(payload.query)
+    return {
+        "success": True,
+        "data": resolved,
+    }

@@ -1001,6 +1001,48 @@ document.addEventListener("DOMContentLoaded", () => {
     closeCommuteModalBtn?.addEventListener("click", closeCommuteModal);
     cancelCommuteBtn?.addEventListener("click", closeCommuteModal);
 
+    const btnResolveLocation = document.getElementById("btn-resolve-location");
+
+    async function handleAutoResolveLocation() {
+        const query = commuteLocationInput?.value.trim();
+        if (!query) {
+            alert("동네/지역 명칭을 입력해 주세요 (예: 서울 성동구 금호동, 판교동, 상암동)");
+            return;
+        }
+
+        if (btnResolveLocation) {
+            btnResolveLocation.disabled = true;
+            btnResolveLocation.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        }
+
+        try {
+            const res = await fetch("/api/settings/commute/resolve-location", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query })
+            });
+            const data = await res.json();
+            if (res.ok && data.success && data.data) {
+                const r = data.data;
+                if (commuteLocationInput) commuteLocationInput.value = r.location_name;
+                if (commuteGridX) commuteGridX.value = r.grid_x;
+                if (commuteGridY) commuteGridY.value = r.grid_y;
+                if (commuteStationInput) commuteStationInput.value = r.air_station_name;
+                if (commuteCityCode && r.city_code) commuteCityCode.value = r.city_code;
+                console.log(`[GeoService] Resolved: ${r.location_name} (X:${r.grid_x}, Y:${r.grid_y})`);
+            }
+        } catch (err) {
+            console.error("Failed to auto-resolve location:", err);
+        } finally {
+            if (btnResolveLocation) {
+                btnResolveLocation.disabled = false;
+                btnResolveLocation.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> 자동 찾기';
+            }
+        }
+    }
+
+    btnResolveLocation?.addEventListener("click", handleAutoResolveLocation);
+
     commuteModal?.addEventListener("click", (e) => {
         if (e.target === commuteModal) closeCommuteModal();
     });

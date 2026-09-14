@@ -220,8 +220,11 @@
                                 <div class="section-title"><i class="fa-solid fa-cloud-sun"></i> 1. 우리 동네 (날씨 & 대기질)</div>
                                 <div class="form-grid-2">
                                     <div class="form-group">
-                                        <label for="commute-location-input">동네/지역 명칭:</label>
-                                        <input type="text" id="commute-location-input" placeholder="예: 서울 강남구 역삼동" required />
+                                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                                            <label for="commute-location-input">동네/지역 명칭:</label>
+                                            <button type="button" id="btn-resolve-location" class="btn-sm btn-info" style="padding:2px 8px; font-size:11px; margin-bottom:4px;" title="입력한 동네명으로 좌표 및 측정소 자동 검색"><i class="fa-solid fa-wand-magic-sparkles"></i> 자동 찾기</button>
+                                        </div>
+                                        <input type="text" id="commute-location-input" placeholder="예: 서울 성동구 금호동, 판교동" required />
                                     </div>
                                     <div class="form-group">
                                         <label for="commute-station-input">대기 측정소명 (에어코리아):</label>

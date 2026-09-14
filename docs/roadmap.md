@@ -286,6 +286,17 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] `LLMProvider` 및 `SupervisorService`에 자연어 기상 질의("날씨 브리핑", "날씨 정보", "미세먼지 수치", `/weather`) 연동 및 인사/잡담(`chat_only`) 안전 분리
 - [x] 단위 테스트(`tests/test_briefing_service.py`, `tests/test_commute_config_service.py`, `tests/test_web_router.py`), Ruff/Mypy 검사 및 `./scripts/smoke_test.sh` 전체 통과 완료
 
+### Phase 33: 동네 설정 스마트 지오코딩 및 대화형 위치 변경 연동 (ADR-034) - ✅ 완료
+- [x] 스마트 지오코딩 엔진(`GeoService`) 구축: 서울 25개 구/주요 동, 경기/인천/광역시 주요 도시를 망라하는 격자(X, Y), 대기 측정소, 시도 코드 0.001초 결정론적 매핑
+- [x] `CommuteConfigService`에 `update_location_by_query()` 구현: 동네명 자연어 분석 및 `config/commute_config.json` 실시간 영속화
+- [x] `LLMProvider` 및 `SupervisorService`에 `location_set` 및 `location_inspect` 인텐트 지원:
+  - `/location [동네명]`, `/동네 [동네명]`, "우리 동네 성동구 금호동으로 설정해줘", "동네는 성동구 금호동인데 이렇게 그냥 설정하면 되는거야?" 등 즉시 반영
+  - 동네 설정 직후 해당 지역 기준의 실시간 기상 브리핑 프리뷰 카드 반환
+  - `/location`, "우리 동네 어디로 되어있어?" 등 현재 거주지 조회 안내
+- [x] `settings_router.py`에 `POST /api/settings/commute/resolve-location` REST API 구축
+- [x] 웹 대시보드 모달(`#commute-modal`) 내 `[<i class="fa-solid fa-wand-magic-sparkles"></i> 자동 찾기]` 버튼(`#btn-resolve-location`) 및 `main.js` 자동 채움 연동
+- [x] 단위 테스트(`tests/test_geo_service.py`), Ruff/Mypy 검사 및 `./scripts/smoke_test.sh` 6-5, 6-6 라이브 검증 완료
+
 
 
 

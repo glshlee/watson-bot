@@ -280,3 +280,24 @@ class CommuteConfigService:
         ]
         return "\n".join(lines)
 
+    def update_location_by_query(self, query: str) -> dict[str, Any]:
+        """
+        자연어 동네명(예: '성동구 금호동', '판교', '마포구 상암동')을 스마트 지오코딩하여
+        설정에 즉시 반영하고 영속화합니다 (ADR-034).
+        """
+        from app.services.geo_service import GeoService
+
+        resolved = GeoService.resolve_location(query)
+        payload = {
+            "location_name": resolved["location_name"],
+            "grid_x": resolved["grid_x"],
+            "grid_y": resolved["grid_y"],
+            "air_station_name": resolved["air_station_name"],
+            "city_code": resolved["city_code"],
+        }
+        saved_cfg = self.save_config(payload)
+        return {
+            "resolved": resolved,
+            "config": saved_cfg,
+        }
+

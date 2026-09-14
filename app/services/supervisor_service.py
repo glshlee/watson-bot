@@ -302,6 +302,39 @@ class SupervisorService:
                     f"• 웹 대시보드 상단의 **[🚌 출근 브리핑]** 버튼을 통해 상세 정보를 쉽게 수정할 수 있습니다!"
                 )
 
+        elif intent_res.intent == "location_set":
+            # (D-3f) 스마트 지오코딩 기반 동네 설정 및 기상청 격자/측정소 자동 매핑 (ADR-034)
+            loc_query = intent_res.log_content or ""
+            res = self.commute_config_service.update_location_by_query(loc_query)
+            resolved = res["resolved"]
+            cfg = res["config"]
+
+            match_msg = "🎯 **자동 매핑 성공**" if resolved.get("matched") else "💡 **기본 중심 좌표 적용**"
+            weather_preview = self.commute_config_service.get_standalone_weather_card()
+
+            final_response = (
+                f"📍 **우리 동네 설정이 완료되었습니다! ({match_msg})**\n\n"
+                f"• **설정된 동네**: **`{cfg.get('location_name')}`**\n"
+                f"• **기상청 격자 좌표**: X **`{cfg.get('grid_x')}`**, Y **`{cfg.get('grid_y')}`**\n"
+                f"• **대기질 측정소**: **`{cfg.get('air_station_name')}`** (에어코리아)\n\n"
+                f"다음 아침 브리핑부터 **`{cfg.get('location_name')}`** 기준의 실시간 날씨와 미세먼지가 브리핑에 반영됩니다. ✨\n\n"
+                f"---\n\n"
+                f"{weather_preview}"
+            )
+
+        elif intent_res.intent == "location_inspect":
+            # 현재 동네 설정 확인 및 가이드 (ADR-034)
+            cfg = self.commute_config_service.get_masked_config()
+            final_response = (
+                f"📍 **현재 우리 동네 날씨 설정 현황 (ADR-034)**\n\n"
+                f"• **기준 지역**: **`{cfg.get('location_name')}`**\n"
+                f"• **기상청 좌표**: 격자 X `{cfg.get('grid_x')}`, Y `{cfg.get('grid_y')}`\n"
+                f"• **대기질 측정소**: `{cfg.get('air_station_name')}` (에어코리아)\n\n"
+                f"💡 **동네를 변경하시려면:**\n"
+                f"• `/location [동네명]` (예: `/location 성동구 금호동`, `/location 판교동`)\n"
+                f"• 또는 대화로 *\"우리 동네 성동구 금호동으로 설정해줘\"*라고 말씀하시면 격자와 측정소를 자동으로 찾아 즉시 설정해 드립니다!"
+            )
+
         elif intent_res.intent == "log_status_inspect":
             # (D-6a) 당일 라이프로그 물리적 기록 여부 정밀 점검 및 보고 (ADR-028)
             now = get_now()

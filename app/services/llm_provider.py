@@ -655,6 +655,33 @@ class LLMProvider:
             )
 
         # (C) 출근길 날씨·미세먼지·버스 브리핑 설정 및 실시간 날씨 질의 (/commute, /weather - ADR-030, ADR-033)
+        # (C-1) 동네 설정 및 스마트 지오코딩 자동 매핑 (/location, /동네 - ADR-034)
+        is_loc_cmd = prompt_lower.startswith(("/location", "/동네", "/지역"))
+        is_loc_nlp = (
+            any(k in prompt_lower for k in ["동네", "지역", "거주지", "우리동네", "우리 동네"]) and
+            any(v in prompt_lower for v in ["설정", "변경", "바꿔", "등록", "어디", "확인", "인데", "이야", "바꿀", "해줘", "맞아"])
+        )
+        if is_loc_cmd or is_loc_nlp:
+            loc_query = ""
+            if is_loc_cmd:
+                parts = prompt.strip().split(maxsplit=1)
+                if len(parts) > 1:
+                    loc_query = parts[1].strip()
+            else:
+                loc_query = prompt.strip()
+
+            is_inspect_only = not loc_query or (
+                any(q in prompt_lower for q in ["어디야", "어디로", "어디에", "어디", "확인", "현재", "어떻게"]) and
+                not any(s in prompt_lower for s in ["으로 설정", "로 설정", "으로 바꿔", "로 바꿔", "으로 변경", "로 변경", "인데", "설정해", "바꿔줘", "등록해", "해줘"])
+            )
+
+            return IntentResult(
+                intent="location_set" if not is_inspect_only else "location_inspect",
+                ai_response="",
+                log_content=loc_query if not is_inspect_only else None,
+                category="Commute",
+            )
+
         is_commute_cmd = prompt_lower.startswith(("/commute", "/bus", "/weather", "/air"))
         is_commute_nlp = any(k in prompt_lower for k in ["출근길", "출근 버스", "버스 언제", "버스 도착", "버스 정보", "우리 동네 날씨", "우리지역 날씨", "출근길 날씨"])
         has_greeting = any(g in prompt_lower for g in ["안녕", "반가워", "하이", "좋은 아침"])
