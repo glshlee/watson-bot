@@ -101,12 +101,22 @@ run_curl -X POST "$SERVER_URL/api/settings/gtd-path" \
   -H "Content-Type: application/json" \
   -d "{\"path\": \"$TMP_TEST_GTD\", \"create_if_missing\": true}" > /dev/null
 
+TMP_COMMUTE_BAK=$(mktemp /tmp/watson_commute_bak_XXXXXX.json)
+if [ -f config/commute_config.json ]; then
+    cp -f config/commute_config.json "$TMP_COMMUTE_BAK"
+fi
+
 cleanup() {
   if [ -n "$ORIGINAL_GTD_PATH" ]; then
     echo "Restoring original GTD path: $ORIGINAL_GTD_PATH..."
     run_curl -X POST "$SERVER_URL/api/settings/gtd-path" \
       -H "Content-Type: application/json" \
       -d "{\"path\": \"$ORIGINAL_GTD_PATH\", \"create_if_missing\": false}" > /dev/null || true
+  fi
+  if [ -n "$TMP_COMMUTE_BAK" ] && [ -f "$TMP_COMMUTE_BAK" ]; then
+    echo "Restoring original commute config..."
+    cp -f "$TMP_COMMUTE_BAK" config/commute_config.json 2>/dev/null || true
+    rm -f "$TMP_COMMUTE_BAK" || true
   fi
   # Clean up smoke test session so it doesn't pollute user UI
   run_curl -X DELETE "$SERVER_URL/api/sessions/smoke_butler_session" > /dev/null 2>&1 || true
@@ -515,6 +525,28 @@ if echo "$LOC_CHAT" | grep -q '"intent":"location_set"' && echo "$LOC_CHAT" | gr
     echo "  ✅ 6-6. Conversational /location Passed (intent=location_set, Mapped to 성동구 금호동)"
 else
     echo "  ❌ 6-6. Conversational Location Setup Failed: $LOC_CHAT"
+    exit 1
+fi
+
+echo "  6-7. Testing Commute Bus Arrival Query (/bus - ADR-037)..."
+BUS_CHAT=$(run_curl -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_commute_session", "message": "/bus", "auto_push": false}')
+if echo "$BUS_CHAT" | grep -q '"intent":"commute_inspect"' && echo "$BUS_CHAT" | grep -q '실시간 출근 버스 도착 정보'; then
+    echo "  ✅ 6-7. Watson /bus Passed (intent=commute_inspect, Real-time Bus Card)"
+else
+    echo "  ❌ 6-7. Watson /bus Failed: $BUS_CHAT"
+    exit 1
+fi
+
+echo "  6-8. Testing Bus Stop Auto-Resolution API (ADR-038)..."
+STOP_RESOLVE_RES=$(run_curl -X POST "$SERVER_URL/api/settings/commute/resolve-bus-stop" \
+  -H "Content-Type: application/json" \
+  -d '{"bus_stop_id": "04158", "city_code": "11"}')
+if echo "$STOP_RESOLVE_RES" | grep -q '금옥초등학교앞'; then
+    echo "  ✅ 6-8. POST /api/settings/commute/resolve-bus-stop Passed (금옥초등학교앞 Auto-Resolved)"
+else
+    echo "  ❌ 6-8. Bus Stop Auto-Resolution Failed: $STOP_RESOLVE_RES"
     exit 1
 fi
 

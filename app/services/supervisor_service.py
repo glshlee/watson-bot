@@ -280,10 +280,12 @@ class SupervisorService:
             final_response = self.briefing_service.format_schedule_briefing(date_obj=get_now())
 
         elif intent_res.intent == "commute_inspect":
-            # (D-3e) 출근길 모닝 브리핑 설정 및 실시간 카드 프리뷰 (ADR-030)
+            # (D-3e) 출근길 모닝 브리핑 설정 및 실시간 카드 프리뷰 (ADR-030, ADR-037)
             cfg = self.commute_config_service.get_masked_config()
             if intent_res.log_content == "weather":
                 final_response = self.commute_config_service.get_standalone_weather_card()
+            elif intent_res.log_content == "bus":
+                final_response = self.commute_config_service.get_standalone_bus_card()
             elif intent_res.log_content == "preview":
                 preview_data = self.commute_config_service.generate_preview()
                 final_response = preview_data["markdown"]
@@ -291,11 +293,13 @@ class SupervisorService:
                 active_str = f"✅ 활성 ({cfg['send_time']} KST)" if cfg.get("enabled") else "⏸️ 비활성"
                 days_str = "평일(월~금) 아침" if cfg.get("weekdays_only") else "매일 아침"
                 api_mode = "✅ API 인증키 등록됨" if cfg.get("has_api_key") else "💡 스마트 시뮬레이션 모드 (API 키 미등록)"
+                bus_route_disp = f"**{cfg.get('bus_route_name')}번**" if cfg.get("bus_route_name") else "**전체 노선**"
+                bus_stop_disp = f"`{cfg.get('bus_stop_name')}`" if cfg.get("bus_stop_name") else f"`정류소({cfg.get('bus_stop_id')})`"
                 final_response = (
                     f"🚌 **출근길 날씨·미세먼지·버스 브리핑 설정 (ADR-030)**\n\n"
                     f"• **상태**: {active_str} ({days_str})\n"
                     f"• **우리 동네**: `{cfg.get('location_name')}` (측정소: `{cfg.get('air_station_name')}`, 격자: `{cfg.get('grid_x')},{cfg.get('grid_y')}`)\n"
-                    f"• **출근길 버스**: `{cfg.get('bus_stop_name')}` (정류소ID: `{cfg.get('bus_stop_id')}`) ➔ **{cfg.get('bus_route_name')}번**\n"
+                    f"• **출근길 버스**: {bus_stop_disp} (정류소ID: `{cfg.get('bus_stop_id')}`) ➔ {bus_route_disp}\n"
                     f"• **공공데이터 연동**: {api_mode}\n\n"
                     f"💡 **실행 및 설정 안내:**\n"
                     f"• `/commute test`: 현재 설정으로 실시간 브리핑 카드 즉시 생성 미리보기\n"

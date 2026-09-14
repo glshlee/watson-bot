@@ -63,13 +63,15 @@
 * **동네 설정 스마트 지오코딩 & 대화형 변경 (ADR-034)**: 한국 주요 행정구역(서울 25개 구/동, 경기/인천/광역시) 스마트 지오코딩 엔진으로 기상청 격자/대기 측정소를 자동 매핑하고, "/location [동네명]" 및 대화형 위치 변경·영속화와 웹 콘솔 원클릭 자동 찾기(POST /api/settings/commute/resolve-location)를 보장할 것.
 * **Open-Meteo 실시간 날씨 & 대기질 연동 (ADR-035)**: API 키 없는 Open-Meteo 글로벌 오픈 API로 거주지(위경도) 실시간 기온/체감/하늘/강수확률 및 미세먼지(PM10/PM2.5 환경부 등급)를 0.1초 내 조회하고 10분 캐시 및 안전 폴백을 보장할 것.
 * **정규식 가로채기 철거 & LLM 대화 위임 (ADR-036)**: 부분 일치 키워드 가로채기를 철거하고 부정/불필요/취소/피드백 가드레일을 적용하여 "필요가 없어" 등에서의 오탐지를 원천 차단하며, 자연어 맥락 추론을 LLM으로 일원화할 것.
+* **실시간 출근 버스 API 실연동 & 캐시 (ADR-037)**: 서울 TOPIS 및 국토교통부 TAGO 버스 API 실연동으로 잔여시간/정류소를 실시간 제공하고, 45초 캐시, 동적 가변 시뮬레이션 폴백 및 "/bus" 단독 실시간 카드를 보장할 것.
+* **정류소 번호 원클릭 조회 & 테스트 샌드박스 격리 (ADR-038)**: 서울/전국 정류소 번호(ARS-ID) 입력 시 공공 DB 기반 정류소명/방면 실시간 역조회(/api/settings/commute/resolve-bus-stop) 및 웹 UI 자동 입력을 지원하고, 스모크 테스트 시 실제 출근 설정/API 키를 임시 백업·복원하여 영구 보존할 것.
 * **Explicit User Commit Trigger Only (에이전트 코드 커밋 수칙)**: 코드 수정 및 기능 구현 후 Git 커밋(`git commit`)은 에이전트가 임의로 자동 실행하지 않으며, 오직 **사용자가 명시적으로 "커밋해" 지시를 내렸을 때만** 수행할 것.
 * **Curl-Based Live Verification (필수)**: 모든 코드 수정 후 반드시 `./scripts/smoke_test.sh` cURL 테스트를 실행하여 실제 라이브 API 수신 및 500 에러 부재를 검증할 것.
 * **Self-Verification & Evolution Loop**: 코드 변경 시 `pytest`/`mypy`/`ruff` 및 cURL 검증 수행 후 실패 시 `evolution.md` 지침에 따라 하네스 자가 진화 집행.
 
 ### 4. Progressive Disclosure (상세 문서 참조)
 * **제품 기획서 개요**: `docs/PRD.md` | **기능 요구사항**: `docs/requirements.md`
-* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-036)
+* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-038)
 
 
 ---

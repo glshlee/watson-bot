@@ -35,6 +35,7 @@ class CommuteConfigService:
         "bus_route_id": "",
         "city_code": "11",
         "public_data_api_key": "",
+        "public_data_endpoint": "https://apis.data.go.kr/1613000/ArvlInfoInqireService",
         "use_mock_fallback": True,
         "updated_at": "",
     }
@@ -144,19 +145,27 @@ class CommuteConfigService:
 
         # 3. 버스 정보
         if "bus_stop_name" in payload:
-            stop = str(payload["bus_stop_name"]).strip()
-            if stop:
-                merged["bus_stop_name"] = stop
+            merged["bus_stop_name"] = str(payload["bus_stop_name"]).strip()
         if "bus_stop_id" in payload:
             merged["bus_stop_id"] = str(payload["bus_stop_id"]).strip()
         if "bus_route_name" in payload:
-            route = str(payload["bus_route_name"]).strip()
-            if route:
-                merged["bus_route_name"] = route
+            merged["bus_route_name"] = str(payload["bus_route_name"]).strip()
         if "bus_route_id" in payload:
             merged["bus_route_id"] = str(payload["bus_route_id"]).strip()
         if "city_code" in payload:
             merged["city_code"] = str(payload["city_code"]).strip()
+
+        # 정류소 번호가 제공되었을 때 정류소명이 비어있거나, 이전 기본값('역삼역')이고 번호가 23284가 아닌 경우 자동 조회
+        sid = merged.get("bus_stop_id", "")
+        current_name = merged.get("bus_stop_name", "")
+        if sid and (not current_name or (current_name == "역삼역" and sid != "23284") or current_name == "정류장"):
+            resolved = self.resolve_bus_stop(sid, merged.get("city_code", "11"))
+            if resolved.get("stop_name") and not str(resolved["stop_name"]).startswith("정류소("):
+                merged["bus_stop_name"] = resolved["stop_name"]
+
+        # '버스'라는 예전 플레이스홀더가 들어온 경우 빈 문자열(전체 노선)로 정제
+        if merged.get("bus_route_name") == "버스":
+            merged["bus_route_name"] = ""
 
         # 4. 토글 및 옵션
         if "enabled" in payload:
@@ -166,7 +175,12 @@ class CommuteConfigService:
         if "use_mock_fallback" in payload:
             merged["use_mock_fallback"] = bool(payload["use_mock_fallback"])
 
-        # 5. API 키 처리 (마스킹된 값이 오면 기존 실제 키 유지)
+        # 5. API 키 및 엔드포인트 처리 (마스킹된 값이 오면 기존 실제 키 유지)
+        if "public_data_endpoint" in payload:
+            ep = str(payload["public_data_endpoint"]).strip()
+            if ep:
+                merged["public_data_endpoint"] = ep
+
         new_key = payload.get("public_data_api_key")
         if new_key is not None:
             new_key_str = str(new_key).strip()
@@ -183,12 +197,12 @@ class CommuteConfigService:
         with open(self.config_file, "w", encoding="utf-8") as f:
             json.dump(merged, f, ensure_ascii=False, indent=2)
 
-        logger.info(f"Commute config updated: {merged['location_name']}, {merged['bus_stop_name']} ({merged['bus_route_name']}번)")
+        logger.info(f"Commute config updated: {merged['location_name']}, {merged.get('bus_stop_name', '')} ({merged.get('bus_route_name', '')}번)")
         return self.get_masked_config()
 
     def generate_preview(self, custom_config: dict[str, Any] | None = None) -> dict[str, Any]:
         """
-        현재 설정(또는 전달된 설정)을 기반으로 실시간 브리핑 카드 프리뷰를 생성합니다 (ADR-030, ADR-035).
+        현재 설정(또는 전달된 설정)을 기반으로 실시간 브리핑 카드 프리뷰를 생성합니다 (ADR-030, ADR-035, ADR-037).
         Open-Meteo 실시간 오픈 API를 통해 거주지 기반 실시간 날씨와 대기질을 즉시 반영합니다.
         """
         cfg = dict(self.get_config())
@@ -202,7 +216,7 @@ class CommuteConfigService:
         loc_name = cfg.get("location_name", "우리 동네")
         air_station = cfg.get("air_station_name", "측정소")
         stop_name = cfg.get("bus_stop_name", "지정 정류장")
-        route_name = cfg.get("bus_route_name", "버스")
+        route_name = cfg.get("bus_route_name", "")
         lat = float(cfg.get("latitude", 37.55))
         lon = float(cfg.get("longitude", 127.02))
 
@@ -219,9 +233,40 @@ class CommuteConfigService:
         source_str = live_w.get("source", "Open-Meteo 실시간 라이브 API")
         updated_time = live_w.get("updated_time", now.strftime("%H:%M"))
 
-        bus_remaining_min = 4
-        bus_remaining_stops = 2
-        bus_next_min = 12
+        # BusService를 통한 실시간 출근 버스 도착 정보 조회 (ADR-037)
+        from app.services.bus_service import BusService
+
+        bus_info = BusService.get_arrival_info(
+            bus_stop_id=str(cfg.get("bus_stop_id", "")),
+            bus_route_name=str(route_name),
+            api_key=cfg.get("public_data_api_key"),
+            city_code=str(cfg.get("city_code", "11")),
+            use_mock_fallback=bool(cfg.get("use_mock_fallback", True)),
+            bus_stop_name=stop_name,
+            endpoint=cfg.get("public_data_endpoint"),
+        )
+
+        bus_status_str = bus_info["status"]
+        bus_next_str = bus_info["next_bus"]
+        bus_tip = bus_info["tip"]
+        bus_source = bus_info["source"]
+        bus_remaining_min = bus_info.get("remaining_min")
+        is_all_routes = bool(bus_info.get("is_all_routes", False))
+        resolved_stop = bus_info.get("stop_name") or stop_name
+
+        if is_all_routes:
+            bus_block = (
+                f"🚌 **출근길 버스 현황 ({resolved_stop} 전체 노선)**\n"
+                f"{bus_status_str}\n"
+                f"*(📡 {bus_source})*"
+            )
+        else:
+            bus_block = (
+                f"🚌 **출근길 버스 현황 ({resolved_stop} ➔ {route_name}번)**\n"
+                f"• 🚍 **{bus_status_str}**\n"
+                f"• ⏳ 다음 버스: **{bus_next_str}** 도착 예정\n"
+                f"*(📡 {bus_source})*"
+            )
 
         markdown_card = (
             f"🌅 **[출근길 모닝 브리핑] 좋은 아침입니다!**\n\n"
@@ -231,10 +276,8 @@ class CommuteConfigService:
             f"• ☔ 강수확률: **{rain_prob_str}** ({umbrella_tip})\n"
             f"• 🟢 미세먼지: **{dust_pm10}** | 초미세: **{dust_pm25}**\n"
             f"*(📡 {source_str} - {updated_time} 기준)*\n\n"
-            f"🚌 **출근길 버스 현황 ({stop_name} ➔ {route_name}번)**\n"
-            f"• 🚍 **{bus_remaining_min}분 후 도착** ({bus_remaining_stops}번째 전 정류소, 여유)\n"
-            f"• ⏳ 다음 버스: **{bus_next_min}분 후** 도착 예정\n\n"
-            f"💡 **출근 팁:** 버스가 약 {bus_remaining_min}분 뒤 도착합니다. 지금 현관을 나서시면 딱 맞습니다! 오늘도 힘찬 하루 보내세요. ✨"
+            f"{bus_block}\n\n"
+            f"💡 **출근 팁:** {bus_tip}"
         )
 
         return {
@@ -242,6 +285,7 @@ class CommuteConfigService:
             "config": self.get_masked_config(),
             "preview_time": time_str,
             "markdown": markdown_card,
+            "bus_tip": bus_tip,
             "weather_summary": {
                 "location": loc_name,
                 "station": air_station,
@@ -257,16 +301,22 @@ class CommuteConfigService:
                 "updated_time": updated_time,
             },
             "transit_summary": {
-                "stop_name": stop_name,
-                "route_name": f"{route_name}번",
-                "status": f"{bus_remaining_min}분 후 도착 ({bus_remaining_stops}번째 전)",
-                "next_bus": f"{bus_next_min}분 후",
+                "stop_name": resolved_stop,
+                "route_name": "전체 노선" if is_all_routes else f"{route_name}번",
+                "status": bus_status_str,
+                "next_bus": bus_next_str,
+                "source": bus_source,
+                "is_live": bus_info.get("is_live", False),
+                "is_all_routes": is_all_routes,
+                "remaining_min": bus_remaining_min,
+                "remaining_stops": bus_info.get("remaining_stops"),
+                "buses": bus_info.get("buses", []),
             },
         }
 
     def get_morning_weather_card(self) -> str:
         """
-        아침 정기 브리핑 상단에 통합 삽입할 실시간 날씨, 미세먼지 및 출근 버스 요약 블록을 반환합니다 (ADR-033, ADR-035).
+        아침 정기 브리핑 상단에 통합 삽입할 실시간 날씨, 미세먼지 및 출근 버스 요약 블록을 반환합니다 (ADR-033, ADR-035, ADR-037).
         """
         preview = self.generate_preview()
         w = preview["weather_summary"]
@@ -280,17 +330,22 @@ class CommuteConfigService:
             f"• 🟢 **대기질**: 미세 **{w['pm10']}** | 초미세 **{w['pm25']}**",
         ]
 
-        if cfg.get("bus_stop_name") and cfg.get("bus_route_name"):
-            lines.append(
-                f"• 🚌 **출근길 버스**: **{t['stop_name']}** ➔ **{t['route_name']}** ({t['status']})"
-            )
+        if cfg.get("bus_stop_id") or cfg.get("bus_stop_name"):
+            if t.get("is_all_routes"):
+                lines.append(
+                    f"• 🚌 **출근길 버스 ({t['stop_name']} 전체 노선)**:\n{t['status']}"
+                )
+            else:
+                lines.append(
+                    f"• 🚌 **출근길 버스**: **{t['stop_name']}** ➔ **{t['route_name']}** ({t['status']})"
+                )
 
         lines.append(f"*(📡 {w.get('source', 'Open-Meteo 실시간 API')})*")
         return "\n".join(lines)
 
     def get_standalone_weather_card(self) -> str:
         """
-        자연어 날씨/미세먼지 질의 시 사용자에게 즉각 제공할 단독 실시간 기상 브리핑 카드를 반환합니다 (ADR-033, ADR-035).
+        자연어 날씨/미세먼지 질의 시 사용자에게 즉각 제공할 단독 실시간 기상 브리핑 카드를 반환합니다 (ADR-033, ADR-035, ADR-037).
         """
         preview = self.generate_preview()
         w = preview["weather_summary"]
@@ -308,11 +363,53 @@ class CommuteConfigService:
             "🟢 **실시간 대기질**",
             f"• 미세먼지 (PM10): **{w['pm10']}**",
             f"• 초미세먼지 (PM2.5): **{w['pm25']}**\n",
-            "🚌 **출근길 버스 정보**",
-            f"• 탑승: **{t['stop_name']}** ➔ **{t['route_name']}**",
-            f"• 도착 예정: **{t['status']}** (다음 버스: {t['next_bus']})\n",
-            "✨ 상쾌하고 쾌적한 하루 보내세요!",
         ]
+
+        if t.get("is_all_routes"):
+            lines.extend([
+                "🚌 **출근길 버스 정보**",
+                f"• 탑승 정류소: **{t['stop_name']}** (전체 노선)",
+                f"{t['status']}\n",
+            ])
+        else:
+            lines.extend([
+                "🚌 **출근길 버스 정보**",
+                f"• 탑승: **{t['stop_name']}** ➔ **{t['route_name']}**",
+                f"• 도착 예정: **{t['status']}** (다음 버스: {t['next_bus']})\n",
+            ])
+
+        lines.append("✨ 상쾌하고 쾌적한 하루 보내세요!")
+        return "\n".join(lines)
+
+    def get_standalone_bus_card(self) -> str:
+        """
+        자연어 버스 도착 질의(/bus, '출근 버스 언제 와?', '버스 정보') 시
+        사용자에게 즉각 제공할 단독 실시간 버스 도착 브리핑 카드를 반환합니다 (ADR-037).
+        """
+        preview = self.generate_preview()
+        t = preview["transit_summary"]
+        now = get_now()
+        date_str = now.strftime("%Y-%m-%d %A")
+
+        if t.get("is_all_routes"):
+            lines = [
+                f"🚌 **[실시간 출근 버스 도착 정보]** (`{t['stop_name']}` 정류소 전체 노선)\n",
+                f"📅 **조회 일시**: {date_str} {now.strftime('%H:%M')} KST ({t.get('source', '실시간 API')})\n",
+                "🚍 **정류소 실시간 도착 현황**",
+                f"{t['status']}\n",
+                f"💡 **출근 팁:** {preview.get('bus_tip', '안전하게 이동하세요! ✨')}",
+            ]
+        else:
+            lines = [
+                f"🚌 **[실시간 출근 버스 도착 정보]** (`{t['stop_name']}` ➔ `{t['route_name']}`)\n",
+                f"📅 **조회 일시**: {date_str} {now.strftime('%H:%M')} KST ({t.get('source', '실시간 API')})\n",
+                "🚍 **도착 예정 현황**",
+                f"• 탑승 정류소: **{t['stop_name']}**",
+                f"• 버스 노선: **{t['route_name']}**",
+                f"• 도착 현황: **{t['status']}**",
+                f"• 다음 버스: **{t['next_bus']}**\n",
+                f"💡 **출근 팁:** {preview.get('bus_tip', '안전하게 이동하세요! ✨')}",
+            ]
         return "\n".join(lines)
 
     def update_location_by_query(self, query: str) -> dict[str, Any]:
@@ -337,4 +434,18 @@ class CommuteConfigService:
             "resolved": resolved,
             "config": saved_cfg,
         }
+
+    def resolve_bus_stop(self, bus_stop_id: str, city_code: str = "11") -> dict[str, Any]:
+        """
+        정류소 번호(ARS-ID, Node ID)를 기반으로 정류소명, 방면, 지역 정보를 자동 조회합니다 (ADR-038).
+        """
+        from app.services.bus_service import BusService
+
+        cfg = self.get_config()
+        return BusService.resolve_bus_stop(
+            bus_stop_id=bus_stop_id,
+            city_code=city_code or str(cfg.get("city_code", "11")),
+            api_key=cfg.get("public_data_api_key"),
+            endpoint=cfg.get("public_data_endpoint"),
+        )
 

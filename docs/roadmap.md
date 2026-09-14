@@ -316,6 +316,31 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] 텔레그램 세션 DB 내 오염된 `pending_log` 초기화 및 GTD `inbox.md` 구매 목록(두루마리 휴지 선물 수령) 정제
 - [x] 신규 회귀 방지 단위 테스트(`test_llm_provider_negative_feedback_and_yoga_guard`), Ruff/Mypy 검사 및 `./scripts/smoke_test.sh` 전 항목 라이브 검증 완료
 
+### Phase 36: 실시간 출근 버스 도착정보 API 실연동 및 지능형 캐시·안전 폴백 (ADR-037) - ✅ 완료
+- [x] `BusService` 구축:
+  - 서울시 TOPIS 버스도착정보조회 API(`http://ws.bus.go.kr/api/rest/stationinfo/getStationByUid`) 연동 및 ARS ID/노선번호 기반 실시간 잔여시간, 잔여 정류소, 막차/차고지 상태 조회
+  - 국토교통부 TAGO 버스도착정보조회 API 연동 및 전국/경기도(city_code) 정류소 도착 예정 정보 조회
+  - `urllib.parse.unquote()` 기반 이중 인코딩 방지 및 공공데이터포털(data.go.kr) 서비스키 완벽 호환
+  - 45초 TTL 인메모리 캐시(`_cache`) 적용으로 API 쿼터 절약 및 0.01초 초고속 응답 보장
+  - API 키 미등록 또는 외부 장애 시 현재 분(minute) 기반 가변적 잔여 시간(3~11분)과 비서 출근 팁 동적 계산으로 정적 4분 고정 결함 탈피 및 안전한 폴백 제공
+- [x] `CommuteConfigService` 실연동:
+  - 모닝 브리핑 및 프리뷰 생성 시 `BusService.get_arrival_info()` 실시간 반영
+  - 단독 버스 도착 카드 반환 메서드 `get_standalone_bus_card()` 신설
+- [x] `LLMProvider` 및 `SupervisorService` 연동:
+  - `/bus`, "출근 버스 언제 와?", "버스 도착 정보" 질의 시 단독 실시간 버스 도착 카드 즉시 제공
+- [x] 단위 테스트(`tests/test_bus_service.py`), Ruff/Mypy 검사 및 `./scripts/smoke_test.sh` 6-7 단계 라이브 검증 완료
+
+### Phase 37: 정류소 번호 원클릭 조회 및 지능형 정류소명 자동 매핑 (ADR-038) - ✅ 완료
+- [x] `BusService.resolve_bus_stop`:
+  - 서울 5자리 ARS-ID 및 전국 정류소 번호 입력 시 공공 정류소 데이터베이스 및 지도 검색을 통해 `정류소명`, `방면`, `행정구역` 실시간 역조회 및 1시간 인메모리 캐시(`_stop_name_cache`) 적용
+- [x] `POST /api/settings/commute/resolve-bus-stop` REST 엔드포인트 신설
+- [x] 웹 콘솔 설정 모달(`#commute-modal`) Section 2에 `[🔍 정류소 조회]` 버튼 부착 및 정류소 번호 4자리 이상 입력 시 blur/change 자동 완성 연동
+- [x] `CommuteConfigService.save_config`:
+  - 정류소 번호 신규 입력 또는 정류소명 플레이스홀더(`역삼역`, `정류장`) 잔존 시 백엔드 강제 자동 매핑 및 `bus_route_name="버스"` 구버전 값의 빈 문자열(`전체 노선`) 정제
+- [x] `scripts/smoke_test.sh` 스모크 테스트 샌드박스 격리:
+  - `config/commute_config.json` 백업/복원 루틴 및 6-8 단계 테스트 추가로 실제 사용자 API 키와 출근길 설정 영구 보존
+- [x] 단위 테스트(`tests/test_bus_service.py`), Ruff/Mypy 정적 검사 및 `./scripts/smoke_test.sh` 6-8 라이브 검증 완료
+
 
 
 

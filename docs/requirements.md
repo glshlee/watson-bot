@@ -202,7 +202,13 @@
 - **FR-35.1**: 단순 명사 부분 일치(`workout_keywords`, `idea_keywords`, `work_keywords`, `life_keywords`)에 의해 무조건 `log_suggest` 초안 카드가 생성되던 정규식 가로채기 블록을 전면 철거해야 한다.
 - **FR-35.2**: `"필요 없어"`, `"필요가 없어"`, `"안 사도 돼"`, `"안 해도 돼"`, `"선물받아"`, `"취소"`, `"삭제"`, `"어때?"` 등 부정/불필요/취소/피드백 발화 감지 시 일과 초안 생성을 원천 차단하고 즉시 LLM 대화(`chat_only`)로 위임해야 한다.
 - **FR-35.3**: "휴지는 선물받아서 구매할 필요가 없어" 등에서 "필[요가] 없어"의 "요가"가 서브스트링으로 오탐지되어 `Workout & Health` 초안이 생성되는 결함을 원천 차단해야 한다.
-- **FR-35.4**: 운동(`Workout & Health`) 및 삶의 기록(`Daily Notes & Diary`) 초안 제안은 실제 수행/완료했다는 서사 진술문(과거형/완료형 서술어 결합)에 한해 선별 제안하며, 그 외 일상 대화는 LLM(Gemini / AGY)이 자연스럽게 판단하고 처리하도록 일원화해야 한다.
+### FR-36: 실시간 출근 버스 도착정보 API 실연동 및 지능형 캐시·안전 폴백 (ADR-037)
+- **FR-36.1**: 서울시 TOPIS 버스도착정보조회 API(`http://ws.bus.go.kr/api/rest/stationinfo/getStationByUid`)를 연동하여 ARS ID 및 노선 번호 기반 실시간 잔여시간(분/초), 남은 정류소 수, 막차/출발대기 상태를 조회하는 `BusService`를 제공해야 한다.
+- **FR-36.2**: 국토교통부 TAGO 버스도착정보조회 API(`http://apis.data.go.kr/1613000/ArvlInfoInqireService/getSttnAcctoArvlPrearngeInfoList`)를 연동하여 전국 및 경기도 정류소 도착 예정 정보를 조회해야 한다.
+- **FR-36.3**: `urllib.parse.unquote()` 기반 이중 인코딩 방지를 적용하여 공공데이터포털(data.go.kr)의 인코딩/디코딩 키와 완벽히 호환되어야 한다.
+- **FR-36.4**: 45초 TTL 인메모리 캐시를 적용하여 중복 호출을 최소화하고 0.01초 초고속 응답을 보장해야 한다.
+- **FR-36.5**: API 키 미설정 또는 외부 장애 시 현재 분(minute) 기반 가변적 잔여 시간(3~11분)과 비서 출근 팁을 동적 계산하여 정적 4분 고정 결함을 탈피하고 안전한 시뮬레이션 폴백을 제공해야 한다.
+- **FR-36.6**: `/bus`, "출근 버스 언제 와?", "버스 도착 정보" 등 자연어 및 슬래시 커맨드 질의 시 단독 실시간 버스 도착 카드를 즉시 반환해야 한다.
 
 ---
 
@@ -262,6 +268,8 @@
 | **FR-33** | `app/services/geo_service.py`, `app/services/commute_config_service.py`, `app/services/llm_provider.py`, `app/services/supervisor_service.py`, `app/routers/settings_router.py` | Pytest 단위 테스트(`test_geo_service.py`) & cURL 스모크 검증(6-5, 6-6) |
 | **FR-34** | `app/services/weather_service.py`, `app/services/commute_config_service.py`, `app/services/geo_service.py` | Pytest 단위 테스트(`test_weather_service.py`, `test_commute_config_service.py`) & cURL 스모크 검증 |
 | **FR-35** | `app/services/llm_provider.py`, `tests/test_llm_provider.py` | Pytest 단위 테스트(`test_llm_provider.py`) & cURL 라이브 검증 |
+| **FR-36** | `app/services/bus_service.py`, `app/services/commute_config_service.py`, `tests/test_bus_service.py` | Pytest 단위 테스트(`test_bus_service.py`) & cURL 스모크 검증(6-7) |
+| **FR-37** | `app/services/bus_service.py`, `app/routers/settings_router.py`, `app/templates/index.html`, `app/static/js/main.js`, `scripts/smoke_test.sh` | Pytest 단위 테스트(`test_bus_service.py`) & cURL 스모크 검증(6-8) |
 
 
 

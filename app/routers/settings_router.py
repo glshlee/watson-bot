@@ -23,9 +23,9 @@ class CommuteConfigRequest(BaseModel):
     grid_x: int = Field(61, description="기상청 격자 X 좌표")
     grid_y: int = Field(125, description="기상청 격자 Y 좌표")
     air_station_name: str = Field("강남구", description="에어코리아 대기 측정소명")
-    bus_stop_name: str = Field("역삼역", description="출근 버스 탑승 정류소명")
-    bus_stop_id: str = Field("23284", description="정류소 번호 / ARS-ID / node_id")
-    bus_route_name: str = Field("146", description="탑승 버스 노선 번호")
+    bus_stop_name: str = Field("", description="출근 버스 탑승 정류소명 (미입력 시 API에서 자동 감지)")
+    bus_stop_id: str = Field("23284", description="정류소 번호 / ARS-ID / node_id (필수/권장)")
+    bus_route_name: str = Field("", description="탑승 버스 노선 번호 (미입력 시 정류소 전체 노선 조회)")
     bus_route_id: str = Field("", description="버스 노선 고유 ID")
     city_code: str = Field("11", description="도시 코드 (서울: 11, 경기: 31 등)")
     public_data_api_key: str = Field("", description="공공데이터포털 일반 인증키")
@@ -127,6 +127,24 @@ def resolve_commute_location(payload: ResolveLocationRequest) -> dict[str, Any]:
     from app.services.geo_service import GeoService
 
     resolved = GeoService.resolve_location(payload.query)
+    return {
+        "success": True,
+        "data": resolved,
+    }
+
+
+class ResolveBusStopRequest(BaseModel):
+    bus_stop_id: str = Field(..., description="정류소 번호 / ARS ID / Node ID")
+    city_code: str = Field("11", description="도시 코드")
+
+
+@router.post("/commute/resolve-bus-stop")
+def resolve_commute_bus_stop(payload: ResolveBusStopRequest) -> dict[str, Any]:
+    """
+    정류소 번호(ARS ID / Node ID)를 기반으로 정류소명, 방면, 지역 정보를 자동으로 조회합니다 (ADR-038).
+    """
+    service = CommuteConfigService()
+    resolved = service.resolve_bus_stop(payload.bus_stop_id, payload.city_code)
     return {
         "success": True,
         "data": resolved,

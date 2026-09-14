@@ -248,18 +248,22 @@
                                 <div class="section-title"><i class="fa-solid fa-bus-simple"></i> 2. 출근길 버스 정보</div>
                                 <div class="form-grid-2">
                                     <div class="form-group">
-                                        <label for="commute-stop-name">탑승 정류소명:</label>
-                                        <input type="text" id="commute-stop-name" placeholder="예: 역삼역" required />
+                                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                                            <label for="commute-stop-id"><strong>정류소 번호 / ARS ID:</strong></label>
+                                            <button type="button" id="btn-resolve-bus-stop" class="btn-sm btn-info" style="padding:2px 8px; font-size:11px; margin-bottom:4px;" title="입력한 번호로 정류소명 즉시 조회"><i class="fa-solid fa-magnifying-glass"></i> 정류소 조회</button>
+                                        </div>
+                                        <input type="text" id="commute-stop-id" placeholder="예: 04158 (금옥초교), 23284 (강남역)" />
+                                        <span class="field-hint" id="commute-stop-hint">💡 정류소 번호를 입력하고 조회를 누르면 정류소명이 자동으로 입력됩니다.</span>
                                     </div>
                                     <div class="form-group">
-                                        <label for="commute-stop-id">정류소 번호 / ARS ID:</label>
-                                        <input type="text" id="commute-stop-id" placeholder="예: 23284" />
+                                        <label for="commute-route-name">특정 버스 노선 (선택):</label>
+                                        <input type="text" id="commute-route-name" placeholder="예: 146 (비워두면 전체 노선 안내)" />
                                     </div>
                                 </div>
                                 <div class="form-grid-2">
                                     <div class="form-group">
-                                        <label for="commute-route-name">버스 노선 번호:</label>
-                                        <input type="text" id="commute-route-name" placeholder="예: 146" required />
+                                        <label for="commute-stop-name">탑승 정류소명 (선택/자동 감지):</label>
+                                        <input type="text" id="commute-stop-name" placeholder="비워두면 API에서 정류소명 자동 감지" />
                                     </div>
                                     <div class="form-group">
                                         <label for="commute-city-code">도시 구분 (시/도):</label>

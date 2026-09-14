@@ -1043,19 +1043,80 @@ document.addEventListener("DOMContentLoaded", () => {
 
     btnResolveLocation?.addEventListener("click", handleAutoResolveLocation);
 
+    const btnResolveBusStop = document.getElementById("btn-resolve-bus-stop");
+    const commuteStopHint = document.getElementById("commute-stop-hint");
+
+    async function handleAutoResolveBusStop() {
+        const stopId = commuteStopId?.value.trim();
+        if (!stopId) {
+            alert("정류소 번호(ARS-ID)를 입력해 주세요 (예: 04158, 23284)");
+            return;
+        }
+
+        if (btnResolveBusStop) {
+            btnResolveBusStop.disabled = true;
+            btnResolveBusStop.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 조회 중';
+        }
+
+        try {
+            const res = await fetch("/api/settings/commute/resolve-bus-stop", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    bus_stop_id: stopId,
+                    city_code: commuteCityCode?.value || "11"
+                })
+            });
+            const data = await res.json();
+            if (res.ok && data.success && data.data) {
+                const r = data.data;
+                if (commuteStopName && r.stop_name && !r.stop_name.startsWith("정류소(")) {
+                    commuteStopName.value = r.stop_name;
+                    if (commuteStopHint) {
+                        const extra = r.direction ? ` (${r.direction})` : "";
+                        commuteStopHint.innerHTML = `✅ <strong>${r.stop_name}</strong>${extra} 매핑 완료`;
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("Failed to auto-resolve bus stop:", err);
+        } finally {
+            if (btnResolveBusStop) {
+                btnResolveBusStop.disabled = false;
+                btnResolveBusStop.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> 정류소 조회';
+            }
+        }
+    }
+
+    btnResolveBusStop?.addEventListener("click", handleAutoResolveBusStop);
+    commuteStopId?.addEventListener("change", () => {
+        if (commuteStopId.value.trim().length >= 4) handleAutoResolveBusStop();
+    });
+    commuteStopId?.addEventListener("blur", () => {
+        if (commuteStopId.value.trim().length >= 4 && (!commuteStopName.value.trim() || commuteStopName.value.trim() === "역삼역")) {
+            handleAutoResolveBusStop();
+        }
+    });
+
     commuteModal?.addEventListener("click", (e) => {
         if (e.target === commuteModal) closeCommuteModal();
     });
 
     saveCommuteBtn?.addEventListener("click", async () => {
+        let stopNameVal = commuteStopName?.value.trim() || "";
+        const stopIdVal = commuteStopId?.value.trim() || "";
+        if (stopIdVal && (!stopNameVal || stopNameVal === "역삼역")) {
+            stopNameVal = ""; // 백엔드에서 정류소 번호 기반으로 정류소명을 자동 조회하도록 위임
+        }
+
         const payload = {
             location_name: commuteLocationInput?.value.trim() || "우리 동네",
             air_station_name: commuteStationInput?.value.trim() || "",
             grid_x: parseInt(commuteGridX?.value, 10) || 61,
             grid_y: parseInt(commuteGridY?.value, 10) || 125,
-            bus_stop_name: commuteStopName?.value.trim() || "정류장",
-            bus_stop_id: commuteStopId?.value.trim() || "",
-            bus_route_name: commuteRouteName?.value.trim() || "버스",
+            bus_stop_name: stopNameVal,
+            bus_stop_id: stopIdVal,
+            bus_route_name: commuteRouteName?.value.trim() || "",
             city_code: commuteCityCode?.value || "11",
             send_time: commuteSendTime?.value || "07:30",
             enabled: commuteEnabled?.checked ?? true,
@@ -1075,9 +1136,11 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             const result = await res.json();
             if (res.ok) {
+                const busLabel = payload.bus_route_name ? `${payload.bus_route_name}번` : '전체 노선';
+                const stopLabel = payload.bus_stop_name || (payload.bus_stop_id ? `정류소(${payload.bus_stop_id})` : '정류소');
                 alert("✅ 출근길 맞춤형 브리핑 설정이 안전하게 저장되었습니다!\n\n" +
                       `📍 지역: ${payload.location_name}\n` +
-                      `🚌 탑승: ${payload.bus_stop_name} (${payload.bus_route_name}번)\n` +
+                      `🚌 탑승: ${stopLabel} (${busLabel})\n` +
                       `⏰ 알림: ${payload.send_time} (${payload.weekdays_only ? '평일' : '매일'})`);
                 await loadCommuteSettings();
                 closeCommuteModal();
@@ -1104,9 +1167,9 @@ document.addEventListener("DOMContentLoaded", () => {
             air_station_name: commuteStationInput?.value.trim() || "",
             grid_x: parseInt(commuteGridX?.value, 10) || 61,
             grid_y: parseInt(commuteGridY?.value, 10) || 125,
-            bus_stop_name: commuteStopName?.value.trim() || "정류장",
+            bus_stop_name: commuteStopName?.value.trim() || "",
             bus_stop_id: commuteStopId?.value.trim() || "",
-            bus_route_name: commuteRouteName?.value.trim() || "버스",
+            bus_route_name: commuteRouteName?.value.trim() || "",
             city_code: commuteCityCode?.value || "11",
             send_time: commuteSendTime?.value || "07:30",
             enabled: commuteEnabled?.checked ?? true,
