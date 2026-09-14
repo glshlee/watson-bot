@@ -297,6 +297,26 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] 웹 대시보드 모달(`#commute-modal`) 내 `[<i class="fa-solid fa-wand-magic-sparkles"></i> 자동 찾기]` 버튼(`#btn-resolve-location`) 및 `main.js` 자동 채움 연동
 - [x] 단위 테스트(`tests/test_geo_service.py`), Ruff/Mypy 검사 및 `./scripts/smoke_test.sh` 6-5, 6-6 라이브 검증 완료
 
+### Phase 34: Open-Meteo 무설정 오픈 API 기반 실시간 날씨 및 대기질 연동 (ADR-035) - ✅ 완료
+- [x] Zero-Key 글로벌 오픈 기상/대기질 조회 엔진(`WeatherService`) 구축:
+  - Open-Meteo Forecast & Air Quality API를 통한 위경도 기반 실시간 기온, 체감기온, WMO 기상 코드, 강수확률, PM10, PM2.5 실시간 조회 (평균 150ms)
+  - 한국 환경부 기준 대기질 등급(좋음, 보통, 나쁨, 매우나쁨) 및 직관적 색상 이모지(🟢, 🟡, 🟠, 🔴) 정규화
+  - 강수확률 및 WMO 기상 코드(비/눈/소나기/뇌우) 기반 지능형 우산 팁(`우산 필수 ☔`, `접이식 우산 추천 🌂`, `우산 불필요 ☀️`) 자동 생성
+  - 10분(600초) TTL 인메모리 캐시 및 3.5초 타임아웃 기반 무중단 안전 폴백(Fallback) 구조 완비
+- [x] `GeoService` 위경도 지오코딩 보강: 서울 25개 자치구 및 전국 주요 지역의 위도(`lat`)와 경도(`lon`) 내장 및 자동 산출
+- [x] `CommuteConfigService` 실시간 연동:
+  - `config/commute_config.json`에 `latitude`, `longitude` 영속화 및 누락 시 자동 보강
+  - 모닝 브리핑 및 날씨 카드에 `(📡 Open-Meteo 실시간 라이브 API - HH:MM 기준)` 신뢰성 배지 출력
+### Phase 35: 키워드 정규식 가로채기 철거 및 LLM 자연어 위임·부정 피드백 가드레일 (ADR-036) - ✅ 완료
+- [x] 단순 명사 부분 일치(`workout_keywords`, `idea_keywords`, `work_keywords`, `life_keywords`) 기반 강제 `log_suggest` 생성기 전면 철거
+- [x] 부정 / 불필요 / 취소 / 피드백 가드레일(`negative_feedback_patterns`) 최우선 적용:
+  - `"필요 없어"`, `"필요가 없어"`, `"안 사도 돼"`, `"안 해도 돼"`, `"선물받아"`, `"취소"`, `"삭제"`, `"어때?"` 등 감지 시 일과 초안 생성 원천 차단 및 즉시 LLM 대화로 직행
+- [x] "휴지는 선물받아서 구매할 필요가 없어"에서 "필[요가] 없어"의 "요가" 서브스트링 매칭으로 인한 `Workout & Health` 오탐지 결함 근본 해결
+- [x] 과거형/완료형 서술어와 결합된 실제 서사적 완료 진술문(`스쿼트 100kg 성공`, `러닝 5km 완주`, `미역국을 끓였어` 등)에 한정한 안전한 초안 제안 로직 유지
+- [x] 텔레그램 세션 DB 내 오염된 `pending_log` 초기화 및 GTD `inbox.md` 구매 목록(두루마리 휴지 선물 수령) 정제
+- [x] 신규 회귀 방지 단위 테스트(`test_llm_provider_negative_feedback_and_yoga_guard`), Ruff/Mypy 검사 및 `./scripts/smoke_test.sh` 전 항목 라이브 검증 완료
+
+
 
 
 

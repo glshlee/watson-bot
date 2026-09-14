@@ -61,13 +61,15 @@
 * **GTD 스킬 명세 동기화 & 수술적 이관 (ADR-032)**: GTD 수집함(SSOT)과 데일리 로그의 역할을 엄격히 분리하고, 태스크 완료 시 GTD 파일에서 잘라내어(Cut) 오늘 날짜 데일리 로그(`logs/daily/YYYY-MM-DD.md`)로 이동(Paste)하는 수술적 이관(Surgical Transfer)을 집행하며, AGY CLI 작업 디렉토리 바인딩 및 시스템 프롬프트 스킬 주입을 보장할 것.
 * **모닝 브리핑 날씨 & 미세먼지 필수 통합 (ADR-033)**: 아침 브리핑(08:30 KST 및 /briefing morning) 최상단에 거주지 실시간 날씨(기온/체감/하늘/강수팁), 대기질(PM10/PM2.5) 및 출근 버스 카드를 기본 통합 탑재하고, 독립 기상 질의("날씨 브리핑", "/weather")에 즉각 대응하며 일상 인사 분리 가드레일을 보장할 것.
 * **동네 설정 스마트 지오코딩 & 대화형 변경 (ADR-034)**: 한국 주요 행정구역(서울 25개 구/동, 경기/인천/광역시) 스마트 지오코딩 엔진으로 기상청 격자/대기 측정소를 자동 매핑하고, "/location [동네명]" 및 대화형 위치 변경·영속화와 웹 콘솔 원클릭 자동 찾기(POST /api/settings/commute/resolve-location)를 보장할 것.
+* **Open-Meteo 실시간 날씨 & 대기질 연동 (ADR-035)**: API 키 없는 Open-Meteo 글로벌 오픈 API로 거주지(위경도) 실시간 기온/체감/하늘/강수확률 및 미세먼지(PM10/PM2.5 환경부 등급)를 0.1초 내 조회하고 10분 캐시 및 안전 폴백을 보장할 것.
+* **정규식 가로채기 철거 & LLM 대화 위임 (ADR-036)**: 부분 일치 키워드 가로채기를 철거하고 부정/불필요/취소/피드백 가드레일을 적용하여 "필요가 없어" 등에서의 오탐지를 원천 차단하며, 자연어 맥락 추론을 LLM으로 일원화할 것.
 * **Explicit User Commit Trigger Only (에이전트 코드 커밋 수칙)**: 코드 수정 및 기능 구현 후 Git 커밋(`git commit`)은 에이전트가 임의로 자동 실행하지 않으며, 오직 **사용자가 명시적으로 "커밋해" 지시를 내렸을 때만** 수행할 것.
 * **Curl-Based Live Verification (필수)**: 모든 코드 수정 후 반드시 `./scripts/smoke_test.sh` cURL 테스트를 실행하여 실제 라이브 API 수신 및 500 에러 부재를 검증할 것.
 * **Self-Verification & Evolution Loop**: 코드 변경 시 `pytest`/`mypy`/`ruff` 및 cURL 검증 수행 후 실패 시 `evolution.md` 지침에 따라 하네스 자가 진화 집행.
 
 ### 4. Progressive Disclosure (상세 문서 참조)
 * **제품 기획서 개요**: `docs/PRD.md` | **기능 요구사항**: `docs/requirements.md`
-* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-034)
+* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-036)
 
 
 ---

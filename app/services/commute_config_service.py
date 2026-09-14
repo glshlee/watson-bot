@@ -5,6 +5,7 @@ import re
 from typing import Any, ClassVar
 
 from app.config import get_now
+from app.services.weather_service import WeatherService
 
 logger = logging.getLogger("watson.commute_config")
 
@@ -25,6 +26,8 @@ class CommuteConfigService:
         "location_name": "서울 강남구 역삼동",
         "grid_x": 61,
         "grid_y": 125,
+        "latitude": 37.50,
+        "longitude": 127.04,
         "air_station_name": "강남구",
         "bus_stop_name": "역삼역",
         "bus_stop_id": "23284",
@@ -70,6 +73,12 @@ class CommuteConfigService:
                     # 누락된 키는 기본값으로 보강
                     merged = dict(self.DEFAULT_CONFIG)
                     merged.update(data)
+                    # 위도/경도가 누락된 경우 location_name 기반 자동 보강
+                    if "latitude" not in data or "longitude" not in data:
+                        from app.services.geo_service import GeoService
+                        res = GeoService.resolve_location(merged.get("location_name", ""))
+                        merged["latitude"] = res.get("latitude", 37.55)
+                        merged["longitude"] = res.get("longitude", 127.02)
                     return merged
             except (json.JSONDecodeError, OSError) as e:
                 logger.warning(f"Failed to parse commute config: {e}, falling back to defaults")
@@ -118,6 +127,16 @@ class CommuteConfigService:
         if "grid_y" in payload:
             try:
                 merged["grid_y"] = int(payload["grid_y"])
+            except (ValueError, TypeError):
+                pass
+        if "latitude" in payload:
+            try:
+                merged["latitude"] = float(payload["latitude"])
+            except (ValueError, TypeError):
+                pass
+        if "longitude" in payload:
+            try:
+                merged["longitude"] = float(payload["longitude"])
             except (ValueError, TypeError):
                 pass
         if "air_station_name" in payload:
@@ -169,7 +188,8 @@ class CommuteConfigService:
 
     def generate_preview(self, custom_config: dict[str, Any] | None = None) -> dict[str, Any]:
         """
-        현재 설정(또는 전달된 설정)을 기반으로 실시간 브리핑 카드 프리뷰를 생성합니다.
+        현재 설정(또는 전달된 설정)을 기반으로 실시간 브리핑 카드 프리뷰를 생성합니다 (ADR-030, ADR-035).
+        Open-Meteo 실시간 오픈 API를 통해 거주지 기반 실시간 날씨와 대기질을 즉시 반영합니다.
         """
         cfg = dict(self.get_config())
         if custom_config:
@@ -183,13 +203,22 @@ class CommuteConfigService:
         air_station = cfg.get("air_station_name", "측정소")
         stop_name = cfg.get("bus_stop_name", "지정 정류장")
         route_name = cfg.get("bus_route_name", "버스")
+        lat = float(cfg.get("latitude", 37.55))
+        lon = float(cfg.get("longitude", 127.02))
 
-        # 시뮬레이션 / 프리뷰용 합리적 데이터
-        temp = 19.5
-        feels_like = 20.1
-        rain_prob = 10
-        dust_pm10 = "좋음 (18㎍/㎥)"
-        dust_pm25 = "좋음 (9㎍/㎥)"
+        # Open-Meteo 실시간 기상/대기질 조회 (10분 캐시 & 안전 폴백)
+        live_w = WeatherService.get_live_weather(latitude=lat, longitude=lon, location_name=loc_name)
+
+        temp_str = live_w["temp"]
+        feels_str = live_w["feels_like"]
+        sky_str = live_w["sky"]
+        rain_prob_str = live_w["rain_prob"]
+        umbrella_tip = live_w.get("umbrella_tip", "우산 불필요 ☀️")
+        dust_pm10 = live_w["pm10"]
+        dust_pm25 = live_w["pm25"]
+        source_str = live_w.get("source", "Open-Meteo 실시간 라이브 API")
+        updated_time = live_w.get("updated_time", now.strftime("%H:%M"))
+
         bus_remaining_min = 4
         bus_remaining_stops = 2
         bus_next_min = 12
@@ -198,9 +227,10 @@ class CommuteConfigService:
             f"🌅 **[출근길 모닝 브리핑] 좋은 아침입니다!**\n\n"
             f"📅 **일시:** {date_str} (발송 예정: {time_str} KST)\n\n"
             f"📍 **우리 동네 날씨 ({loc_name})**\n"
-            f"• 🌤️ 날씨: **맑음** (현재: **{temp}°C** / 체감: **{feels_like}°C**)\n"
-            f"• ☔ 강수확률: **{rain_prob}%** (우산 불필요 ☀️)\n"
-            f"• 🟢 미세먼지: **{dust_pm10}** | 초미세: **{dust_pm25}** ({air_station} 측정소 기준)\n\n"
+            f"• 🌤️ 날씨: **{sky_str}** (현재: **{temp_str}** / 체감: **{feels_str}**)\n"
+            f"• ☔ 강수확률: **{rain_prob_str}** ({umbrella_tip})\n"
+            f"• 🟢 미세먼지: **{dust_pm10}** | 초미세: **{dust_pm25}**\n"
+            f"*(📡 {source_str} - {updated_time} 기준)*\n\n"
             f"🚌 **출근길 버스 현황 ({stop_name} ➔ {route_name}번)**\n"
             f"• 🚍 **{bus_remaining_min}분 후 도착** ({bus_remaining_stops}번째 전 정류소, 여유)\n"
             f"• ⏳ 다음 버스: **{bus_next_min}분 후** 도착 예정\n\n"
@@ -215,12 +245,16 @@ class CommuteConfigService:
             "weather_summary": {
                 "location": loc_name,
                 "station": air_station,
-                "temp": f"{temp}°C",
-                "feels_like": f"{feels_like}°C",
-                "sky": "맑음 🌤️",
-                "rain_prob": f"{rain_prob}%",
+                "temp": temp_str,
+                "feels_like": feels_str,
+                "sky": sky_str,
+                "rain_prob": rain_prob_str,
+                "umbrella_tip": umbrella_tip,
                 "pm10": dust_pm10,
                 "pm25": dust_pm25,
+                "source": source_str,
+                "is_live": live_w.get("is_live", True),
+                "updated_time": updated_time,
             },
             "transit_summary": {
                 "stop_name": stop_name,
@@ -232,7 +266,7 @@ class CommuteConfigService:
 
     def get_morning_weather_card(self) -> str:
         """
-        아침 정기 브리핑 상단에 통합 삽입할 실시간 날씨, 미세먼지 및 출근 버스 요약 블록을 반환합니다 (ADR-033).
+        아침 정기 브리핑 상단에 통합 삽입할 실시간 날씨, 미세먼지 및 출근 버스 요약 블록을 반환합니다 (ADR-033, ADR-035).
         """
         preview = self.generate_preview()
         w = preview["weather_summary"]
@@ -242,8 +276,8 @@ class CommuteConfigService:
         lines = [
             f"#### 📍 **오늘의 날씨 & 미세먼지 ({w['location']})**",
             f"• 🌤️ **날씨**: {w['sky']} (기온: **{w['temp']}** / 체감: **{w['feels_like']}**)",
-            f"• ☔ **강수확률**: **{w['rain_prob']}** (우산 불필요 ☀️)",
-            f"• 🟢 **미세먼지**: **{w['pm10']}** | 초미세: **{w['pm25']}** ({w['station']} 기준)",
+            f"• ☔ **강수확률**: **{w['rain_prob']}** ({w.get('umbrella_tip', '우산 불필요 ☀️')})",
+            f"• 🟢 **대기질**: 미세 **{w['pm10']}** | 초미세 **{w['pm25']}**",
         ]
 
         if cfg.get("bus_stop_name") and cfg.get("bus_route_name"):
@@ -251,11 +285,12 @@ class CommuteConfigService:
                 f"• 🚌 **출근길 버스**: **{t['stop_name']}** ➔ **{t['route_name']}** ({t['status']})"
             )
 
+        lines.append(f"*(📡 {w.get('source', 'Open-Meteo 실시간 API')})*")
         return "\n".join(lines)
 
     def get_standalone_weather_card(self) -> str:
         """
-        자연어 날씨/미세먼지 질의 시 사용자에게 즉각 제공할 단독 실시간 기상 브리핑 카드를 반환합니다 (ADR-033).
+        자연어 날씨/미세먼지 질의 시 사용자에게 즉각 제공할 단독 실시간 기상 브리핑 카드를 반환합니다 (ADR-033, ADR-035).
         """
         preview = self.generate_preview()
         w = preview["weather_summary"]
@@ -265,12 +300,12 @@ class CommuteConfigService:
 
         lines = [
             f"🌤️ **[실시간 날씨 & 미세먼지 브리핑]** (`{w['location']}` 기준)\n",
-            f"📅 **기준 일시**: {date_str} {now.strftime('%H:%M')} KST\n",
+            f"📅 **기준 일시**: {date_str} {w.get('updated_time', now.strftime('%H:%M'))} KST ({w.get('source', '실시간 API')})\n",
             "📍 **날씨 및 기온**",
             f"• 상태: {w['sky']}",
             f"• 기온: **{w['temp']}** (체감 온도: **{w['feels_like']}**)",
-            f"• 강수확률: **{w['rain_prob']}** (우산 불필요 ☀️)\n",
-            f"🟢 **대기질 (에어코리아 {w['station']} 기준)**",
+            f"• 강수확률: **{w['rain_prob']}** ({w.get('umbrella_tip', '우산 불필요 ☀️')})\n",
+            "🟢 **실시간 대기질**",
             f"• 미세먼지 (PM10): **{w['pm10']}**",
             f"• 초미세먼지 (PM2.5): **{w['pm25']}**\n",
             "🚌 **출근길 버스 정보**",
@@ -283,7 +318,7 @@ class CommuteConfigService:
     def update_location_by_query(self, query: str) -> dict[str, Any]:
         """
         자연어 동네명(예: '성동구 금호동', '판교', '마포구 상암동')을 스마트 지오코딩하여
-        설정에 즉시 반영하고 영속화합니다 (ADR-034).
+        설정에 즉시 반영하고 영속화합니다 (ADR-034, ADR-035).
         """
         from app.services.geo_service import GeoService
 
@@ -292,6 +327,8 @@ class CommuteConfigService:
             "location_name": resolved["location_name"],
             "grid_x": resolved["grid_x"],
             "grid_y": resolved["grid_y"],
+            "latitude": resolved.get("latitude", 37.55),
+            "longitude": resolved.get("longitude", 127.02),
             "air_station_name": resolved["air_station_name"],
             "city_code": resolved["city_code"],
         }

@@ -190,12 +190,19 @@
 - **FR-32.3**: "날씨 브리핑", "날씨 정보", "미세먼지 수치", "대기질 정보", `/weather` 등 자연어 기상 질의 시 `commute_inspect` (`log_content="weather"`)로 즉시 라우팅하여 단독 기상 브리핑 카드를 반환해야 한다.
 - **FR-32.4**: "안녕하세요! 오늘 날씨 좋네요" 등 인사가 포함된 일상 발화는 기상 카드 대신 자연스러운 대화(`chat_only`)로 분리 유지해야 한다.
 
-### FR-33: 동네 설정 스마트 지오코딩 및 대화형 위치 변경 (Smart Location Geocoding & Conversational Setup - ADR-034)
-- **FR-33.1**: 서울 25개 자치구, 주요 동(금호동, 판교, 상암동 등), 경기/인천/광역시 주요 도시를 망라하는 결정론적 스마트 지오코딩 엔진(`GeoService.resolve_location`)을 제공해야 한다.
-- **FR-33.2**: 사용자가 입력한 자연어 문장("우리 동네 성동구 금호동으로 설정해줘", "동네는 성동구 금호동인데 이렇게 그냥 설정하면 되는거야?", `/location 성동구 금호동`)에서 동네명을 정밀 추출하여 기상청 단기예보 격자 X/Y, 에어코리아 대기 측정소명, 시도 코드를 자동 매핑하고 `config/commute_config.json`에 즉시 영속화해야 한다.
-- **FR-33.3**: 동네 설정 완료 즉시 변경된 지역 기준의 실시간 기상 브리핑 프리뷰 카드를 반환하여 정상 반영 여부를 즉각 확인할 수 있어야 한다.
-- **FR-33.4**: `/location`, "우리 동네 어디로 되어있어?" 등 현재 거주지 조회 요청 시 현재 설정값 및 변경 방법을 안내해야 한다.
-- **FR-33.5**: 웹 대시보드 모달(`#commute-modal`) 내 `POST /api/settings/commute/resolve-location` 엔드포인트 및 `[자동 찾기]` 버튼(`#btn-resolve-location`)을 제공하여 원클릭 자동 채움을 지원해야 한다.
+### FR-34: Open-Meteo 무설정 오픈 API 기반 실시간 날씨 및 대기질 연동 (ADR-035)
+- **FR-34.1**: API 키 발급이 불필요한 Open-Meteo 글로벌 오픈 API(`Forecast API`, `Air Quality API`)를 연동하여 거주지 위경도 좌표 기준 실시간 기온, 체감온도, 하늘상태(WMO 코드), 일일 강수확률, PM10, PM2.5를 직접 조회하는 `WeatherService`를 제공해야 한다.
+- **FR-34.2**: 대기질 수치는 한국 환경부 기준 등급(좋음, 보통, 나쁨, 매우나쁨) 및 직관적 색상 이모지(🟢, 🟡, 🟠, 🔴)로 정규화하여 출력해야 한다.
+- **FR-34.3**: 강수확률 및 WMO 기상 코드(비/눈/소나기/뇌우)를 결합하여 `우산 필수 ☔`, `접이식 우산 추천 🌂`, `우산 불필요 ☀️`를 결정론적으로 제안하는 우산 팁 생성 로직을 제공해야 한다.
+- **FR-34.4**: `GeoService` 내 서울 25개 구 및 전국 주요 지역의 위도(`lat`)와 경도(`lon`)를 탑재하여 동네 설정 시 위경도를 자동 영속화해야 한다.
+- **FR-34.5**: 10분(600초) TTL 인메모리 캐시를 적용하여 중복 호출을 차단하고, 3.5초 타임아웃 및 네트워크 장애 시 최근 캐시 또는 스마트 시뮬레이션 데이터로 무중단 안전 폴백(Fallback)되어야 한다.
+- **FR-34.6**: 모든 브리핑 및 날씨 카드에 `(📡 Open-Meteo 실시간 라이브 API - HH:MM 기준)` 출처 배지를 명시하여 데이터 신뢰성을 보장해야 한다.
+
+### FR-35: 키워드 정규식 가로채기 철거 및 LLM 자연어 위임·부정 피드백 가드레일 (ADR-036)
+- **FR-35.1**: 단순 명사 부분 일치(`workout_keywords`, `idea_keywords`, `work_keywords`, `life_keywords`)에 의해 무조건 `log_suggest` 초안 카드가 생성되던 정규식 가로채기 블록을 전면 철거해야 한다.
+- **FR-35.2**: `"필요 없어"`, `"필요가 없어"`, `"안 사도 돼"`, `"안 해도 돼"`, `"선물받아"`, `"취소"`, `"삭제"`, `"어때?"` 등 부정/불필요/취소/피드백 발화 감지 시 일과 초안 생성을 원천 차단하고 즉시 LLM 대화(`chat_only`)로 위임해야 한다.
+- **FR-35.3**: "휴지는 선물받아서 구매할 필요가 없어" 등에서 "필[요가] 없어"의 "요가"가 서브스트링으로 오탐지되어 `Workout & Health` 초안이 생성되는 결함을 원천 차단해야 한다.
+- **FR-35.4**: 운동(`Workout & Health`) 및 삶의 기록(`Daily Notes & Diary`) 초안 제안은 실제 수행/완료했다는 서사 진술문(과거형/완료형 서술어 결합)에 한해 선별 제안하며, 그 외 일상 대화는 LLM(Gemini / AGY)이 자연스럽게 판단하고 처리하도록 일원화해야 한다.
 
 ---
 
@@ -253,6 +260,8 @@
 | **FR-31** | `app/services/agent_service.py`, `app/services/llm_provider.py`, `app/services/supervisor_service.py` | Pytest 단위 테스트(`test_agent_service.py`, `test_task_completion_and_meta_guard.py`) & cURL 검증 |
 | **FR-32** | `app/services/briefing_service.py`, `app/services/commute_config_service.py`, `app/services/llm_provider.py` | Pytest 단위 테스트(`test_briefing_service.py`, `test_commute_config_service.py`) & cURL 검증 |
 | **FR-33** | `app/services/geo_service.py`, `app/services/commute_config_service.py`, `app/services/llm_provider.py`, `app/services/supervisor_service.py`, `app/routers/settings_router.py` | Pytest 단위 테스트(`test_geo_service.py`) & cURL 스모크 검증(6-5, 6-6) |
+| **FR-34** | `app/services/weather_service.py`, `app/services/commute_config_service.py`, `app/services/geo_service.py` | Pytest 단위 테스트(`test_weather_service.py`, `test_commute_config_service.py`) & cURL 스모크 검증 |
+| **FR-35** | `app/services/llm_provider.py`, `tests/test_llm_provider.py` | Pytest 단위 테스트(`test_llm_provider.py`) & cURL 라이브 검증 |
 
 
 

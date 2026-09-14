@@ -152,5 +152,22 @@ def test_llm_provider_dual_confirm_from_pending():
         assert "영양식" in (res.gtd_task_content or "")
 
 
+def test_llm_provider_negative_feedback_and_yoga_guard():
+    """'필요가 없어'에서 '요가' 오탐지 차단 및 불필요/취소 발화의 LLM 자연어 위임 검증 (ADR-036)."""
+    provider = LLMProvider()
 
+    # 1. '필요가 없어' ➔ 운동 오탐지 절대 발생 금지 (chat_only로 안전하게 위임)
+    res_tissue = provider.analyze_and_respond("휴지는 선물받아서 구매할 필요가 없어.")
+    assert res_tissue.intent == "chat_only"
+    assert res_tissue.category is None
+    assert "Workout" not in (res_tissue.category or "")
 
+    # 2. 기타 불필요/취소 발화
+    for neg_text in ["그 물건은 살 필요가 없는데?", "오늘 오후 팀 미팅 취소됐어", "아이디어 회의 취소"]:
+        res_neg = provider.analyze_and_respond(neg_text)
+        assert res_neg.intent == "chat_only", f"Failed for {neg_text}: got {res_neg.intent}"
+
+    # 3. 진짜 요가 수업 완료 발화 ➔ Workout & Health 정상 감지
+    res_yoga = provider.analyze_and_respond("오늘 저녁에 요가 수업 다녀왔어")
+    assert res_yoga.intent == "log_suggest"
+    assert res_yoga.category == "Workout & Health"

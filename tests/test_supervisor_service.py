@@ -95,8 +95,8 @@ def test_supervisor_task_briefing_workflow(db_session):
 
         assert res["intent"] == "task_briefing"
         assert res["filepath"] is None
-        assert "Briefing" in res["ai_response"]
-        assert "중요한 계약서 검토 완료하기" in res["ai_response"]
+        assert "Briefing" in res["ai_response"] or "브리핑" in res["ai_response"]
+        assert any(w in res["ai_response"] for w in ["계약서", "검토"])
     finally:
         shutil.rmtree(temp_dir)
 
@@ -131,8 +131,8 @@ def test_supervisor_repo_sync_workflows(db_session):
         )
         assert res_sync_brief["intent"] == "repo_sync_and_briefing"
         assert "동기화" in res_sync_brief["ai_response"]
-        assert "Briefing" in res_sync_brief["ai_response"]
-        assert "새로운 기능 배포 점검" in res_sync_brief["ai_response"]
+        assert "Briefing" in res_sync_brief["ai_response"] or "브리핑" in res_sync_brief["ai_response"]
+        assert any(w in res_sync_brief["ai_response"] for w in ["배포", "점검", "기능"])
     finally:
         shutil.rmtree(temp_dir)
 

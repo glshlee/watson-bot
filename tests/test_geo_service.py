@@ -11,6 +11,8 @@ def test_geo_service_resolution():
     assert r1["location_name"] == "서울 성동구 금호동"
     assert r1["grid_x"] == 61
     assert r1["grid_y"] == 127
+    assert r1["latitude"] == 37.55
+    assert r1["longitude"] == 127.02
     assert r1["air_station_name"] == "성동구"
 
     # 2. 동 이름 단독 (금호동, 판교)

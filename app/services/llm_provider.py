@@ -749,114 +749,108 @@ class LLMProvider:
 
         # -------------------------------------------------------------
         # 4. 일과/사건/생각 감지 및 사전 검토 초안 제안 (log_suggest - ADR-004, ADR-029)
+        # 키워드 정규식 가로채기(Regex Interception)를 철거하고,
+        # 부정/불필요/피드백 가드레일을 적용하여 명확한 서사적 일과 진술에 한해서만 안전하게 제안 (ADR-036)
         # -------------------------------------------------------------
         time_str = get_now().strftime("%H:%M")
         date_str = get_now().strftime("%Y-%m-%d")
 
-        workout_keywords = ["운동", "헬스", "러닝", "달리기", "벤치", "스쿼트", "풀업", "푸시업", "pt", "산책", "수영", "요가", "만보", "몸무게", "식단"]
-        if any(k in prompt_clean for k in workout_keywords) or is_pushup:
-            cat = "Workout & Health"
-            ai_response = (
-                f"건강을 챙기시는 모습이 정말 멋지십니다! 🏋️ 오늘 운동 기록({cat})에 아래 초안대로 **기록해 둘까요?** 📝\n\n"
-                f"---\n"
-                f"### 📝 라이프로그 초안 (`logs/daily/{date_str}.md` [{cat}])\n"
-                f"- [{time_str}] {prompt_clean}\n"
-                f"---\n"
-                f"👉 **'응'** 또는 아래 **[✅ 응, 기록해줘]** 버튼을 눌러주시면 즉시 GitHub에 커밋·푸시합니다! ✨"
-            )
-            return IntentResult(
-                intent="log_suggest",
-                ai_response=ai_response,
-                log_content=prompt_clean,
-                category=cat,
-            )
-
-        idea_keywords = ["아이디어", "생각", "영감", "깨달음", "고민", "결심", "계획", "배움"]
-        if any(k in prompt_clean for k in idea_keywords):
-            cat = "Ideas & Thoughts"
-            ai_response = (
-                f"참 흥미롭고 가치 있는 생각이네요! 💡 오늘의 생각 & 아이디어({cat})에 아래 초안대로 **기록해 둘까요?** 📝\n\n"
-                f"---\n"
-                f"### 📝 라이프로그 초안 (`logs/daily/{date_str}.md` [{cat}])\n"
-                f"- [{time_str}] {prompt_clean}\n"
-                f"---\n"
-                f"👉 **'응'** 또는 아래 **[✅ 응, 기록해줘]** 버튼을 눌러주시면 즉시 GitHub에 커밋·푸시합니다! ✨"
-            )
-            return IntentResult(
-                intent="log_suggest",
-                ai_response=ai_response,
-                log_content=prompt_clean,
-                category=cat,
-            )
-
-        work_keywords = ["미팅", "회의", "프로젝트", "배포", "출시", "통과", "발표", "보고서", "퇴근", "출근", "업무", "성공"]
-        has_work_complete = bool(re.search(r"(?:업무|프로젝트|작업|개발|배포|테스트|회의|보고서)\s*(?:성공|완료|끝)", prompt_clean))
-        if any(k in prompt_clean for k in work_keywords) or has_work_complete:
-            cat = "Daily Notes & Diary"
-            ai_response = (
-                f"오늘 하루도 정말 수고 많으셨습니다! 💼 오늘의 업무 및 일과({cat})에 아래 초안대로 **기록해 둘까요?** 📝\n\n"
-                f"---\n"
-                f"### 📝 라이프로그 초안 (`logs/daily/{date_str}.md` [{cat}])\n"
-                f"- [{time_str}] {prompt_clean}\n"
-                f"---\n"
-                f"👉 **'응'** 또는 아래 **[✅ 응, 기록해줘]** 버튼을 눌러주시면 즉시 GitHub에 커밋·푸시합니다! ✨"
-            )
-            return IntentResult(
-                intent="log_suggest",
-                ai_response=ai_response,
-                log_content=prompt_clean,
-                category=cat,
-            )
-
-        # 4-1. 일상, 가족, 감정, 식사, 케어 등 삶의 기록 사전 검토 제안 (Life Log & GTD - ADR-029)
-        life_keywords = [
-            "아내", "와이프", "남편", "가족", "아이", "아기", "부모님", "엄마", "아빠",
-            "병원", "수술", "진료", "검진", "초음파", "치료", "처방", "간호", "케어",
-            "미역국", "요리", "식사", "아침", "점심", "저녁", "산책", "영화", "데이트", "여행",
-            "마음", "감정", "슬픔", "기쁨", "행복", "위로", "눈물", "사랑", "감사",
-            "일어나서", "다녀왔어", "갔다왔어", "퇴근하고", "끓였어", "차렸어", "먹었어"
+        # 4-0. 부정 / 불필요 / 취소 / 피드백 가드레일 (최우선 차단)
+        # "필요가 없어", "안 사도 돼", "미팅 취소됐어" 등은 일과 기록 대상이 아니므로 즉시 대화로 위임
+        negative_feedback_patterns = [
+            r"필요\s*(?:가\s*)?없",
+            r"안\s*(?:사도|해도|가도|먹어도|시켜도|봐도|있어도)\s*(?:돼|됨|된다|괜찮)",
+            r"(?:살|할|갈|먹을|시킬)\s*필요\s*없",
+            r"(?:선물\s*받아|선물받아|이미\s*있|벌써\s*있)",
+            r"(?:취소|환불|철회|삭제|제거|빼|지워|제외)",
+            r"(?:어때|어떨까|어떻게|할까|할까\?|\?$)",
         ]
-        is_life_moment = any(k in prompt_clean for k in life_keywords)
-        if is_life_moment and len(prompt_clean) >= 6:
-            cat = "Daily Notes & Diary"
-            is_comfort_needed = any(k in prompt_clean for k in ["수술", "병원", "초음파", "심장", "슬픔", "아픔", "눈물", "간호", "케어", "미역국"])
-            intro = (
-                "마음이 참 무겁고 애틋하셨을 텐데 소중한 이야기를 나누어 주셔서 감사합니다. 곁에서 두 분을 진심으로 응원합니다. 🕯️\n\n"
-                if is_comfort_needed
-                else "소중한 일상과 마음을 나누어 주셔서 감사합니다. 😊\n\n"
-            )
+        is_negative_or_feedback = any(re.search(pat, prompt_clean, re.IGNORECASE) for pat in negative_feedback_patterns)
 
-            gtd_task = self._extract_actionable_task(prompt_clean)
-            has_actionable = any(k in prompt_clean for k in ["챙기", "예약", "사기", "신청", "준비", "방문", "확인", "돌보"]) and len(gtd_task) > 4
-
-            preview_lines = [
-                f"### 📝 라이프로그 초안 (`logs/daily/{date_str}.md` [{cat}])",
-                f"- [{time_str}] {prompt_clean}",
+        if not is_negative_or_feedback:
+            # (A) 명확한 운동 수행/완료 서사 진술 (Workout & Health)
+            # 단순 명사가 아닌, 실제 운동을 수행/완료했다는 진술에 한정 (오탐지 방지)
+            workout_terms = [
+                r"운동\s*(?:완료|성공|했어|다녀왔|끝)",
+                r"헬스\s*(?:장\s*)?(?:다녀왔|에서|완료|성공|했어)",
+                r"러닝\s*(?:\d+km\s*)?(?:뛰|달렸|완료|성공|했어)",
+                r"달리기\s*(?:\d+km\s*)?(?:뛰|달렸|완료|성공|했어)",
+                r"스쿼트\s*(?:\d+kg\s*)?(?:성공|완료|했어)",
+                r"벤치\s*(?:프레스\s*)?(?:\d+kg\s*)?(?:성공|완료|했어)",
+                r"풀업\s*(?:\d+개\s*)?(?:성공|완료|했어)",
+                r"푸시업\s*(?:\d+개\s*)?(?:성공|완료|했어)",
+                r"\bpt\s*(?:받았|받고|다녀왔|완료|성공)",
+                r"산책\s*(?:\d+분\s*)?(?:다녀왔|하고\s*왔|했어)",
+                r"수영\s*(?:다녀왔|하고\s*왔|완료|했어)",
+                r"(?<![필중가])요가\s*(?:수업\s*)?(?:다녀왔|하고\s*왔|완료|했어)",
+                r"\d+만\s*보\s*(?:달성|걸었|완료)",
             ]
-            if has_actionable:
-                preview_lines.extend([
-                    "",
-                    "### 📥 GTD 수집함 초안 (`gtd/inbox.md`)",
-                    f"- [ ] {gtd_task}",
-                ])
+            has_workout_narrative = any(re.search(t, prompt_clean, re.IGNORECASE) for t in workout_terms) or is_pushup
 
-            preview_body = "\n".join(preview_lines)
-            ai_response = (
-                f"{intro}"
-                f"말씀해주신 소중한 일과를 아래와 같이 정리했습니다. 이대로 **기록해 둘까요?** 📝\n\n"
-                f"---\n"
-                f"{preview_body}\n"
-                f"---\n"
-                f"👉 **'응'** 또는 아래 **[✅ 응, 기록해줘]** 버튼을 눌러주시면 즉시 GitHub에 커밋·푸시합니다! ✨"
-            )
-            return IntentResult(
-                intent="log_suggest",
-                ai_response=ai_response,
-                log_content=prompt_clean,
-                category=cat,
-                gtd_task_content=gtd_task if has_actionable else None,
-                is_dual_log=has_actionable,
-            )
+            if has_workout_narrative:
+                cat = "Workout & Health"
+                ai_response = (
+                    f"건강을 챙기시는 모습이 정말 멋지십니다! 🏋️ 오늘 운동 기록({cat})에 아래 초안대로 **기록해 둘까요?** 📝\n\n"
+                    f"---\n"
+                    f"### 📝 라이프로그 초안 (`logs/daily/{date_str}.md` [{cat}])\n"
+                    f"- [{time_str}] {prompt_clean}\n"
+                    f"---\n"
+                    f"👉 **'응'** 또는 아래 **[✅ 응, 기록해줘]** 버튼을 눌러주시면 즉시 GitHub에 커밋·푸시합니다! ✨"
+                )
+                return IntentResult(
+                    intent="log_suggest",
+                    ai_response=ai_response,
+                    log_content=prompt_clean,
+                    category=cat,
+                )
+
+            # (B) 일상, 가족, 감정, 식사, 케어 등 삶의 기록 사전 검토 제안 (Life Log & GTD - ADR-029)
+            # 과거형/완료형 서술어와 결합된 실제 삶의 사건에 한정
+            narrative_actions = ["끓였어", "차렸어", "먹었어", "다녀왔어", "갔다왔어", "퇴근하고", "수술하고", "진료받고", "치료받고", "간호했어"]
+            has_narrative_action = any(act in prompt_clean for act in narrative_actions)
+            life_subjects = ["아내", "와이프", "남편", "가족", "아이", "아기", "부모님", "미역국", "소파술", "병원"]
+            has_life_subject = any(sub in prompt_clean for sub in life_subjects)
+
+            if has_narrative_action and has_life_subject and len(prompt_clean) >= 6:
+                cat = "Daily Notes & Diary"
+                is_comfort_needed = any(k in prompt_clean for k in ["수술", "병원", "초음파", "심장", "슬픔", "아픔", "눈물", "간호", "케어", "미역국"])
+                intro = (
+                    "마음이 참 무겁고 애틋하셨을 텐데 소중한 이야기를 나누어 주셔서 감사합니다. 곁에서 두 분을 진심으로 응원합니다. 🕯️\n\n"
+                    if is_comfort_needed
+                    else "소중한 일상과 마음을 나누어 주셔서 감사합니다. 😊\n\n"
+                )
+
+                gtd_task = self._extract_actionable_task(prompt_clean)
+                has_actionable = any(k in prompt_clean for k in ["챙기", "예약", "사기", "신청", "준비", "방문", "확인", "돌보"]) and len(gtd_task) > 4
+
+                preview_lines = [
+                    f"### 📝 라이프로그 초안 (`logs/daily/{date_str}.md` [{cat}])",
+                    f"- [{time_str}] {prompt_clean}",
+                ]
+                if has_actionable:
+                    preview_lines.extend([
+                        "",
+                        "### 📥 GTD 수집함 초안 (`gtd/inbox.md`)",
+                        f"- [ ] {gtd_task}",
+                    ])
+
+                preview_body = "\n".join(preview_lines)
+                ai_response = (
+                    f"{intro}"
+                    f"말씀해주신 소중한 일과를 아래와 같이 정리했습니다. 이대로 **기록해 둘까요?** 📝\n\n"
+                    f"---\n"
+                    f"{preview_body}\n"
+                    f"---\n"
+                    f"👉 **'응'** 또는 아래 **[✅ 응, 기록해줘]** 버튼을 눌러주시면 즉시 GitHub에 커밋·푸시합니다! ✨"
+                )
+                return IntentResult(
+                    intent="log_suggest",
+                    ai_response=ai_response,
+                    log_content=prompt_clean,
+                    category=cat,
+                    gtd_task_content=gtd_task if has_actionable else None,
+                    is_dual_log=has_actionable,
+                )
 
         # -------------------------------------------------------------
         # 5. 빠른 응답 패턴 (Fast-Path)
