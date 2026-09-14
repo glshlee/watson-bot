@@ -543,10 +543,12 @@ class BusService:
         use_mock_fallback: bool = True,
         bus_stop_name: str = "",
         endpoint: str | None = None,
+        force_refresh: bool = False,
     ) -> dict[str, Any]:
         """
         출근 버스 도착 정보를 캐시 및 실시간 API(또는 폴백)를 통해 반환합니다.
         노선 번호가 비어있거나 '전체'일 경우 정류소 전체 도착 버스를 반환합니다.
+        force_refresh=True인 경우 캐시를 우회하고 최신 도착 정보를 강제 조회합니다 (ADR-039).
         """
         clean_route = cls.normalize_route_name(bus_route_name) if bus_route_name else ""
         stop_id = bus_stop_id.strip()
@@ -557,13 +559,14 @@ class BusService:
             if resolved_info.get("stop_name") and not str(resolved_info["stop_name"]).startswith("정류소("):
                 bus_stop_name = str(resolved_info["stop_name"])
 
-        # 1. 인메모리 캐시 확인 (45초 TTL)
+        # 1. 인메모리 캐시 확인 (45초 TTL) - force_refresh가 아닐 때만 적용
         cache_key = f"{city_code}:{stop_id}:{clean_route}"
-        cached_entry = cls._cache.get(cache_key)
-        if cached_entry:
-            ts, cached_data = cached_entry
-            if time.time() - ts < cls.CACHE_TTL:
-                return cached_data
+        if not force_refresh:
+            cached_entry = cls._cache.get(cache_key)
+            if cached_entry:
+                ts, cached_data = cached_entry
+                if time.time() - ts < cls.CACHE_TTL:
+                    return cached_data
 
         # 2. 실시간 API 시도 (정류소 번호가 있으면 노선 번호 없어도 조회 가능)
         if cls._is_valid_api_key(api_key) and stop_id:

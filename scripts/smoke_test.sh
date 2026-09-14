@@ -550,6 +550,16 @@ else
     exit 1
 fi
 
+echo "  6-9. Testing Real-time Bus Arrival Card Refresh API (ADR-039)..."
+BUS_CARD_REFRESH_RES=$(run_curl -X POST "$SERVER_URL/api/settings/commute/bus-card" \
+  -H "Content-Type: application/json")
+if echo "$BUS_CARD_REFRESH_RES" | grep -q '"success":true' && echo "$BUS_CARD_REFRESH_RES" | grep -q '실시간 출근 버스 도착 정보' && echo "$BUS_CARD_REFRESH_RES" | grep -q 'updated_time'; then
+    echo "  ✅ 6-9. POST /api/settings/commute/bus-card Passed (Real-time Bus Card Refreshed with updated_time)"
+else
+    echo "  ❌ 6-9. Bus Card Refresh Failed: $BUS_CARD_REFRESH_RES"
+    exit 1
+fi
+
 echo "7. Testing Task Completion & Meta-Feedback Guardrail (ADR-031)..."
 # 7-1. 구어체 태스크 완료 보고
 COMPLETE_CHAT_1=$(run_curl -X POST "$SERVER_URL/api/chat" \

@@ -280,4 +280,51 @@ async def test_telegram_command_url(db_session, tmp_path):
         assert "https://test-tunnel.trycloudflare.com" in args[1]
 
 
+def test_telegram_bus_keyboard():
+    """실시간 버스 인라인 키보드 생성 검증 (ADR-039)."""
+    service = TelegramService(token="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz")
+    kb = service.get_bus_keyboard()
+    assert "inline_keyboard" in kb
+    buttons = [btn["callback_data"] for row in kb["inline_keyboard"] for btn in row]
+    assert "action_refresh_bus" in buttons
+    assert "action_push" in buttons
+
+    morning_kb = service.get_briefing_keyboard(mode="morning")
+    morning_buttons = [btn["callback_data"] for row in morning_kb["inline_keyboard"] for btn in row]
+    assert "action_refresh_bus" in morning_buttons
+
+
+@pytest.mark.anyio
+async def test_telegram_callback_action_refresh_bus(db_session):
+    """실시간 버스 도착 정보 인라인 새로고침 콜백 검증 (ADR-039)."""
+    service = TelegramService(token="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz")
+    service.allowed_chat_ids = []
+
+    refresh_update = {
+        "update_id": 20,
+        "callback_query": {
+            "id": "cb_bus_refresh",
+            "from": {"id": 12345},
+            "message": {
+                "message_id": 999,
+                "text": "🚌 **[실시간 출근 버스 도착 정보]** (이전 버스 정보)",
+            },
+            "data": "action_refresh_bus",
+        },
+    }
+
+    with (
+        patch.object(service, "answer_callback_query", new_callable=AsyncMock) as mock_ans,
+        patch.object(service, "edit_message_text", new_callable=AsyncMock, return_value=True) as mock_edit,
+    ):
+        await service.process_update(refresh_update, db_session)
+        mock_ans.assert_called_once()
+        mock_edit.assert_called_once()
+        kwargs = mock_edit.call_args.kwargs
+        assert kwargs["chat_id"] == 12345
+        assert kwargs["message_id"] == 999
+        assert "[실시간 출근 버스 도착 정보]" in kwargs["text"]
+
+
+
 

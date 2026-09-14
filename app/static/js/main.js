@@ -511,7 +511,69 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const bubble = document.createElement("div");
         bubble.className = "bubble";
-        bubble.innerText = text;
+
+        const textContent = document.createElement("div");
+        textContent.className = "bubble-text";
+        textContent.innerText = text;
+        bubble.appendChild(textContent);
+
+        // 실시간 버스 도착 정보 원터치 인라인 갱신 버튼 부착 (ADR-039)
+        const isBusCard = role === "assistant" && typeof text === "string" && (
+            text.includes("[실시간 출근 버스 도착 정보]") ||
+            text.includes("출근길 버스 현황") ||
+            text.includes("출근길 버스 정보") ||
+            text.includes("• 🚌 **출근길 버스")
+        );
+
+        if (isBusCard) {
+            const actionBar = document.createElement("div");
+            actionBar.className = "bus-refresh-bar";
+            actionBar.innerHTML = `
+                <button type="button" class="btn-bus-refresh" title="실시간 버스 도착 정보 즉시 갱신">
+                    <i class="fa-solid fa-arrows-rotate"></i> 버스 도착 갱신
+                </button>
+                <span class="bus-refresh-badge"></span>
+            `;
+            const refreshBtn = actionBar.querySelector(".btn-bus-refresh");
+            const badgeSpan = actionBar.querySelector(".bus-refresh-badge");
+
+            refreshBtn.addEventListener("click", async () => {
+                refreshBtn.disabled = true;
+                refreshBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 갱신 중...';
+                badgeSpan.innerHTML = "";
+                try {
+                    const res = await fetchWithRetry("/api/settings/commute/bus-card", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" }
+                    }, 1, 1000);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.success) {
+                            if (textContent.innerText.includes("[실시간 출근 버스 도착 정보]")) {
+                                textContent.innerText = data.markdown;
+                            } else if (data.transit_line && textContent.innerText.includes("• 🚌 **출근길 버스")) {
+                                textContent.innerText = textContent.innerText.replace(/•\s*🚌\s*\*\*출근길 버스.*$/m, data.transit_line);
+                            } else if (data.markdown) {
+                                textContent.innerText = data.markdown;
+                            }
+                            badgeSpan.innerHTML = `<span class="refresh-success"><i class="fa-solid fa-check"></i> ${data.updated_time} 갱신됨</span>`;
+                        } else {
+                            badgeSpan.innerHTML = `<span class="refresh-fail">갱신 실패</span>`;
+                        }
+                    } else {
+                        badgeSpan.innerHTML = `<span class="refresh-fail">서버 오류</span>`;
+                    }
+                } catch (err) {
+                    console.error("Bus refresh error:", err);
+                    badgeSpan.innerHTML = `<span class="refresh-fail">연결 지연</span>`;
+                } finally {
+                    refreshBtn.disabled = false;
+                    refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> 버스 도착 갱신';
+                }
+            });
+
+            bubble.appendChild(actionBar);
+        }
 
         msgDiv.appendChild(avatar);
         msgDiv.appendChild(bubble);

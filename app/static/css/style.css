@@ -828,6 +828,61 @@ textarea:focus {
     transform: translateY(-1px);
 }
 
+/* Real-time Bus Refresh Action Bar (ADR-039) */
+.bus-refresh-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.15);
+}
+
+.btn-bus-refresh {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    transition: all 0.2s ease;
+}
+
+.btn-bus-refresh:hover:not(:disabled) {
+    background: rgba(56, 189, 248, 0.28);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(56, 189, 248, 0.25);
+}
+
+.btn-bus-refresh:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.bus-refresh-badge {
+    font-size: 0.78rem;
+    display: inline-flex;
+    align-items: center;
+}
+
+.bus-refresh-badge .refresh-success {
+    color: #34d399;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.bus-refresh-badge .refresh-fail {
+    color: #f87171;
+    font-weight: 500;
+}
+
 /* GTD Directory Badge and Modal Styles (ADR-007) */
 .gtd-badge {
     display: inline-flex;

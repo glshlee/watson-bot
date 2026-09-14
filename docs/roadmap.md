@@ -330,16 +330,20 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
   - `/bus`, "출근 버스 언제 와?", "버스 도착 정보" 질의 시 단독 실시간 버스 도착 카드 즉시 제공
 - [x] 단위 테스트(`tests/test_bus_service.py`), Ruff/Mypy 검사 및 `./scripts/smoke_test.sh` 6-7 단계 라이브 검증 완료
 
-### Phase 37: 정류소 번호 원클릭 조회 및 지능형 정류소명 자동 매핑 (ADR-038) - ✅ 완료
-- [x] `BusService.resolve_bus_stop`:
-  - 서울 5자리 ARS-ID 및 전국 정류소 번호 입력 시 공공 정류소 데이터베이스 및 지도 검색을 통해 `정류소명`, `방면`, `행정구역` 실시간 역조회 및 1시간 인메모리 캐시(`_stop_name_cache`) 적용
-- [x] `POST /api/settings/commute/resolve-bus-stop` REST 엔드포인트 신설
-- [x] 웹 콘솔 설정 모달(`#commute-modal`) Section 2에 `[🔍 정류소 조회]` 버튼 부착 및 정류소 번호 4자리 이상 입력 시 blur/change 자동 완성 연동
-- [x] `CommuteConfigService.save_config`:
-  - 정류소 번호 신규 입력 또는 정류소명 플레이스홀더(`역삼역`, `정류장`) 잔존 시 백엔드 강제 자동 매핑 및 `bus_route_name="버스"` 구버전 값의 빈 문자열(`전체 노선`) 정제
-- [x] `scripts/smoke_test.sh` 스모크 테스트 샌드박스 격리:
-  - `config/commute_config.json` 백업/복원 루틴 및 6-8 단계 테스트 추가로 실제 사용자 API 키와 출근길 설정 영구 보존
-- [x] 단위 테스트(`tests/test_bus_service.py`), Ruff/Mypy 정적 검사 및 `./scripts/smoke_test.sh` 6-8 라이브 검증 완료
+### Phase 38: 실시간 버스 도착 정보 원터치 인라인 갱신 및 웹/텔레그램 동시 지원 (ADR-039) - ✅ 완료
+- [x] `BusService.get_arrival_info` 및 `CommuteConfigService` 내 `force_refresh=True` 매개변수 지원으로 45초 인메모리 캐시 즉시 우회 및 실시간 강제 조회 구현
+- [x] 단독 버스 카드(`get_standalone_bus_card`)의 조회 일시에 초 단위 타임스탬프(`%H:%M:%S KST`) 적용으로 시각적 갱신 확인 보장
+- [x] REST API 엔드포인트 `GET/POST /api/settings/commute/bus-card` 신설:
+  - 최신 마크다운 카드(`markdown`), 브리핑용 요약 라인(`transit_line`), 갱신 시각(`updated_time`), `transit_summary` 반환
+- [x] 텔레그램 인플레이스 갱신 연동 (`TelegramService`):
+  - `edit_message_text` 구현 및 버스 카드/아침 브리핑 하단 `[🔄 실시간 버스 갱신]` (`action_refresh_bus`) 인라인 버튼 부착
+  - 버튼 클릭 시 새 메시지 생성 없이 기존 메시지를 즉시 수정(editMessageText)하고 0.1초 콜백 토스트 제공
+  - `/start`, `/help` 명령어 목록에 `/bus` 안내 추가
+- [x] 웹 대시보드 콘솔 실시간 인라인 갱신 연동 (`main.js`, `style.css`, `index.html`):
+  - 버스 카드가 포함된 어시스턴트 메시지 버블 하단에 `.bus-refresh-bar` 및 `[🔄 버스 도착 갱신]` 버튼 동적 렌더링
+  - 클릭 시 `/api/settings/commute/bus-card` 비동기 통신 및 버블 텍스트 인라인 교체, `[✅ HH:MM:SS 갱신됨]` 배지 시각화
+  - 왓슨 퀵 숏컷 바에 `[🚍 버스 도착]` (`data-cmd="/bus"`) 원클릭 칩 추가
+- [x] 단위 테스트(`tests/test_bus_service.py`, `tests/test_telegram_service.py`), Ruff/Mypy 정적 검사 및 `./scripts/smoke_test.sh` 6-9 단계 라이브 검증 완료
 
 
 

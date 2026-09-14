@@ -93,6 +93,51 @@ class TelegramService:
             logger.error(f"Failed to answer callback query: {e}")
             return False
 
+    async def edit_message_text(
+        self,
+        chat_id: int | str,
+        message_id: int,
+        text: str,
+        reply_markup: dict[str, Any] | None = None,
+        parse_mode: str | None = None,
+    ) -> bool:
+        """기존 텔레그램 메시지의 텍스트 및 인라인 키보드를 인라인으로 수정합니다 (ADR-039)."""
+        if not self.is_configured():
+            return False
+
+        payload: dict[str, Any] = {
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "text": text,
+        }
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
+        if parse_mode:
+            payload["parse_mode"] = parse_mode
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                res = await client.post(f"{self.base_url}/editMessageText", json=payload)
+                if res.status_code == 200:
+                    return True
+                if res.status_code != 200 and parse_mode:
+                    logger.warning(
+                        f"Telegram editMessageText with parse_mode={parse_mode} failed ({res.status_code}: {res.text}), retrying without parse_mode..."
+                    )
+                    payload.pop("parse_mode", None)
+                    res = await client.post(f"{self.base_url}/editMessageText", json=payload)
+                    if res.status_code == 200:
+                        return True
+                # Telegram returns 400 with "message is not modified" if content is unchanged
+                if res.status_code == 400 and "message is not modified" in res.text:
+                    logger.debug("Telegram editMessageText: message is not modified.")
+                    return True
+                logger.warning(f"Telegram editMessageText failed ({res.status_code}: {res.text})")
+                return False
+        except httpx.HTTPError as e:
+            logger.error(f"Failed to edit telegram message: {e}")
+            return False
+
     async def download_file(self, file_id: str, dest_path: str) -> bool:
         """텔레그램 서버에서 파일을 다운로드하여 로컬에 저장합니다."""
         if not self.is_configured():
@@ -129,9 +174,22 @@ class TelegramService:
                 pass
         return ""
 
+    def get_bus_keyboard(self) -> dict[str, Any]:
+        """
+        실시간 버스 도착 정보 카드 하단 인라인 키보드를 생성합니다 (ADR-039).
+        """
+        return {
+            "inline_keyboard": [
+                [
+                    {"text": "🔄 실시간 버스 갱신", "callback_data": "action_refresh_bus"},
+                    {"text": "🚀 원격 푸시", "callback_data": "action_push"},
+                ]
+            ]
+        }
+
     def get_briefing_keyboard(self, mode: str = "morning") -> dict[str, Any]:
         """
-        아침/저녁 브리핑 메시지에 첨부할 인터랙티브 인라인 키보드를 생성합니다 (ADR-027).
+        아침/저녁 브리핑 메시지에 첨부할 인터랙티브 인라인 키보드를 생성합니다 (ADR-027, ADR-039).
         """
         if mode == "morning":
             return {
@@ -141,8 +199,11 @@ class TelegramService:
                         {"text": "🔄 GTD 동기화", "callback_data": "action_sync"},
                     ],
                     [
-                        {"text": "📋 전체 할 일 보기", "callback_data": "action_show_tasks"},
+                        {"text": "🚌 실시간 버스 갱신", "callback_data": "action_refresh_bus"},
                         {"text": "🚀 원격 푸시", "callback_data": "action_push"},
+                    ],
+                    [
+                        {"text": "📋 전체 할 일 보기", "callback_data": "action_show_tasks"},
                     ],
                 ]
             }
@@ -249,6 +310,36 @@ class TelegramService:
                 )
                 supervisor.session_service.add_message(session_id=session_id, role="assistant", content=diary_prompt)
                 await self.send_message(chat_id, diary_prompt)
+            elif data == "action_refresh_bus":
+                await self.answer_callback_query(cb_id, text="🚌 실시간 버스 도착 정보를 갱신합니다!")
+                msg = cb.get("message")
+                msg_id = msg.get("message_id") if msg else None
+                old_text = msg.get("text", "") if msg else ""
+
+                from app.services.commute_config_service import CommuteConfigService
+                commute_service = CommuteConfigService()
+
+                if "Morning Briefing" in old_text or "집중 우선순위" in old_text or "아침" in old_text:
+                    from app.services.briefing_service import BriefingService
+                    briefing_service = BriefingService()
+                    briefing_res = briefing_service.generate_briefing(mode="morning", date_obj=get_now(), use_ai=False)
+                    new_text = str(briefing_res["markdown"])
+                    keyboard = self.get_briefing_keyboard(mode="morning")
+                else:
+                    new_text = commute_service.get_standalone_bus_card(force_refresh=True)
+                    keyboard = self.get_bus_keyboard()
+
+                if msg_id:
+                    edit_ok = await self.edit_message_text(
+                        chat_id=chat_id,
+                        message_id=msg_id,
+                        text=new_text,
+                        reply_markup=keyboard,
+                    )
+                    if not edit_ok:
+                        await self.send_message(chat_id, new_text, reply_markup=keyboard)
+                else:
+                    await self.send_message(chat_id, new_text, reply_markup=keyboard)
             else:
                 await self.answer_callback_query(cb_id, text=f"알 수 없는 요청: {data}")
             return
@@ -283,6 +374,7 @@ class TelegramService:
                 "💡 명령어 안내:\n"
                 "• `/log [내용]`: 즉시 오늘 라이프로그에 기록\n"
                 "• `/done [내용]`: 1순위 또는 지정된 GTD 태스크 완료 처리 및 Git 푸시\n"
+                "• `/bus`: 실시간 출근 버스 도착 현황 확인 및 인라인 새로고침\n"
                 "• `/url`: 웹 대시보드 최신 접속 주소 확인\n"
                 "• `/sync`: 연결된 GTD 저장소 원격 최신화(git pull)\n"
                 "• `/push`: 로컬 라이프로그 및 GTD 원격 저장소로 푸시(git push)\n"
@@ -298,13 +390,14 @@ class TelegramService:
                 "1. **자유로운 대화**: '오늘 날씨 어때?', '1부터 30 중에 골라줘' 등 무엇이든 물어보세요.\n"
                 "2. **할 일 / 일정 브리핑**: '오늘 해야할 일 정리해줘' 또는 'gtd 레포 최신화하고 다시 알려줘'라고 물어보세요.\n"
                 "3. **일과 공유 & 자동 제안**: '오늘 헬스장 다녀옴', '프로젝트 킥오프 완료' 등 일과를 말하면 비서가 기록할지 여부를 버튼으로 여쭤봅니다.\n"
-                "4. **사진 전송**: 일상 사진이나 영수증을 보내면 오늘 라이프로그에 사진이 첨부됩니다.\n"
-                "5. **직접 기록**: `/log 러닝 5km 완료` 명령어로 바로 기록할 수 있습니다.\n"
-                "6. **1순위 태스크 완료**: `/done` 명령어로 현재 1순위 태스크를 원터치 완료(- [x]) 처리하고 GitHub에 푸시합니다.\n"
-                "7. **웹 대시보드 주소**: `/url` 명령어로 브라우저에서 접속할 수 있는 실시간 Cloudflare HTTPS 주소를 확인합니다.\n"
-                "8. **GTD 레포 최신화**: `/sync` 또는 'gtd 레포 최신화' 명령어로 원격 저장소를 즉시 동기화(pull)합니다.\n"
-                "9. **GitHub 원격 푸시**: `/push` 또는 '푸시해줘', '깃 푸시' 명령어로 로컬 커밋을 원격 저장소로 안전하게 푸시합니다.\n"
-                "10. **인터랙티브 인라인 버튼**: 정기 브리핑(아침 08:30, 저녁 20:00) 하단의 원클릭 버튼을 터치해 타이핑 없이 즉시 조작할 수 있습니다."
+                "4. **출근 버스 실시간 확인**: `/bus` 또는 '출근 버스 언제 와?'라고 물어보면 실시간 도착 시간과 인라인 갱신 버튼을 제공합니다.\n"
+                "5. **사진 전송**: 일상 사진이나 영수증을 보내면 오늘 라이프로그에 사진이 첨부됩니다.\n"
+                "6. **직접 기록**: `/log 러닝 5km 완료` 명령어로 바로 기록할 수 있습니다.\n"
+                "7. **1순위 태스크 완료**: `/done` 명령어로 현재 1순위 태스크를 원터치 완료(- [x]) 처리하고 GitHub에 푸시합니다.\n"
+                "8. **웹 대시보드 주소**: `/url` 명령어로 브라우저에서 접속할 수 있는 실시간 Cloudflare HTTPS 주소를 확인합니다.\n"
+                "9. **GTD 레포 최신화**: `/sync` 또는 'gtd 레포 최신화' 명령어로 원격 저장소를 즉시 동기화(pull)합니다.\n"
+                "10. **GitHub 원격 푸시**: `/push` 또는 '푸시해줘', '깃 푸시' 명령어로 로컬 커밋을 원격 저장소로 안전하게 푸시합니다.\n"
+                "11. **인터랙티브 인라인 버튼**: 정기 브리핑 및 버스 카드 하단의 원클릭 버튼을 터치해 타이핑 없이 즉시 갱신/조작할 수 있습니다."
             )
             await self.send_message(chat_id, help_text)
             return
@@ -445,6 +538,13 @@ class TelegramService:
                     now_hour = get_now().hour
                     mode = "morning" if 5 <= now_hour < 14 else "evening"
                 reply_markup = self.get_briefing_keyboard(mode=mode)
+                await self.send_message(chat_id, ai_response, reply_markup=reply_markup)
+            elif (
+                intent == "commute_inspect"
+                or "[실시간 출근 버스 도착 정보]" in ai_response
+                or "출근길 버스 현황" in ai_response
+            ):
+                reply_markup = self.get_bus_keyboard()
                 await self.send_message(chat_id, ai_response, reply_markup=reply_markup)
             else:
                 await self.send_message(chat_id, ai_response)

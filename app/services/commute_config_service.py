@@ -200,10 +200,11 @@ class CommuteConfigService:
         logger.info(f"Commute config updated: {merged['location_name']}, {merged.get('bus_stop_name', '')} ({merged.get('bus_route_name', '')}번)")
         return self.get_masked_config()
 
-    def generate_preview(self, custom_config: dict[str, Any] | None = None) -> dict[str, Any]:
+    def generate_preview(self, custom_config: dict[str, Any] | None = None, force_refresh: bool = False) -> dict[str, Any]:
         """
-        현재 설정(또는 전달된 설정)을 기반으로 실시간 브리핑 카드 프리뷰를 생성합니다 (ADR-030, ADR-035, ADR-037).
+        현재 설정(또는 전달된 설정)을 기반으로 실시간 브리핑 카드 프리뷰를 생성합니다 (ADR-030, ADR-035, ADR-037, ADR-039).
         Open-Meteo 실시간 오픈 API를 통해 거주지 기반 실시간 날씨와 대기질을 즉시 반영합니다.
+        force_refresh=True일 경우 버스 도착 캐시를 우회하고 최신 도착 현황을 강제 조회합니다.
         """
         cfg = dict(self.get_config())
         if custom_config:
@@ -233,7 +234,7 @@ class CommuteConfigService:
         source_str = live_w.get("source", "Open-Meteo 실시간 라이브 API")
         updated_time = live_w.get("updated_time", now.strftime("%H:%M"))
 
-        # BusService를 통한 실시간 출근 버스 도착 정보 조회 (ADR-037)
+        # BusService를 통한 실시간 출근 버스 도착 정보 조회 (ADR-037, ADR-039)
         from app.services.bus_service import BusService
 
         bus_info = BusService.get_arrival_info(
@@ -244,6 +245,7 @@ class CommuteConfigService:
             use_mock_fallback=bool(cfg.get("use_mock_fallback", True)),
             bus_stop_name=stop_name,
             endpoint=cfg.get("public_data_endpoint"),
+            force_refresh=force_refresh,
         )
 
         bus_status_str = bus_info["status"]
@@ -314,11 +316,11 @@ class CommuteConfigService:
             },
         }
 
-    def get_morning_weather_card(self) -> str:
+    def get_morning_weather_card(self, force_refresh: bool = False) -> str:
         """
-        아침 정기 브리핑 상단에 통합 삽입할 실시간 날씨, 미세먼지 및 출근 버스 요약 블록을 반환합니다 (ADR-033, ADR-035, ADR-037).
+        아침 정기 브리핑 상단에 통합 삽입할 실시간 날씨, 미세먼지 및 출근 버스 요약 블록을 반환합니다 (ADR-033, ADR-035, ADR-037, ADR-039).
         """
-        preview = self.generate_preview()
+        preview = self.generate_preview(force_refresh=force_refresh)
         w = preview["weather_summary"]
         t = preview["transit_summary"]
         cfg = self.get_config()
@@ -343,11 +345,11 @@ class CommuteConfigService:
         lines.append(f"*(📡 {w.get('source', 'Open-Meteo 실시간 API')})*")
         return "\n".join(lines)
 
-    def get_standalone_weather_card(self) -> str:
+    def get_standalone_weather_card(self, force_refresh: bool = False) -> str:
         """
-        자연어 날씨/미세먼지 질의 시 사용자에게 즉각 제공할 단독 실시간 기상 브리핑 카드를 반환합니다 (ADR-033, ADR-035, ADR-037).
+        자연어 날씨/미세먼지 질의 시 사용자에게 즉각 제공할 단독 실시간 기상 브리핑 카드를 반환합니다 (ADR-033, ADR-035, ADR-037, ADR-039).
         """
-        preview = self.generate_preview()
+        preview = self.generate_preview(force_refresh=force_refresh)
         w = preview["weather_summary"]
         t = preview["transit_summary"]
         now = get_now()
@@ -381,20 +383,21 @@ class CommuteConfigService:
         lines.append("✨ 상쾌하고 쾌적한 하루 보내세요!")
         return "\n".join(lines)
 
-    def get_standalone_bus_card(self) -> str:
+    def get_standalone_bus_card(self, force_refresh: bool = False) -> str:
         """
         자연어 버스 도착 질의(/bus, '출근 버스 언제 와?', '버스 정보') 시
-        사용자에게 즉각 제공할 단독 실시간 버스 도착 브리핑 카드를 반환합니다 (ADR-037).
+        사용자에게 즉각 제공할 단독 실시간 버스 도착 브리핑 카드를 반환합니다 (ADR-037, ADR-039).
         """
-        preview = self.generate_preview()
+        preview = self.generate_preview(force_refresh=force_refresh)
         t = preview["transit_summary"]
         now = get_now()
         date_str = now.strftime("%Y-%m-%d %A")
+        time_str = now.strftime("%H:%M:%S")
 
         if t.get("is_all_routes"):
             lines = [
                 f"🚌 **[실시간 출근 버스 도착 정보]** (`{t['stop_name']}` 정류소 전체 노선)\n",
-                f"📅 **조회 일시**: {date_str} {now.strftime('%H:%M')} KST ({t.get('source', '실시간 API')})\n",
+                f"📅 **조회 일시**: {date_str} {time_str} KST ({t.get('source', '실시간 API')})\n",
                 "🚍 **정류소 실시간 도착 현황**",
                 f"{t['status']}\n",
                 f"💡 **출근 팁:** {preview.get('bus_tip', '안전하게 이동하세요! ✨')}",
@@ -402,7 +405,7 @@ class CommuteConfigService:
         else:
             lines = [
                 f"🚌 **[실시간 출근 버스 도착 정보]** (`{t['stop_name']}` ➔ `{t['route_name']}`)\n",
-                f"📅 **조회 일시**: {date_str} {now.strftime('%H:%M')} KST ({t.get('source', '실시간 API')})\n",
+                f"📅 **조회 일시**: {date_str} {time_str} KST ({t.get('source', '실시간 API')})\n",
                 "🚍 **도착 예정 현황**",
                 f"• 탑승 정류소: **{t['stop_name']}**",
                 f"• 버스 노선: **{t['route_name']}**",

@@ -387,3 +387,61 @@ def test_resolve_bus_stop_router():
         data = res.json()
         assert data["success"] is True
         assert data["data"]["stop_name"] == "금옥초등학교앞"
+
+
+def test_bus_service_force_refresh():
+    """force_refresh=True 시 인메모리 캐시를 우회하여 최신 결과를 가져오는지 검증 (ADR-039)."""
+    # 1. First call populates cache
+    info1 = BusService.get_arrival_info(
+        bus_stop_id="23284",
+        bus_route_name="146",
+        bus_stop_name="역삼역",
+        use_mock_fallback=True,
+    )
+    assert "146번" in info1["route_name"]
+
+    # 2. Modify cache manually to verify cache hit
+    cache_key = "11:23284:146"
+    assert cache_key in BusService._cache
+    _ts, data = BusService._cache[cache_key]
+    data["status"] = "MANUAL_CACHED_STATUS"
+
+    info_cached = BusService.get_arrival_info(
+        bus_stop_id="23284",
+        bus_route_name="146",
+        bus_stop_name="역삼역",
+        use_mock_fallback=True,
+        force_refresh=False,
+    )
+    assert info_cached["status"] == "MANUAL_CACHED_STATUS"
+
+    # 3. Call with force_refresh=True should bypass the cached status
+    info_fresh = BusService.get_arrival_info(
+        bus_stop_id="23284",
+        bus_route_name="146",
+        bus_stop_name="역삼역",
+        use_mock_fallback=True,
+        force_refresh=True,
+    )
+    assert info_fresh["status"] != "MANUAL_CACHED_STATUS"
+
+
+def test_refreshed_bus_card_endpoint():
+    """GET/POST /api/settings/commute/bus-card 실시간 갱신 API 엔드포인트 검증 (ADR-039)."""
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    client = TestClient(app)
+    res = client.get(
+        "/api/settings/commute/bus-card",
+        headers={"Authorization": "Basic d2F0c29uOnBhc3N3b3Jk"}
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["success"] is True
+    assert "[실시간 출근 버스 도착 정보]" in data["markdown"]
+    assert "updated_time" in data
+    assert "transit_summary" in data
+    assert "transit_line" in data
+

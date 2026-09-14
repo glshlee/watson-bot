@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app.auth import verify_web_auth
+from app.config import get_now
 from app.services.commute_config_service import CommuteConfigService
 from app.services.settings_service import SettingsService
 
@@ -149,3 +150,33 @@ def resolve_commute_bus_stop(payload: ResolveBusStopRequest) -> dict[str, Any]:
         "success": True,
         "data": resolved,
     }
+
+
+@router.get("/commute/bus-card")
+@router.post("/commute/bus-card")
+def get_refreshed_bus_card() -> dict[str, Any]:
+    """
+    실시간 출근 버스 도착 정보를 강제 갱신하여 최신 마크다운 카드 및 데이터를 반환합니다 (ADR-039).
+    """
+    service = CommuteConfigService()
+    preview = service.generate_preview(force_refresh=True)
+    card_md = service.get_standalone_bus_card(force_refresh=True)
+    weather_card = service.get_morning_weather_card(force_refresh=True)
+    t = preview["transit_summary"]
+    now = get_now()
+    time_str = now.strftime("%H:%M:%S")
+
+    if t.get("is_all_routes"):
+        transit_line = f"• 🚌 **출근길 버스 ({t['stop_name']} 전체 노선)**:\n{t['status']}"
+    else:
+        transit_line = f"• 🚌 **출근길 버스**: **{t['stop_name']}** ➔ **{t['route_name']}** ({t['status']})"
+
+    return {
+        "success": True,
+        "markdown": card_md,
+        "morning_weather_card": weather_card,
+        "transit_summary": t,
+        "transit_line": transit_line,
+        "updated_time": time_str,
+    }
+
