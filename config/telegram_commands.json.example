@@ -10,6 +10,11 @@
     "enabled": true
   },
   {
+    "command": "dday",
+    "description": "GTD 마감일(D-Day) 및 임박 태스크 확인",
+    "enabled": true
+  },
+  {
     "command": "bus",
     "description": "실시간 출근 버스 도착 현황 및 갱신",
     "enabled": true

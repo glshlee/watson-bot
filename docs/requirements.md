@@ -234,6 +234,14 @@
 - **FR-40.3**: 웹 콘솔 헤더 `[📱 메뉴: N개]` 배지 및 퀵 바 `[📱 텔레그램 메뉴]` 버튼을 통해 `#telegram-menu-modal`을 원클릭으로 호출할 수 있어야 한다.
 - **FR-40.4**: 모달 내에서 온/오프 체크박스 토글, 명령어/설명 인라인 편집, 새 명령어 추가 및 스마트폰 다크 테마 팝업 실시간 미리보기를 제공해야 한다.
 
+### FR-41: GTD 마감일(Due Date / D-Day) 자동 감지 및 긴급도 브리핑 (ADR-042)
+- **FR-41.1**: 마크다운 태스크 내 `~YYYY-MM-DD`, `~YYYY.MM.DD`, `@due(YYYY-MM-DD)` 태그 및 한국어 자연어 상대일자("오늘까지", "내일까지", "모레까지", "이번 주 금요일까지", "다음 주 화요일까지")를 KST 기준 D-Day로 자동 파싱해야 한다.
+- **FR-41.2**: 태스크의 긴급도를 `overdue`(기한 초과), `today`(오늘 마감), `urgent`(D-1~D-3), `upcoming`(D-4 이상) 4단계로 분류하고 가중치 우선순위를 부여해야 한다.
+- **FR-41.3**: 아침 08:30 브리핑 상단에 D-Day 경고 섹션을 주입하고 최우선 집중 과제를 마감 임박 태스크로 우선 정렬해야 한다.
+- **FR-41.4**: 저녁 20:00 브리핑 시 미완료된 당일/초과 과제를 내일 최우선 이월 과제로 강조하고, GTD 파일 읽기 시 마감일 현황 섹션을 제공해야 한다.
+- **FR-41.5**: `/dday`, `/deadline`, "마감일 확인" 명령어 수신 시 단독 마감 리포트를 즉시 출력하고, 텔레그램 인라인 키보드 `[⏳ D-Day 마감 확인]` 및 웹 콘솔 퀵 바 칩을 제공해야 한다.
+- **FR-41.6**: 사용자가 대화 중 "내일까지 보고서 제출 GTD에 추가해줘" 요청 시 `~YYYY-MM-DD` 태그가 부착된 마크다운 할 일로 자동 정제해야 한다.
+
 ---
 
 
@@ -297,6 +305,7 @@
 | **FR-38** | `app/services/bus_service.py`, `app/services/telegram_service.py`, `app/routers/settings_router.py`, `app/static/js/main.js` | Pytest 단위 테스트(`test_bus_service.py`, `test_telegram_service.py`) & cURL 스모크 검증(6-9) |
 | **FR-39** | `app/services/telegram_service.py`, `app/routers/telegram_router.py`, `tests/test_telegram_service.py`, `scripts/smoke_test.sh` | Pytest 단위 테스트(`test_telegram_service.py`) & cURL 스모크 검증(4-1, 4-2) |
 | **FR-40** | `app/services/telegram_service.py`, `app/routers/telegram_router.py`, `app/templates/index.html`, `app/static/js/main.js`, `app/static/css/style.css` | Pytest 단위 테스트(`test_telegram_service.py`) & cURL 스모크 검증(4-3, 4-4) |
+| **FR-41** | `app/services/due_date_service.py`, `app/services/briefing_service.py`, `app/services/agent_service.py`, `app/services/llm_provider.py`, `app/services/supervisor_service.py`, `app/services/telegram_service.py` | Pytest 단위 테스트(`test_due_date_service.py`) & cURL 스모크 검증(3-13-7, 3-13-8) |
 
 
 

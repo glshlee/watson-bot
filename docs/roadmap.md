@@ -371,21 +371,58 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] 반응형 인터랙션 스타일링 (`app/static/css/style.css`) 및 비동기 DOM 컨트롤러 (`app/static/js/main.js`) 구현
 - [x] 단위 테스트(`tests/test_telegram_service.py`), Ruff/Mypy 정적 분석 및 `./scripts/smoke_test.sh` 4-3, 4-4 단계 라이브 검증 완료
 
+### Phase 41: GTD 마감일(Due Date / D-Day) 자동 감지 & 브리핑 알림 시스템 (ADR-042) - ✅ 완료
+- [x] `DueDateService` 구축 (`app/services/due_date_service.py`):
+  - 마감일 태그 포맷 파서 (`~YYYY-MM-DD`, `~YYYY.MM.DD`, `@due(YYYY-MM-DD)`) 구현
+  - 한국어 자연어 상대일자("오늘까지", "내일까지", "모레까지", "이번 주 금요일까지", "다음 주 화요일까지", "N일 뒤까지") 정밀 계산 엔진 구현
+  - D-Day 잔여일 계산 및 4단계 긴급도 분류 (`overdue`: 기한 초과, `today`: 오늘 마감, `urgent`: 3일 이내 임박, `upcoming`: 4일 이상)
+  - 마감일 기준 우선순위 가중치 스코어링 (`calculate_priority_score`) 및 `next_actions.md` 지능형 정렬
+  - 브리핑용 경고 섹션 포맷터 및 단독 `/dday` 마감일 점검 리포트 생성기 구현
+- [x] 모닝 & 이브닝 브리핑 및 실시간 GTD 요약 연동 (`app/services/briefing_service.py`, `app/services/agent_service.py`):
+  - 아침 08:30 브리핑 상단에 D-Day 경고 섹션(`🚨 오늘 마감 D-Day`, `⚠️ 마감 임박 D-1~D-3`, `⛔ 기한 초과 Overdue`) 주입
+  - 아침 1순위 집중 추천 시 D-Day 임박 과제를 최우선 추천하도록 자동 선별
+  - 저녁 브리핑에서 미완료된 D-Day 당일/초과 과제를 내일로 이월할 최우선 과제로 강조
+  - `read_gtd_files()` 요약 브리핑에 `#### ⏳ 3. 마감일(D-Day) 현황` 섹션 추가
+- [x] 단독 마감일 점검 질의 & 텔레그램/웹 콘솔 연동:
+  - `/dday`, `/deadline`, "마감일 확인", "D-day 확인" 의도 감지 (`dday_inspect`) 및 라우팅 (`app/services/llm_provider.py`, `app/services/supervisor_service.py`)
+  - DevBot `/dday` 툴체인 단독 실행 및 `/help` 안내 지원 (`app/services/dev_agent_service.py`)
+  - 텔레그램 브리핑 인라인 키보드에 `[⏳ D-Day 마감 확인]` (`action_show_dday`) 원터치 콜백 버튼 추가 (`app/services/telegram_service.py`)
+  - 웹 대시보드 왓슨 및 DevBot 퀵 숏컷 바에 `[⏳ D-Day 마감]` (`data-cmd="/dday"`) 원터치 칩 추가 (`app/templates/index.html`, `app/templates/dev.html`)
+  - 텔레그램 네이티브 봇 메뉴 15종 명령어로 `/dday` 기본 등록 (`TelegramService.DEFAULT_COMMANDS`, `config/telegram_commands.json`)
+- [x] 대화형 마감일 지정 태스크 생성:
+  - 사용자가 "내일까지 보고서 제출 GTD에 추가해줘" 발화 시 `_extract_actionable_task`에서 상대일자를 파싱하여 `~YYYY-MM-DD` 태그 자동 부착
+- [x] 단위 테스트(`tests/test_due_date_service.py`), Ruff/Mypy 정적 검사 및 `./scripts/smoke_test.sh` 3-13-7, 3-13-8 단계 라이브 검증 완료
 
+---
 
+## 🔮 차세대 기능 백로그 (Future Backlog - 상세 설계: `docs/ideas.md` 참조)
 
+### Phase 42: 과거 라이프로그·GTD 고속 검색 & 주간 결산 리포트 (`/search`, `/weekly`)
+- [ ] `SearchService`: 일일 로그(`logs/daily/*.md`) 및 GTD 파일 전체 대상 고속 텍스트/키워드 검색 엔진 구축
+- [ ] `/search [키워드]` 슬래시 커맨드 및 자연어 질의("지난달 서산 맛집 찾아줘") 라우팅 및 하이라이트 스니펫 카드 제공
+- [ ] 매주 일요일 21:00 KST 주간 결산 회고 브리핑 능동 푸시 (`WeeklyReviewService`)
+- [ ] 지난 7일간 완료한 GTD 태스크 집계, 카테고리별 일수 통계 및 장기 체류 수집함 정리 권유
 
+### Phase 43: 사진·영수증·운동인증 Vision AI 멀티모달 분석 & 스마트 기록
+- [ ] `VisionService`: 텔레그램 사진 수신 시 Gemini Flash Vision 멀티모달 분석 파이프라인 연동
+- [ ] 운동 인증샷(애플워치/인바디): 종목, 심박수, 칼로리, 시간 추출 및 운동 섹션 표 서식화
+- [ ] 식사/맛집 사진: 메뉴명, 분위기 분석 및 맛집 저널 초안 생성
+- [ ] 영수증/지출 사진: 상호, 일시, 금액 추출(민감정보 마스킹) 및 가계부/GTD 구매 확인 연동
+- [ ] 2단계 사전 검토 카드(`log_suggest`) 연계 및 원터치 승인 커밋
 
+### Phase 44: 웹 대시보드 연간 잔디(Heatmap) & 마크다운 인플레이스 에디터
+- [ ] `HeatmapService` & `GET /api/lifelog/heatmap`: 최근 365일간 날짜별 글자 수, 완료 태스크, 커밋 수 집계 API
+- [ ] 웹 콘솔 상단 GitHub 스타일 연간/월간 잔디(Contribution Heatmap) 경량 SVG/CSS Grid 시각화
+- [ ] 캘린더 뷰에서 과거 특정 일자 클릭 시 해당 일일 로그(`YYYY-MM-DD.md`) 즉시 열람
+- [ ] 마크다운 인플레이스 분할 에디터(좌측 텍스트 / 우측 실시간 렌더링) 및 원터치 Git 커밋/푸시 지원
 
+### Phase 45: 1-Click 셀프호스팅 배포 패키지 & 셋업 위저드 (타인 배포 1단계)
+- [ ] Docker Compose 올인원 배포 템플릿 및 GitHub Template 레포지토리화
+- [ ] 대화형 터미널 셋업 위저드 스크립트 (`./scripts/setup_wizard.sh`): 토큰, ID, 경로, 동네 자동 설정
+- [ ] 초보자용 배포 가이드 문서 (`docs/quickstart_guide.md`) 작성
 
-
-
-
-
-
-
-
-
-
-
-
+### Phase 46: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
+- [ ] `User` 모델 및 테넌트별 저장소/컨텍스트 격리 (`/data/tenants/{user_id}/`)
+- [ ] 단일 텔레그램 봇 기반 다중 사용자 라우팅 및 계정 바인딩 (`/start [연동코드]`)
+- [ ] 사용자 GitHub PAT 및 외부 API 키 AES-256 (Fernet) 암호화 보관
+- [ ] 사용자별 타임존 및 출근/브리핑 시각 맞춤형 동적 스케줄러 큐 구축

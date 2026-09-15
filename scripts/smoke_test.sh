@@ -419,6 +419,26 @@ else
     exit 1
 fi
 
+DDAY_CHAT_RES=$(run_curl -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_butler_session", "message": "/dday", "auto_push": false}')
+if echo "$DDAY_CHAT_RES" | grep -q '"intent":"dday_inspect"'; then
+    echo "  ✅ 3-13-7. Watson /dday Passed (intent=dday_inspect - ADR-042)"
+else
+    echo "  ❌ 3-13-7. Watson /dday Failed: $DDAY_CHAT_RES"
+    exit 1
+fi
+
+DEV_DDAY_RES=$(run_curl -X POST "$SERVER_URL/api/dev/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_dev_session", "message": "/dday"}')
+if echo "$DEV_DDAY_RES" | grep -q '"action_type":"tool_dday"'; then
+    echo "  ✅ 3-13-8. Dev Agent /dday Passed (action_type=tool_dday - ADR-042)"
+else
+    echo "  ❌ 3-13-8. Dev Agent /dday Failed: $DEV_DDAY_RES"
+    exit 1
+fi
+
 echo "  3-14. Testing Telegram Briefing Push Scheduler (ADR-026)..."
 SCHED_STATUS_RES=$(run_curl "$SERVER_URL/api/briefing/scheduler/status")
 if echo "$SCHED_STATUS_RES" | grep -q '"morning_time":"08:30 KST"'; then

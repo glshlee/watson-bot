@@ -818,12 +818,29 @@ class AgentService:
         else:
             next_content = "(파일이 존재하지 않습니다)"
 
+        dday_section = ""
+        try:
+            from app.services.due_date_service import DueDateService
+            scan_res = DueDateService.scan_gtd_due_tasks(self.base_dir)
+            if scan_res["total_count"] > 0:
+                dday_lines = [
+                    f"#### ⏳ 3. 마감일(D-Day) 현황 - 총 `{scan_res['total_count']}`개 (긴급 `{scan_res['action_needed_count']}`개)"
+                ]
+                for t in scan_res["all_tasks"][:5]:
+                    dday_lines.append(f"* {t['badge']} `{t['display_title']}` (~{t['due_date_str']}) - {t['source_label']}")
+                if len(scan_res["all_tasks"]) > 5:
+                    dday_lines.append(f"* *(외 {len(scan_res['all_tasks']) - 5}개 과제 더 있음)*")
+                dday_section = "\n\n" + "\n".join(dday_lines)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Failed to scan due dates in read_gtd_files: {e}")
+
         return (
             f"### 📋 현재 GTD 파일 현황 브리핑\n\n"
             f"#### 📥 1. 수집함 Inbox (`{inbox_rel}`) - 미완료 `{inbox_open}`개\n"
             f"```markdown\n{inbox_content}\n```\n\n"
             f"#### ⚡ 2. 다음 행동 Next Actions (`{next_rel}`) - 미완료 `{next_open}`개\n"
-            f"```markdown\n{next_content}\n```\n"
+            f"```markdown\n{next_content}\n```"
+            f"{dday_section}\n"
         )
 
     def read_gtd_and_daily_log(self, date_obj: datetime | None = None) -> str:

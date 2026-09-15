@@ -358,6 +358,22 @@
 * **REST API 확장**:
   * `POST /api/telegram/commands` (저장 및 실시간 Telegram Bot API 동기화), `POST /api/telegram/commands/reset` (기본 14종 복원).
 
+### 3.39. ⏳ GTD 마감일(Due Date / D-Day) 자동 감지 & 브리핑 알림 시스템 (GTD Due Date & D-Day Alert - ADR-042)
+* **마감일 태그 포맷 파서 & 한국어 자연어 상대일자 계산 엔진 (`DueDateService`)**:
+  * 마크다운 태스크 내 `~YYYY-MM-DD`, `~YYYY.MM.DD`, `@due(YYYY-MM-DD)` 명시적 태그 파싱.
+  * "오늘까지", "내일까지", "모레까지", "이번 주 금요일까지", "다음 주 화요일까지", "N일 뒤까지" 등 한국어 상대일자를 KST 기준 정밀 날짜로 자동 변환.
+* **4단계 긴급도 분류 및 지능형 우선순위 스코어링**:
+  * `overdue` (D+N 기한 초과, 가중치 100), `today` (D-Day 오늘 마감, 가중치 80), `urgent` (D-1~D-3 마감 임박, 가중치 60-N), `upcoming` (D-4 이상) 4단계 자동 분류.
+  * `next_actions.md` 및 브리핑 추천 시 마감 임박 과제를 최우선 집중 과제로 상단 자동 배치.
+* **아침/저녁 브리핑 & GTD 실시간 요약 연동**:
+  * 매일 08:30 아침 브리핑 상단에 `🚨 오늘 마감 D-Day`, `⚠️ 마감 임박 D-1~D-3`, `⛔ 기한 초과 Overdue` 경고 섹션 자동 주입.
+  * 20:00 저녁 브리핑에서 미완료된 당일/초과 과제를 내일 최우선 이월 과제로 강조.
+  * GTD 실시간 파일 읽기(`read_gtd_files`)에 `#### ⏳ 3. 마감일(D-Day) 현황` 섹션 추가.
+* **단독 마감 점검 & 대화형/인라인 접근성**:
+  * `/dday`, `/deadline`, "마감일 확인", "D-day 확인" 질의 시 전용 단독 리포트 반환.
+  * 텔레그램 브리핑 하단 `[⏳ D-Day 마감 확인]` 원터치 인라인 버튼 및 웹 콘솔 왓슨/DevBot 퀵 칩(`[⏳ D-Day 마감]`) 제공.
+  * 텔레그램 네이티브 봇 메뉴 15종 명령어로 `/dday` 기본 탑재.
+
 ---
 
 ## 4. 시스템 아키텍처 개요 (System Architecture Overview)

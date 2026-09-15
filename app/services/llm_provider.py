@@ -654,6 +654,22 @@ class LLMProvider:
                 category="GTD",
             )
 
+        # GTD 마감일 및 D-Day 현황 직접 조회 (/dday, /deadline, "마감일 확인" 등 - ADR-042)
+        is_dday_shortcut = prompt_lower in ["/dday", "/deadline", "dday", "deadline", "디데이"]
+        dday_patterns = [
+            r"^(?:gtd\s*)?(?:마감일|마감\s*일정|마감\s*과제|마감\s*태스크|마감|기한|d-?day|디데이)\s*(?:현황|목록|리포트|확인|알려줘|알려|보여줘|보여|조회|체크)?[\.\!\?\s]*$",
+            r"(?:마감일|마감\s*일정|d-?day|디데이|기한)\s*(?:현황|목록|리포트|확인|알려|보여|조회|체크|어떻게|뭐|있어)",
+            r"(?:마감\s*임박|기한\s*초과|오늘\s*마감)",
+        ]
+        is_dday_inspect = is_dday_shortcut or any(re.search(pat, prompt_lower, re.IGNORECASE) for pat in dday_patterns)
+        if is_dday_inspect and not has_record_action and not has_remove_trigger:
+            return IntentResult(
+                intent="dday_inspect",
+                ai_response="",
+                log_content=None,
+                category="GTD",
+            )
+
         # (C) 출근길 날씨·미세먼지·버스 브리핑 설정 및 실시간 날씨 질의 (/commute, /weather - ADR-030, ADR-033)
         # (C-1) 동네 설정 및 스마트 지오코딩 자동 매핑 (/location, /동네 - ADR-034)
         is_loc_cmd = prompt_lower.startswith(("/location", "/동네", "/지역"))
@@ -1028,16 +1044,24 @@ class LLMProvider:
 
     def _extract_actionable_task(self, text: str) -> str:
         """
-        비정형 일상 텍스트에서 실행 가능한 GTD 액션 태스크를 간결하고 명확하게 추출합니다 (ADR-014).
+        비정형 일상 텍스트에서 실행 가능한 GTD 액션 태스크를 간결하고 명확하게 추출합니다 (ADR-014, ADR-042).
+        마감일(Due Date) 및 D-Day 상대 표현 감지 시 표준 태그(~YYYY-MM-DD)를 결합합니다.
         """
-        cleaned = text.strip()
+        from app.services.due_date_service import DueDateService
+
+        due_date, normalized_text = DueDateService.extract_due_date_from_text(text, base_date=get_now().date())
+        due_tag = f" ~{due_date.strftime('%Y-%m-%d')}" if due_date else ""
+
+        cleaned = normalized_text.strip()
+        if due_date:
+            cleaned = re.sub(r"~(20\d{2}[-/.])?(0?[1-9]|1[0-2])[-/.](0?[1-9]|[12]\d|3[01])\b", "", cleaned).strip()
 
         # 1. 구매 / 장보기 패턴
         buy_match = re.search(r"([가-힣A-Za-z0-9\s,]+?)(?:을|를|도)?\s*(?:사야|구매|구입|주문|장보기|결제)", cleaned)
         if buy_match and len(buy_match.group(1).strip()) > 1:
             items = [w.strip() for w in re.split(r"[,랑와과\s]+", buy_match.group(1)) if len(w.strip()) > 1]
             if items:
-                return f"{' / '.join(items[:3])} 구매 🛒"
+                return f"{' / '.join(items[:3])} 구매{due_tag} 🛒"
 
         # 2. 여행 / 나들이 / 방문 / 휴가 패턴
         travel_match = re.search(r"([가-힣A-Za-z0-9]+(?:쪽|으로|에)?)\s*(?:여행|방문|나들이|휴가|가보려)", cleaned)
@@ -1050,21 +1074,21 @@ class LLMProvider:
                     spots.append(word)
             spots_str = f" ({', '.join(spots[:3])})" if spots else ""
             if dest:
-                return f"{dest} 여행 계획 및 맛집 방문{spots_str} 🚗🍲"
+                return f"{dest} 여행 계획 및 맛집 방문{spots_str}{due_tag} 🚗🍲"
             elif spots:
-                return f"{spots[0]} 방문 및 여행 계획 🚗🍲"
+                return f"{spots[0]} 방문 및 여행 계획{due_tag} 🚗🍲"
 
         # 3. 병원 / 건강 / 검진
         health_match = re.search(r"([가-힣A-Za-z0-9\s]+?(?:병원|검진|초음파|진료|치료|재검))", cleaned)
         if health_match:
             h_item = health_match.group(1).strip()
-            return f"{h_item} 방문 및 확인 🏥"
+            return f"{h_item} 방문 및 확인{due_tag} 🏥"
 
         # 4. 업무 / 회의 / 프로젝트 / 문서
-        work_match = re.search(r"([가-힣A-Za-z0-9\s]+?(?:회의|미팅|보고|프로젝트|기획|개발|배포|가이드라인|문서|정리))", cleaned)
+        work_match = re.search(r"([가-힣A-Za-z0-9\s]+?(?:회의|미팅|보고서|보고|프로젝트|기획|개발|배포|가이드라인|문서|정리))", cleaned)
         if work_match and len(work_match.group(1).strip()) > 3:
             w_item = work_match.group(1).strip()
-            return f"{w_item} 진행 📊"
+            return f"{w_item} 진행{due_tag} 📊"
 
         # 5. 문장의 핵심 어절 추출
         sentences = [s.strip() for s in re.split(r"[\n.!?]", cleaned) if len(s.strip()) > 3]
@@ -1072,7 +1096,7 @@ class LLMProvider:
             candidate = sentences[-1]
             candidate = re.sub(r"(로그|gtd|일기|인박스|할일|기록|남겨|적어).*$", "", candidate).strip()
             if len(candidate) > 4:
-                return f"{candidate} 📌"
+                return f"{candidate}{due_tag} 📌"
 
-        return f"{cleaned[:25].strip()} 📌"
+        return f"{cleaned[:25].strip()}{due_tag} 📌"
 

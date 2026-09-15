@@ -374,6 +374,16 @@ class DevAgentService:
             briefing_svc = self._get_briefing_service()
             ai_response = briefing_svc.format_schedule_briefing(date_obj=get_now())
 
+        elif lower_msg in ["/dday", "/deadline", "dday", "deadline", "디데이", "마감일", "마감일 확인", "dday 확인", "디데이 확인"]:
+            action_type = "tool_dday"
+            from app.services.due_date_service import DueDateService
+
+            settings_svc = SettingsService()
+            ai_response = DueDateService.format_standalone_deadline_report(
+                base_dir=settings_svc.get_gtd_path(),
+                base_date=get_now(),
+            )
+
         elif lower_msg in ["/help", "help", "도움말", "명령어", "도구"]:
             action_type = "tool_help"
             ai_response = (
@@ -383,8 +393,9 @@ class DevAgentService:
                 "  * `/diff`: 변경 코드(Staged/Unstaged) 실시간 비교\n"
                 "  * `/log`: 최근 7건의 Git 커밋 히스토리 확인\n"
                 "  * `/branch`: 브랜치 목록 조회\n"
-                "* **📋 라이프로그 & GTD 브리핑/열람 (ADR-022, ADR-024)**:\n"
+                "* **📋 라이프로그 & GTD 브리핑/열람 (ADR-022, ADR-024, ADR-042)**:\n"
                 "  * `/briefing [morning|evening]`: 아침 집중 과제 및 저녁 일과 회고 맞춤형 브리핑\n"
+                "  * `/dday`: GTD 마감일(D-Day) 현황 및 기한 임박/초과 과제 종합 점검\n"
                 "  * `/today`: 오늘자 작성된 일일 로그(`logs/daily/YYYY-MM-DD.md`) 즉시 열람\n"
                 "  * `/gtd`: 현재 연결된 GTD 수집함(`inbox.md`) 및 다음 행동(`next_actions.md`) 마크다운 직접 확인\n"
                 "* **🧪 자동화 CI & 검증 도구**:\n"

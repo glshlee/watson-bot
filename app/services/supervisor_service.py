@@ -279,6 +279,16 @@ class SupervisorService:
             # (D-3d) 브리핑 스케줄 및 오늘 주요 일정 시간표 확인 (ADR-025)
             final_response = self.briefing_service.format_schedule_briefing(date_obj=get_now())
 
+        elif intent_res.intent == "dday_inspect":
+            # (D-3e) GTD 마감일(D-Day) 현황 종합 리포트 (ADR-042)
+            self.git_service.pull()
+            from app.services.due_date_service import DueDateService
+
+            final_response = DueDateService.format_standalone_deadline_report(
+                base_dir=self.settings_service.get_gtd_path(),
+                base_date=get_now(),
+            )
+
         elif intent_res.intent == "commute_inspect":
             # (D-3e) 출근길 모닝 브리핑 설정 및 실시간 카드 프리뷰 (ADR-030, ADR-037)
             cfg = self.commute_config_service.get_masked_config()

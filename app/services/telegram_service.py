@@ -28,6 +28,7 @@ class TelegramService:
     DEFAULT_COMMANDS: ClassVar[list[dict[str, str]]] = [
         {"command": "today", "description": "오늘 작성된 일일 로그 확인"},
         {"command": "briefing", "description": "오늘의 GTD 아침/저녁 맞춤 브리핑"},
+        {"command": "dday", "description": "GTD 마감일(D-Day) 및 임박 태스크 확인"},
         {"command": "bus", "description": "실시간 출근 버스 도착 현황 및 갱신"},
         {"command": "log", "description": "오늘 라이프로그에 즉시 기록 (/log [내용])"},
         {"command": "done", "description": "1순위 GTD 태스크 완료 및 푸시 (/done)"},
@@ -335,7 +336,8 @@ class TelegramService:
                         {"text": "🚀 원격 푸시", "callback_data": "action_push"},
                     ],
                     [
-                        {"text": "📋 전체 할 일 보기", "callback_data": "action_show_tasks"},
+                        {"text": "📋 전체 할 일", "callback_data": "action_show_tasks"},
+                        {"text": "⏳ D-Day 마감 확인", "callback_data": "action_show_dday"},
                     ],
                 ]
             }
@@ -348,6 +350,9 @@ class TelegramService:
                     ],
                     [
                         {"text": "🚀 오늘 기록 푸시", "callback_data": "action_push"},
+                        {"text": "⏳ D-Day 마감 확인", "callback_data": "action_show_dday"},
+                    ],
+                    [
                         {"text": "📋 내일 할 일 보기", "callback_data": "action_show_next"},
                     ],
                 ]
@@ -429,6 +434,15 @@ class TelegramService:
                 result = supervisor.process_user_request(
                     session_id=session_id,
                     user_message="/gtd",
+                    channel="telegram",
+                    auto_push=False,
+                )
+                await self.send_message(chat_id, result["ai_response"])
+            elif data == "action_show_dday":
+                await self.answer_callback_query(cb_id, text="마감일(D-Day) 현황을 조회합니다... ⏳")
+                result = supervisor.process_user_request(
+                    session_id=session_id,
+                    user_message="/dday",
                     channel="telegram",
                     auto_push=False,
                 )

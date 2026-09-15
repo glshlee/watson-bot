@@ -7,6 +7,7 @@ from typing import Any
 from app.config import get_now
 from app.services.agent_service import AgentService
 from app.services.commute_config_service import CommuteConfigService
+from app.services.due_date_service import DueDateService
 from app.services.git_service import GitService
 from app.services.llm_provider import LLMProvider
 from app.services.settings_service import SettingsService
@@ -18,9 +19,10 @@ WEEKDAYS_KR = ["월요일", "화요일", "수요일", "목요일", "금요일", 
 
 class BriefingService:
     """
-    아침 및 저녁 맞춤형 GTD 브리핑 생성 서비스 (ADR-024, ADR-033).
+    아침 및 저녁 맞춤형 GTD 브리핑 생성 서비스 (ADR-024, ADR-033, ADR-042).
     - 시간대(KST) 및 명시적 인자에 따른 Morning / Evening 모드 자동 감지
     - 아침 브리핑 상단에 실시간 날씨, 미세먼지 및 출근 교통 현황 통합 (ADR-033)
+    - GTD 마감일(D-Day) 긴급도 감지 및 우선순위 자동 정렬 (ADR-042)
     - GTD 수집함(inbox.md), 다음 행동(next_actions.md), 당일 데일리 로그 수집
     - 지능형 LLM 브리핑 합성 및 결정론적 룰 기반 폴백 듀얼 엔진
     """
@@ -31,6 +33,7 @@ class BriefingService:
         llm_provider: LLMProvider | None = None,
         git_service: GitService | None = None,
         commute_config_service: CommuteConfigService | None = None,
+        due_date_service: DueDateService | None = None,
     ):
         self.settings_service = SettingsService()
         self.base_dir = base_dir or self.settings_service.get_gtd_path()
@@ -38,6 +41,7 @@ class BriefingService:
         self.llm_provider = llm_provider or LLMProvider()
         self.git_service = git_service or GitService(repo_path=self.base_dir)
         self.commute_config_service = commute_config_service or CommuteConfigService()
+        self.due_date_service = due_date_service or DueDateService()
 
     def detect_briefing_mode(self, override_mode: str | None = None, date_obj: datetime | None = None) -> str:
         """
@@ -167,12 +171,12 @@ class BriefingService:
         completed_items = context["completed_items"]
 
         if mode == "morning":
-            urgent = [a for a in next_actions if any(k in a for k in ["🚨", "오늘", "마감", "중요", "긴급", "P1"])]
-            normal = [a for a in next_actions if a not in urgent]
-            ordered_actions = urgent + normal
+            # GTD 마감일(D-Day) 긴급도 가중치 반영 정렬 (ADR-042)
+            ordered_actions = self.due_date_service.prioritize_next_actions(next_actions, base_date=date_obj.date())
             top_3 = ordered_actions[:3]
 
             weather_card = self.commute_config_service.get_morning_weather_card()
+            dday_card = self.due_date_service.format_dday_briefing_section(self.base_dir, base_date=date_obj.date())
 
             lines = [
                 f"### 🌅 **Watson Morning Briefing** (`{date_str} {weekday_str}`) ☀️\n",
@@ -183,10 +187,17 @@ class BriefingService:
                 lines.append(weather_card)
                 lines.append("")
 
+            if dday_card:
+                lines.append(dday_card)
+                lines.append("")
+
             lines.append("#### 🎯 **오늘의 집중 우선순위 Top 3**")
             if top_3:
                 for idx, act in enumerate(top_3, 1):
-                    lines.append(f"{idx}. {act}")
+                    # D-Day 태스크인 경우 시각적 배지 추가
+                    t_info = self.due_date_service.parse_task_line(f"- [ ] {act}", base_date=date_obj.date())
+                    badge_str = f" {t_info['badge']}" if t_info else ""
+                    lines.append(f"{idx}. {act}{badge_str}")
             else:
                 lines.append("1. 오늘 등록된 최우선 과제가 없습니다. 자유롭게 하루를 설계해 보세요.")
             lines.append("")
@@ -233,9 +244,12 @@ class BriefingService:
 
             lines.append("#### ⏳ **미완료 / 진행 중 과제 현황 (Rollover Check)**")
             if next_actions:
+                ordered_actions = self.due_date_service.prioritize_next_actions(next_actions, base_date=date_obj.date())
                 lines.append(f"* 현재 **{len(next_actions)}개**의 다음 행동 과제가 남아 있습니다:")
-                for act in next_actions[:4]:
-                    lines.append(f"  * ▫️ {act}")
+                for act in ordered_actions[:4]:
+                    t_info = self.due_date_service.parse_task_line(f"- [ ] {act}", base_date=date_obj.date())
+                    badge_str = f" {t_info['badge']}" if t_info else ""
+                    lines.append(f"  * ▫️ {act}{badge_str}")
                 if len(next_actions) > 4:
                     lines.append(f"  * *(외 {len(next_actions) - 4}개 잔여)*")
                 lines.append("* 오늘 완료되지 못한 과제는 내일 일정으로 자연스럽게 이월됩니다.")
@@ -244,7 +258,19 @@ class BriefingService:
             lines.append("")
 
             lines.append("#### 🎯 **내일 아침 가장 먼저 마주할 핵심 과제 (Priority 1)**")
-            tomorrow_task = next_actions[0] if next_actions else (inbox_items[0] if inbox_items else "내일의 새로운 영감 및 목표 수립")
+            # 내일 마감(diff_days == 1) 또는 미처리 기한초과 태스크 우선 추천 (ADR-042)
+            due_scan = self.due_date_service.scan_gtd_due_tasks(self.base_dir, base_date=date_obj.date())
+            urgent_due = due_scan["overdue_tasks"] + due_scan["today_tasks"] + [t for t in due_scan["urgent_tasks"] if t["diff_days"] == 1]
+            if urgent_due:
+                first_urgent = urgent_due[0]
+                tomorrow_task = f"{first_urgent['display_title']} ({first_urgent['label']})"
+            elif next_actions:
+                tomorrow_task = self.due_date_service.prioritize_next_actions(next_actions, base_date=date_obj.date())[0]
+            elif inbox_items:
+                tomorrow_task = inbox_items[0]
+            else:
+                tomorrow_task = "내일의 새로운 영감 및 목표 수립"
+
             lines.append(f"* 👉 **`{tomorrow_task}`**")
             lines.append("")
 
@@ -275,17 +301,20 @@ class BriefingService:
                 if active_mode == "morning":
                     weather_card = self.commute_config_service.get_morning_weather_card()
                     weather_prompt_part = f"- 오늘의 실시간 날씨 및 미세먼지 정보:\n{weather_card}\n\n" if weather_card else ""
+                    dday_card = self.due_date_service.format_dday_briefing_section(self.base_dir, base_date=now_dt.date())
+                    dday_prompt_part = f"- GTD 마감일 및 D-Day 현황:\n{dday_card}\n\n" if dday_card else ""
                     prompt = (
                         f"너는 사용자의 든든한 개인 AI 비서 왓슨(Watson)이다.\n"
-                        f"오늘은 {date_label}이다. 아래 날씨, 미세먼지 및 GTD 참고 데이터를 바탕으로 친절하고 명쾌하게 [Morning Briefing]을 작성하라.\n\n"
+                        f"오늘은 {date_label}이다. 아래 날씨, 미세먼지, GTD 마감일 및 참고 데이터를 바탕으로 친절하고 명쾌하게 [Morning Briefing]을 작성하라.\n\n"
                         f"[참고 데이터]\n"
                         f"{weather_prompt_part}"
+                        f"{dday_prompt_part}"
                         f"- GTD Inbox:\n{context['raw_inbox'] or '(비어 있음)'}\n"
                         f"- Next Actions:\n{context['raw_next_actions'] or '(비어 있음)'}\n"
                         f"- 오늘 일정 및 메모:\n{context['raw_daily_log'] or '(기록 없음)'}\n\n"
                         f"[작성 가이드라인]\n"
                         f"1. 활기차고 차분한 어조로 오늘의 시작을 열며, 상단에 오늘의 날씨(기온, 하늘상태, 우산 필요 여부 등)와 미세먼지 정보를 친절하게 안내하세요.\n"
-                        f"2. '🎯 오늘의 집중 우선순위 Top 3'를 명확하게 선정하세요.\n"
+                        f"2. 마감일이 임박하거나 기한이 초과된 과제가 있다면 D-Day 경고와 함께 집중 우선순위 Top 3에 최우선 배치하세요.\n"
                         f"3. 오전/오후 시간대별 추천 실행 순서를 간결하게 정리하세요.\n"
                         f"4. Inbox에 방치된 미분류 항목이 있다면 한두 개 정리 권유를 포함하세요.\n"
                         f"5. 마크다운 형식으로 가독성 높게 정돈하여 답변하세요.\n"
