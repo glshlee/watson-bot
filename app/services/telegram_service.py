@@ -1,7 +1,9 @@
 import asyncio
+import json
 import logging
 import os
-from typing import Any
+import re
+from typing import Any, ClassVar
 
 import httpx
 from sqlalchemy.orm import Session
@@ -22,6 +24,23 @@ class TelegramService:
     롱 폴링(Long Polling) 및 웹훅을 모두 지원하며,
     화이트리스트 보안, 대화/일과 제안 분리, 인라인 키보드 승인, 사진 기록을 처리합니다.
     """
+
+    DEFAULT_COMMANDS: ClassVar[list[dict[str, str]]] = [
+        {"command": "today", "description": "오늘 작성된 일일 로그 확인"},
+        {"command": "briefing", "description": "오늘의 GTD 아침/저녁 맞춤 브리핑"},
+        {"command": "bus", "description": "실시간 출근 버스 도착 현황 및 갱신"},
+        {"command": "log", "description": "오늘 라이프로그에 즉시 기록 (/log [내용])"},
+        {"command": "done", "description": "1순위 GTD 태스크 완료 및 푸시 (/done)"},
+        {"command": "gtd", "description": "GTD 인박스 및 실행 대기 작업 확인"},
+        {"command": "schedule", "description": "브리핑 스케줄 및 당일 타임라인 확인"},
+        {"command": "commute", "description": "출근길 날씨·미세먼지·버스 설정 확인"},
+        {"command": "sync", "description": "GTD 원격 저장소 최신화 (git pull)"},
+        {"command": "push", "description": "로컬 커밋 원격 GitHub 푸시 (git push)"},
+        {"command": "url", "description": "웹 대시보드 Cloudflare 접속 주소"},
+        {"command": "status", "description": "왓슨 에이전트 시스템 상태 확인"},
+        {"command": "help", "description": "사용법 및 명령어 도움말"},
+        {"command": "start", "description": "왓슨 봇 시작 및 안내"},
+    ]
 
     def __init__(self, token: str | None = None):
         self.token = token if token is not None else settings.TELEGRAM_BOT_TOKEN
@@ -137,6 +156,119 @@ class TelegramService:
         except httpx.HTTPError as e:
             logger.error(f"Failed to edit telegram message: {e}")
             return False
+
+    COMMANDS_CONFIG_FILE: ClassVar[str] = os.path.join(settings.REPO_PATH, "config", "telegram_commands.json")
+
+    @classmethod
+    def get_configured_commands(cls) -> list[dict[str, Any]]:
+        """설정 파일(config/telegram_commands.json)에서 봇 명령어 목록을 로드합니다 (ADR-041)."""
+        if os.path.exists(cls.COMMANDS_CONFIG_FILE):
+            try:
+                with open(cls.COMMANDS_CONFIG_FILE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, list) and data:
+                        return data
+            except (json.JSONDecodeError, OSError) as e:
+                logger.warning(f"Failed to read telegram commands config: {e}")
+
+        # 설정 파일이 없으면 기본 명령어로 초기화
+        default_with_enabled = [
+            {"command": c["command"], "description": c["description"], "enabled": True}
+            for c in cls.DEFAULT_COMMANDS
+        ]
+        cls.save_configured_commands(default_with_enabled)
+        return default_with_enabled
+
+    @classmethod
+    def save_configured_commands(cls, commands: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """봇 명령어 목록을 검증하고 설정 파일에 저장합니다 (ADR-041)."""
+        validated: list[dict[str, Any]] = []
+        seen_commands: set[str] = set()
+
+        for item in commands:
+            raw_cmd = str(item.get("command", "")).strip().lstrip("/").lower()
+            clean_cmd = re.sub(r"[^a-z0-9_]", "", raw_cmd)[:32]
+            raw_desc = str(item.get("description", "")).strip()[:256]
+
+            if not clean_cmd or clean_cmd in seen_commands:
+                continue
+            if not raw_desc:
+                raw_desc = clean_cmd
+
+            seen_commands.add(clean_cmd)
+            validated.append({
+                "command": clean_cmd,
+                "description": raw_desc,
+                "enabled": bool(item.get("enabled", True)),
+            })
+
+        os.makedirs(os.path.dirname(cls.COMMANDS_CONFIG_FILE), exist_ok=True)
+        with open(cls.COMMANDS_CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(validated, f, ensure_ascii=False, indent=2)
+
+        return validated
+
+    @classmethod
+    def reset_to_default_commands(cls) -> list[dict[str, Any]]:
+        """기본 14종 명령어로 초기화합니다 (ADR-041)."""
+        default_with_enabled = [
+            {"command": c["command"], "description": c["description"], "enabled": True}
+            for c in cls.DEFAULT_COMMANDS
+        ]
+        return cls.save_configured_commands(default_with_enabled)
+
+    async def set_my_commands(self, commands: list[dict[str, Any]] | None = None) -> bool:
+        """텔레그램 봇 메뉴 명령어를 Telegram Bot API에 등록합니다 (ADR-040, ADR-041)."""
+        if not self.is_configured():
+            return False
+
+        if commands is not None:
+            active_cmds = [
+                {"command": c["command"], "description": c["description"]}
+                for c in commands
+                if c.get("enabled", True)
+            ]
+        else:
+            configured = self.get_configured_commands()
+            active_cmds = [
+                {"command": c["command"], "description": c["description"]}
+                for c in configured
+                if c.get("enabled", True)
+            ]
+
+        if not active_cmds:
+            active_cmds = [{"command": "start", "description": "왓슨 봇 시작 및 안내"}]
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                res = await client.post(f"{self.base_url}/setMyCommands", json={"commands": active_cmds})
+                if res.status_code != 200:
+                    logger.error(f"Failed to set Telegram commands: {res.status_code} {res.text}")
+                    return False
+
+                # 메뉴 버튼 타입을 commands로 명시적 설정
+                await client.post(f"{self.base_url}/setChatMenuButton", json={"menu_button": {"type": "commands"}})
+                logger.info(f"✅ Telegram bot commands ({len(active_cmds)} items) and menu button successfully registered.")
+                return True
+        except httpx.HTTPError as e:
+            logger.error(f"Failed to set Telegram bot commands: {e}")
+            return False
+
+    async def get_my_commands(self) -> list[dict[str, Any]]:
+        """Telegram Bot API에 등록된 현재 봇 명령어 목록을 조회합니다 (ADR-040)."""
+        if not self.is_configured():
+            return []
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                res = await client.get(f"{self.base_url}/getMyCommands")
+                if res.status_code == 200:
+                    return res.json().get("result", [])
+                logger.error(f"Failed to get Telegram commands: {res.status_code} {res.text}")
+                return []
+        except httpx.HTTPError as e:
+            logger.error(f"Failed to get Telegram bot commands: {e}")
+            return []
 
     async def download_file(self, file_id: str, dest_path: str) -> bool:
         """텔레그램 서버에서 파일을 다운로드하여 로컬에 저장합니다."""
@@ -438,7 +570,7 @@ class TelegramService:
             await self.send_message(chat_id, url_msg)
             return
 
-        if text.startswith("/gtd"):
+        if text in ["/gtd status", "/gtd_status", "/repo", "/repo_status"]:
             settings_service = SettingsService()
             status = settings_service.get_status()
             gtd_msg = (
@@ -556,6 +688,12 @@ class TelegramService:
             return
 
         logger.info("🚀 Starting Telegram Bot Long Polling...")
+        # ADR-040: 시작 시 봇 메뉴 명령어 자동 등록
+        try:
+            await self.set_my_commands()
+        except (httpx.HTTPError, OSError) as e:
+            logger.warning(f"Failed to auto-register telegram commands on start: {e}")
+
         self._is_polling = True
         offset = 0
 

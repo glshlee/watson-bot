@@ -336,6 +336,28 @@
   * 버스 도착 정보가 포함된 어시스턴트 말풍선 하단에 `[🔄 버스 도착 갱신]` 버튼을 자동 부착하여 말풍선 본문을 인라인으로 즉시 업데이트하고 `[✅ 08:45:12 갱신됨]` 배지 시각화.
   * 왓슨 퀵 바에 `[🚍 버스 도착]` (`data-cmd="/bus"`) 원클릭 칩 신설.
 
+### 3.37. 📱 텔레그램 네이티브 봇 메뉴 명령어(Bot Commands Menu) 등록 및 자동 동기화 (Telegram Bot Menu Commands - ADR-040)
+* **표준 봇 명령어 14종 사전 정의 (`TelegramService.DEFAULT_COMMANDS`)**:
+  * `today`, `briefing`, `bus`, `log`, `done`, `gtd`, `schedule`, `commute`, `sync`, `push`, `url`, `status`, `help`, `start` 등 핵심 14종 명령어와 한글 설명을 Telegram API 표준 포맷으로 완비.
+* **Telegram Bot API 연동 및 자동 동기화 (`set_my_commands`)**:
+  * `setMyCommands` 및 `setChatMenuButton(menu_button={"type": "commands"})` 호출을 통해 채팅창 좌측 하단 `[/]` 버튼 클릭 시 14종 명령어가 팝업 메뉴로 즉시 표시.
+  * 봇 폴링 루프 시작 시(`start_polling`) 자동으로 최신 명령어 목록을 Telegram 서버에 등록/동기화.
+* **REST API 엔드포인트 지원 (`/api/telegram/setup-commands`, `/api/telegram/commands`)**:
+  * 봇 메뉴 명령어를 외부/UI에서 수동으로 등록(`POST`)하고 현재 등록 현황을 조회(`GET`)할 수 있는 관리 엔드포인트 제공.
+* **GTD 메뉴 실행 지능화**:
+  * 메뉴에서 `/gtd` 터치 시 단순 저장소 메타데이터가 아닌 실제 수집함(`inbox.md`) 및 다음 행동(`next_actions.md`) 목록을 즉시 브리핑.
+
+### 3.38. 🎛️ 텔레그램 봇 메뉴 명령어 관리 UI 및 실시간 모바일 미리보기·원터치 동기화 (Telegram Commands Settings UI - ADR-041)
+* **명령어 영속화 설정 파일 체계 (`config/telegram_commands.json`)**:
+  * 사용자 정의 명령어 목록 및 각 명령어별 활성화 여부(`enabled`)를 JSON 파일로 안전하게 영속화하고 유효성 자동 검증(소문자 영문/숫자/언더스코어 1~32자).
+* **웹 콘솔 전용 봇 메뉴 설정 모달 (`#telegram-menu-modal`)**:
+  * 상단 헤더의 `[📱 메뉴: N개]` 배지 및 퀵 바 `[📱 텔레그램 메뉴]` 버튼을 통해 원터치로 모달 호출.
+  * **좌측 명령어 편집기**: 체크박스 온/오프 토글, 명령어명 및 설명 인라인 편집, 삭제, `+ 새 명령어 추가` 지원.
+  * **우측 모바일 실시간 미리보기**: 실제 텔레그램 모바일 프레임 내에 활성화된 명령어가 실시간 반응하여 변경사항 즉시 시각화.
+  * **하단 액션**: `[기본값 복원]` 원클릭 리셋 및 `[텔레그램에 즉시 반영]` API 동기화 버튼 제공.
+* **REST API 확장**:
+  * `POST /api/telegram/commands` (저장 및 실시간 Telegram Bot API 동기화), `POST /api/telegram/commands/reset` (기본 14종 복원).
+
 ---
 
 ## 4. 시스템 아키텍처 개요 (System Architecture Overview)

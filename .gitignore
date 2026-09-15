@@ -8,6 +8,7 @@ lifelogs/
 config/*.json
 !config/gtd_config.json.example
 !config/commute_config.json.example
+!config/telegram_commands.json.example
 tunnel.log
 tunnel_url.txt
 

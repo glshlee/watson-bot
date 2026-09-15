@@ -1,0 +1,72 @@
+[
+  {
+    "command": "today",
+    "description": "오늘 작성된 일일 로그 확인",
+    "enabled": true
+  },
+  {
+    "command": "briefing",
+    "description": "오늘의 GTD 아침/저녁 맞춤 브리핑",
+    "enabled": true
+  },
+  {
+    "command": "bus",
+    "description": "실시간 출근 버스 도착 현황 및 갱신",
+    "enabled": true
+  },
+  {
+    "command": "log",
+    "description": "오늘 라이프로그에 즉시 기록 (/log [내용])",
+    "enabled": true
+  },
+  {
+    "command": "done",
+    "description": "1순위 GTD 태스크 완료 및 푸시 (/done)",
+    "enabled": true
+  },
+  {
+    "command": "gtd",
+    "description": "GTD 인박스 및 실행 대기 작업 확인",
+    "enabled": true
+  },
+  {
+    "command": "schedule",
+    "description": "브리핑 스케줄 및 당일 타임라인 확인",
+    "enabled": true
+  },
+  {
+    "command": "commute",
+    "description": "출근길 날씨·미세먼지·버스 설정 확인",
+    "enabled": true
+  },
+  {
+    "command": "sync",
+    "description": "GTD 원격 저장소 최신화 (git pull)",
+    "enabled": true
+  },
+  {
+    "command": "push",
+    "description": "로컬 커밋 원격 GitHub 푸시 (git push)",
+    "enabled": true
+  },
+  {
+    "command": "url",
+    "description": "웹 대시보드 Cloudflare 접속 주소",
+    "enabled": true
+  },
+  {
+    "command": "status",
+    "description": "왓슨 에이전트 시스템 상태 확인",
+    "enabled": true
+  },
+  {
+    "command": "help",
+    "description": "사용법 및 명령어 도움말",
+    "enabled": true
+  },
+  {
+    "command": "start",
+    "description": "왓슨 봇 시작 및 안내",
+    "enabled": true
+  }
+]

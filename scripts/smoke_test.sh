@@ -447,6 +447,44 @@ else
     exit 1
 fi
 
+echo "4-1. Testing POST /api/telegram/setup-commands (ADR-040 Bot Menu Commands Registration)..."
+TG_SETUP=$(run_curl -X POST "$SERVER_URL/api/telegram/setup-commands")
+if echo "$TG_SETUP" | grep -q '"commands_count"'; then
+    echo "✅ POST /api/telegram/setup-commands Passed (Menu Commands API Active)"
+else
+    echo "❌ POST /api/telegram/setup-commands Failed. Response: $TG_SETUP"
+    exit 1
+fi
+
+echo "4-2. Testing GET /api/telegram/commands (ADR-040 Bot Menu Commands Query)..."
+TG_CMDS=$(run_curl "$SERVER_URL/api/telegram/commands")
+if echo "$TG_CMDS" | grep -q '"commands"'; then
+    echo "✅ GET /api/telegram/commands Passed"
+else
+    echo "❌ GET /api/telegram/commands Failed. Response: $TG_CMDS"
+    exit 1
+fi
+
+echo "4-3. Testing POST /api/telegram/commands (ADR-041 Commands Update UI API)..."
+TG_UPDATE=$(run_curl -X POST "$SERVER_URL/api/telegram/commands" \
+    -H "Content-Type: application/json" \
+    -d '{"commands": [{"command": "today", "description": "오늘 일일 로그 확인", "enabled": true}, {"command": "briefing", "description": "GTD 브리핑", "enabled": true}], "sync_to_telegram": false}')
+if echo "$TG_UPDATE" | grep -q '"saved_count"'; then
+    echo "✅ POST /api/telegram/commands Passed (Commands Configuration Saved)"
+else
+    echo "❌ POST /api/telegram/commands Failed. Response: $TG_UPDATE"
+    exit 1
+fi
+
+echo "4-4. Testing POST /api/telegram/commands/reset (ADR-041 Reset to Default Commands)..."
+TG_RESET=$(run_curl -X POST "$SERVER_URL/api/telegram/commands/reset")
+if echo "$TG_RESET" | grep -q '"reset_count"'; then
+    echo "✅ POST /api/telegram/commands/reset Passed (Commands Reset to 14 Defaults)"
+else
+    echo "❌ POST /api/telegram/commands/reset Failed. Response: $TG_RESET"
+    exit 1
+fi
+
 echo "5. Testing /api/settings/gtd-path (ADR-007 GTD Directory Isolation)..."
 GTD_STATUS=$(run_curl "$SERVER_URL/api/settings/gtd-path")
 if echo "$GTD_STATUS" | grep -q '"gtd_path"'; then

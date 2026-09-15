@@ -326,5 +326,96 @@ async def test_telegram_callback_action_refresh_bus(db_session):
         assert "[실시간 출근 버스 도착 정보]" in kwargs["text"]
 
 
+@pytest.mark.anyio
+async def test_set_my_commands_success():
+    """텔레그램 봇 메뉴 명령어 등록 성공 검증 (ADR-040)."""
+    import httpx
+
+    service = TelegramService(token="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz")
+    
+    mock_response = httpx.Response(200, json={"ok": True, "result": True}, request=httpx.Request("POST", "http://test"))
+    with patch("httpx.AsyncClient.post", new_callable=AsyncMock, return_value=mock_response) as mock_post:
+        res = await service.set_my_commands()
+        assert res is True
+        assert mock_post.call_count == 2  # setMyCommands + setChatMenuButton
+
+
+@pytest.mark.anyio
+async def test_set_my_commands_unconfigured():
+    """토큰 미설정 시 명령어 등록 건너뛰기 검증 (ADR-040)."""
+    service = TelegramService(token="")
+    res = await service.set_my_commands()
+    assert res is False
+
+
+@pytest.mark.anyio
+async def test_get_my_commands_success():
+    """등록된 봇 명령어 목록 조회 검증 (ADR-040)."""
+    import httpx
+
+    service = TelegramService(token="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz")
+    sample_cmds = [
+        {"command": "today", "description": "오늘 작성된 일일 로그 확인"},
+        {"command": "bus", "description": "실시간 출근 버스 도착 현황 및 갱신"},
+    ]
+    mock_response = httpx.Response(200, json={"ok": True, "result": sample_cmds}, request=httpx.Request("GET", "http://test"))
+    with patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=mock_response):
+        cmds = await service.get_my_commands()
+        assert len(cmds) == 2
+        assert cmds[0]["command"] == "today"
+
+
+def test_telegram_commands_endpoints():
+    """텔레그램 메뉴 명령어 API 엔드포인트 검증 (ADR-040)."""
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    client = TestClient(app)
+    # GET /api/telegram/commands
+    with patch.object(TelegramService, "get_my_commands", new_callable=AsyncMock, return_value=TelegramService.DEFAULT_COMMANDS):
+        res = client.get("/api/telegram/commands")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["count"] == len(TelegramService.DEFAULT_COMMANDS)
+        assert any(c["command"] == "today" for c in data["commands"])
+        assert any(c["command"] == "bus" for c in data["commands"])
+
+    # POST /api/telegram/setup-commands
+    with patch.object(TelegramService, "set_my_commands", new_callable=AsyncMock, return_value=True):
+        post_res = client.post("/api/telegram/setup-commands")
+        assert post_res.status_code == 200
+        post_data = post_res.json()
+        assert post_data["status"] == "ok"
+        assert post_data["commands_count"] == len(TelegramService.DEFAULT_COMMANDS)
+
+    # POST /api/telegram/commands (ADR-041)
+    with patch.object(TelegramService, "set_my_commands", new_callable=AsyncMock, return_value=True):
+        update_payload = {
+            "commands": [
+                {"command": "today", "description": "오늘 일일 로그 확인", "enabled": True},
+                {"command": "bus", "description": "출근 버스 정보", "enabled": False},
+            ],
+            "sync_to_telegram": True,
+        }
+        update_res = client.post("/api/telegram/commands", json=update_payload)
+        assert update_res.status_code == 200
+        update_data = update_res.json()
+        assert update_data["status"] == "ok"
+        assert update_data["saved_count"] == 2
+        assert update_data["active_count"] == 1
+        assert update_data["synced"] is True
+
+    # POST /api/telegram/commands/reset (ADR-041)
+    with patch.object(TelegramService, "set_my_commands", new_callable=AsyncMock, return_value=True):
+        reset_res = client.post("/api/telegram/commands/reset")
+        assert reset_res.status_code == 200
+        reset_data = reset_res.json()
+        assert reset_data["status"] == "ok"
+        assert reset_data["reset_count"] == len(TelegramService.DEFAULT_COMMANDS)
+
+
+
+
 
 

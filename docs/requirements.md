@@ -222,6 +222,18 @@
 - **FR-38.4**: 텔레그램 버스 카드 및 아침 브리핑에 `[🔄 실시간 버스 갱신]` 인라인 키보드를 부착하고, `editMessageText`를 통해 기존 메시지를 인플레이스로 즉시 수정해야 한다.
 - **FR-38.5**: 웹 대시보드 콘솔 버스 카드 말풍선 하단에 `[🔄 버스 도착 갱신]` 버튼을 렌더링하고, 클릭 시 해당 말풍선 내 도착 시간을 인라인으로 즉시 새로고침하며 퀵 바에 `[🚍 버스 도착]` 칩을 제공해야 한다.
 
+### FR-39: 텔레그램 네이티브 봇 메뉴 명령어 등록 및 자동 동기화 (ADR-040)
+- **FR-39.1**: `TelegramService.DEFAULT_COMMANDS`에 핵심 14종 명령어(`today`, `briefing`, `bus`, `log`, `done`, `gtd`, `schedule`, `commute`, `sync`, `push`, `url`, `status`, `help`, `start`)와 한글 설명을 표준 정의해야 한다.
+- **FR-39.2**: `TelegramService.set_my_commands()`를 통해 Telegram Bot API `setMyCommands` 및 `setChatMenuButton`을 연동하고, 봇 폴링 루프 기동 시 자동 실행되어야 한다.
+- **FR-39.3**: `POST /api/telegram/setup-commands` 및 `GET /api/telegram/commands` REST 엔드포인트를 제공하여 명령어 등록 및 상태 조회가 가능해야 한다.
+- **FR-39.4**: 텔레그램 메뉴에서 `/gtd` 실행 시 단순 저장소 메타데이터가 아닌 실제 수집함 및 다음 행동 목록을 반환해야 한다.
+
+### FR-40: 텔레그램 봇 메뉴 명령어 관리 UI 및 실시간 모바일 미리보기·원터치 동기화 (ADR-041)
+- **FR-40.1**: `config/telegram_commands.json` 파일을 통해 사용자 정의 명령어 목록 및 활성화 여부(`enabled: bool`)를 안전하게 영속화해야 한다.
+- **FR-40.2**: `POST /api/telegram/commands` (저장 및 즉시 동기화) 및 `POST /api/telegram/commands/reset` (14종 기본값 복원) 엔드포인트를 제공해야 한다.
+- **FR-40.3**: 웹 콘솔 헤더 `[📱 메뉴: N개]` 배지 및 퀵 바 `[📱 텔레그램 메뉴]` 버튼을 통해 `#telegram-menu-modal`을 원클릭으로 호출할 수 있어야 한다.
+- **FR-40.4**: 모달 내에서 온/오프 체크박스 토글, 명령어/설명 인라인 편집, 새 명령어 추가 및 스마트폰 다크 테마 팝업 실시간 미리보기를 제공해야 한다.
+
 ---
 
 
@@ -282,6 +294,9 @@
 | **FR-35** | `app/services/llm_provider.py`, `tests/test_llm_provider.py` | Pytest 단위 테스트(`test_llm_provider.py`) & cURL 라이브 검증 |
 | **FR-36** | `app/services/bus_service.py`, `app/services/commute_config_service.py`, `tests/test_bus_service.py` | Pytest 단위 테스트(`test_bus_service.py`) & cURL 스모크 검증(6-7) |
 | **FR-37** | `app/services/bus_service.py`, `app/routers/settings_router.py`, `app/templates/index.html`, `app/static/js/main.js`, `scripts/smoke_test.sh` | Pytest 단위 테스트(`test_bus_service.py`) & cURL 스모크 검증(6-8) |
+| **FR-38** | `app/services/bus_service.py`, `app/services/telegram_service.py`, `app/routers/settings_router.py`, `app/static/js/main.js` | Pytest 단위 테스트(`test_bus_service.py`, `test_telegram_service.py`) & cURL 스모크 검증(6-9) |
+| **FR-39** | `app/services/telegram_service.py`, `app/routers/telegram_router.py`, `tests/test_telegram_service.py`, `scripts/smoke_test.sh` | Pytest 단위 테스트(`test_telegram_service.py`) & cURL 스모크 검증(4-1, 4-2) |
+| **FR-40** | `app/services/telegram_service.py`, `app/routers/telegram_router.py`, `app/templates/index.html`, `app/static/js/main.js`, `app/static/css/style.css` | Pytest 단위 테스트(`test_telegram_service.py`) & cURL 스모크 검증(4-3, 4-4) |
 
 
 

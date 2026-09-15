@@ -345,6 +345,34 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
   - 왓슨 퀵 숏컷 바에 `[🚍 버스 도착]` (`data-cmd="/bus"`) 원클릭 칩 추가
 - [x] 단위 테스트(`tests/test_bus_service.py`, `tests/test_telegram_service.py`), Ruff/Mypy 정적 검사 및 `./scripts/smoke_test.sh` 6-9 단계 라이브 검증 완료
 
+### Phase 39: 텔레그램 네이티브 봇 메뉴 명령어(Bot Commands Menu) 등록 및 자동 동기화 (ADR-040) - ✅ 완료
+- [x] 표준 봇 명령어 14종 사전 정의 (`TelegramService.DEFAULT_COMMANDS`):
+  - `today`, `briefing`, `bus`, `log`, `done`, `gtd`, `schedule`, `commute`, `sync`, `push`, `url`, `status`, `help`, `start`
+- [x] Telegram Bot API 연동 및 자동 등록 (`TelegramService.set_my_commands`, `get_my_commands`):
+  - `setMyCommands` 및 `setChatMenuButton(type="commands")` 호출로 모바일 대화창 좌측 `[/]` 메뉴 팝업 연동
+  - 봇 폴링 루프(`start_polling`) 시작 시 자동 등록 실행
+- [x] REST API 엔드포인트 신설 (`app/routers/telegram_router.py`):
+  - `POST /api/telegram/setup-commands`: 메뉴 명령어 즉시 등록 및 갱신
+  - `GET /api/telegram/commands`: 등록된 봇 메뉴 명령어 목록 및 상태 조회
+- [x] 텔레그램 메뉴 `/gtd` 라우팅 개선:
+  - 메뉴에서 `/gtd` 선택 시 단순 저장소 메타데이터가 아닌 실제 수집함 및 다음 행동 목록 즉시 브리핑
+- [x] 단위 테스트(`tests/test_telegram_service.py`), Ruff/Mypy 정적 검사 및 `./scripts/smoke_test.sh` 4-1, 4-2 단계 라이브 검증 완료
+
+### Phase 40: 텔레그램 봇 메뉴 명령어 관리 UI 및 실시간 모바일 미리보기·원터치 동기화 (ADR-041) - ✅ 완료
+- [x] `config/telegram_commands.json` 영속화 및 `TelegramService` 관리 메서드(`get_configured_commands`, `save_configured_commands`, `reset_to_default_commands`) 구축
+- [x] REST API 엔드포인트 확장 (`app/routers/telegram_router.py`):
+  - `POST /api/telegram/commands`: 명령어 저장 및 실시간 Telegram Bot API 동기화
+  - `POST /api/telegram/commands/reset`: 기본 14종 복원
+- [x] 웹 콘솔 전용 텔레그램 메뉴 설정 모달 (`#telegram-menu-modal` in `app/templates/index.html`):
+  - 상단 헤더 배지(`[📱 메뉴: N개]`) 및 퀵 바 `[📱 텔레그램 메뉴]` 원터치 칩 연동
+  - 좌측 명령어 편집기: 토글 체크박스, 명령어/설명 인라인 편집, 삭제, 새 명령어 추가 폼
+  - 우측 모바일 텔레그램 다크 UI 실시간 팝업 미리보기(`mock-telegram-frame`)
+  - 하단 액션: `[기본값 복원]` 및 `[텔레그램에 즉시 반영]`
+- [x] 반응형 인터랙션 스타일링 (`app/static/css/style.css`) 및 비동기 DOM 컨트롤러 (`app/static/js/main.js`) 구현
+- [x] 단위 테스트(`tests/test_telegram_service.py`), Ruff/Mypy 정적 분석 및 `./scripts/smoke_test.sh` 4-3, 4-4 단계 라이브 검증 완료
+
+
+
 
 
 
