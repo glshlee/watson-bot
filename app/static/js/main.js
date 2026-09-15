@@ -1545,6 +1545,370 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    // ==========================================================================
+    // Lifelog Contribution Heatmap & In-Place Markdown Editor (ADR-045)
+    // ==========================================================================
+    const heatmapBadge = document.getElementById("heatmap-badge");
+    const heatmapStreakText = document.getElementById("heatmap-streak-text");
+    const openEditorHeaderBtn = document.getElementById("open-editor-header-btn");
+    const btnOpenEditor = document.getElementById("btn-open-editor");
+    const editorModal = document.getElementById("lifelog-editor-modal");
+    const closeEditorModalBtn = document.getElementById("close-editor-modal-btn");
+    const btnCloseEditor = document.getElementById("btn-close-editor");
+
+    const statStreak = document.getElementById("stat-streak");
+    const statTotalDays = document.getElementById("stat-total-days");
+    const statTotalTasks = document.getElementById("stat-total-tasks");
+    const statRate = document.getElementById("stat-rate");
+
+    const heatmapGrid = document.getElementById("heatmap-grid");
+    const heatmapTooltip = document.getElementById("heatmap-tooltip");
+
+    const btnEditorPrevDay = document.getElementById("btn-editor-prev-day");
+    const btnEditorNextDay = document.getElementById("btn-editor-next-day");
+    const btnEditorToday = document.getElementById("btn-editor-today");
+    const editorDatePicker = document.getElementById("editor-date-picker");
+    const editorFileStatus = document.getElementById("editor-file-status");
+    const editorFilePath = document.getElementById("editor-file-path");
+
+    const tabEditorWrite = document.getElementById("tab-editor-write");
+    const tabEditorPreview = document.getElementById("tab-editor-preview");
+    const editorWorkspace = document.getElementById("editor-workspace");
+
+    const editorTextarea = document.getElementById("editor-textarea");
+    const editorPreviewContent = document.getElementById("editor-preview-content");
+    const editorCommitMsg = document.getElementById("editor-commit-msg");
+    const editorAutoPushChk = document.getElementById("editor-auto-push-chk");
+    const btnSaveEditor = document.getElementById("btn-save-editor");
+
+    let currentEditorDate = "";
+    let cachedHeatmapData = null;
+
+    function renderMarkdownToHtml(markdown) {
+        if (!markdown) return "<p><em>(작성된 내용이 없습니다)</em></p>";
+        let html = markdown
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+
+        // Code blocks
+        html = html.replace(/```([\w-]*)\n([\s\S]*?)```/g, (match, lang, code) => {
+            return `<pre><code class="language-${lang}">${code}</code></pre>`;
+        });
+
+        // Inline code
+        html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+
+        // Headers
+        html = html.replace(/^#### (.*$)/gim, "<h4>$1</h4>");
+        html = html.replace(/^### (.*$)/gim, "<h3>$1</h3>");
+        html = html.replace(/^## (.*$)/gim, "<h2>$1</h2>");
+        html = html.replace(/^# (.*$)/gim, "<h1>$1</h1>");
+
+        // Blockquotes
+        html = html.replace(/^> (.*$)/gim, "<blockquote>$1</blockquote>");
+
+        // Checkboxes
+        html = html.replace(/^[ \t]*-[ \t]+\[[xX]\][ \t]+(.*$)/gim, '<li style="list-style:none;"><input type="checkbox" checked disabled /> $1</li>');
+        html = html.replace(/^[ \t]*-[ \t]+\[ \][ \t]+(.*$)/gim, '<li style="list-style:none;"><input type="checkbox" disabled /> $1</li>');
+
+        // Unordered lists
+        html = html.replace(/^[ \t]*[\*\-][ \t]+(.*$)/gim, "<li>$1</li>");
+
+        // Bold and Italic
+        html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+        html = html.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+
+        // Links
+        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+
+        // Horizontal rules
+        html = html.replace(/^---$/gim, "<hr />");
+
+        // Paragraphs and breaks
+        html = html.replace(/\n\n/g, "</p><p>");
+        html = html.replace(/\n/g, "<br />");
+
+        return `<p>${html}</p>`;
+    }
+
+    async function loadHeatmapData() {
+        try {
+            const res = await fetchWithRetry("/api/lifelog/heatmap?days=365");
+            if (!res.ok) return;
+            const resJson = await res.json();
+            if (resJson.status !== "success" || !resJson.data) return;
+
+            cachedHeatmapData = resJson.data;
+            const summary = cachedHeatmapData.summary;
+
+            // Update Header Streak Badge
+            if (heatmapStreakText) {
+                heatmapStreakText.innerText = `연속: ${summary.current_streak}일`;
+            }
+
+            // Update Modal Stats Bar
+            if (statStreak) statStreak.innerText = summary.current_streak;
+            if (statTotalDays) statTotalDays.innerText = summary.total_days_logged;
+            if (statTotalTasks) statTotalTasks.innerText = summary.total_completed_tasks;
+            if (statRate) statRate.innerText = summary.completion_rate;
+
+            // Render Heatmap Grid
+            renderHeatmapGrid(cachedHeatmapData.days);
+        } catch (err) {
+            console.error("Failed to load heatmap data:", err);
+        }
+    }
+
+    function renderHeatmapGrid(days) {
+        if (!heatmapGrid) return;
+        heatmapGrid.innerHTML = "";
+
+        days.forEach(day => {
+            const cell = document.createElement("div");
+            cell.className = `heatmap-cell level-${day.level}`;
+            cell.dataset.date = day.date;
+            cell.dataset.level = day.level;
+            cell.dataset.charCount = day.char_count;
+            cell.dataset.completed = day.completed_tasks;
+
+            if (day.date === currentEditorDate) {
+                cell.classList.add("selected");
+            }
+
+            // Hover tooltip
+            cell.addEventListener("mouseenter", (e) => {
+                if (!heatmapTooltip) return;
+                const date = e.target.dataset.date;
+                const chars = Number(e.target.dataset.charCount || 0);
+                const completed = Number(e.target.dataset.completed || 0);
+                const text = chars > 0
+                    ? `📅 ${date}: ${chars.toLocaleString()}자, 완료 ${completed}개`
+                    : `📅 ${date}: 기록 없음`;
+                heatmapTooltip.innerText = text;
+                heatmapTooltip.classList.remove("hidden");
+
+                // Position tooltip
+                const rect = e.target.getBoundingClientRect();
+                const parentRect = heatmapGrid.getBoundingClientRect();
+                heatmapTooltip.style.left = `${rect.left - parentRect.left + (rect.width / 2)}px`;
+            });
+
+            cell.addEventListener("mouseleave", () => {
+                heatmapTooltip?.classList.add("hidden");
+            });
+
+            // Click cell to open this date in editor
+            cell.addEventListener("click", (e) => {
+                const date = e.target.dataset.date;
+                if (date) {
+                    loadLifelogFile(date);
+                }
+            });
+
+            heatmapGrid.appendChild(cell);
+        });
+
+        // Scroll to end (today)
+        const scrollContainer = document.getElementById("heatmap-scroll");
+        if (scrollContainer) {
+            scrollContainer.scrollLeft = scrollContainer.scrollWidth;
+        }
+    }
+
+    async function loadLifelogFile(dateStr) {
+        if (!dateStr) return;
+        currentEditorDate = dateStr;
+
+        // Highlight selected cell in heatmap
+        document.querySelectorAll(".heatmap-cell").forEach(c => {
+            if (c.dataset.date === dateStr) {
+                c.classList.add("selected");
+            } else {
+                c.classList.remove("selected");
+            }
+        });
+
+        if (editorDatePicker) editorDatePicker.value = dateStr;
+        if (editorFileStatus) {
+            editorFileStatus.innerText = "불러오는 중...";
+            editorFileStatus.className = "file-status-badge";
+        }
+
+        try {
+            const res = await fetchWithRetry(`/api/lifelog/file?date=${encodeURIComponent(dateStr)}`);
+            if (!res.ok) {
+                alert("일일 로그 파일을 불러오지 못했습니다.");
+                return;
+            }
+            const resJson = await res.json();
+            if (resJson.status === "success" && resJson.data) {
+                const fileData = resJson.data;
+                if (editorFilePath) editorFilePath.innerText = fileData.filepath;
+                if (editorFileStatus) {
+                    if (fileData.exists) {
+                        editorFileStatus.innerText = `작성됨 (${fileData.char_count.toLocaleString()}자)`;
+                        editorFileStatus.className = "file-status-badge exists";
+                    } else {
+                        editorFileStatus.innerText = "새 작성 (초안)";
+                        editorFileStatus.className = "file-status-badge new";
+                    }
+                }
+                if (editorTextarea) {
+                    editorTextarea.value = fileData.content;
+                }
+                if (editorPreviewContent) {
+                    editorPreviewContent.innerHTML = renderMarkdownToHtml(fileData.content);
+                }
+                if (editorCommitMsg) {
+                    editorCommitMsg.value = `docs(log): ${dateStr} 일일 로그 수정 및 갱신`;
+                }
+            }
+        } catch (err) {
+            console.error("Failed to load lifelog content:", err);
+            if (editorFileStatus) editorFileStatus.innerText = "로딩 실패";
+        }
+    }
+
+    async function saveLifelogFile() {
+        if (!currentEditorDate) return;
+        const content = editorTextarea?.value || "";
+        const commitMsg = editorCommitMsg?.value.trim() || `docs(log): ${currentEditorDate} 일일 로그 갱신`;
+        const autoPush = editorAutoPushChk ? editorAutoPushChk.checked : true;
+
+        if (btnSaveEditor) {
+            btnSaveEditor.disabled = true;
+            btnSaveEditor.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 저장 및 반영 중...';
+        }
+
+        try {
+            const res = await fetchWithRetry("/api/lifelog/save", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    date: currentEditorDate,
+                    content: content,
+                    commit_msg: commitMsg,
+                    auto_push: autoPush,
+                })
+            });
+
+            if (res.ok) {
+                const resJson = await res.json();
+                if (resJson.status === "success") {
+                    if (editorFileStatus) {
+                        editorFileStatus.innerText = "저장 및 Git 반영 완료 ✅";
+                        editorFileStatus.className = "file-status-badge exists";
+                    }
+                    // Refresh heatmap data
+                    await loadHeatmapData();
+                    alert(`✅ ${currentEditorDate} 일일 로그가 저장되었습니다!\nGit 커밋: ${commitMsg}${autoPush ? ' (원격 푸시 완료)' : ''}`);
+                } else {
+                    alert(`저장 실패: ${resJson.detail || "알 수 없는 오류"}`);
+                }
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                alert(`저장 실패: ${errData.detail || "서버 오류"}`);
+            }
+        } catch (err) {
+            console.error("Failed to save lifelog:", err);
+            alert("저장 중 서버 연결 오류가 발생했습니다.");
+        } finally {
+            if (btnSaveEditor) {
+                btnSaveEditor.disabled = false;
+                btnSaveEditor.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 저장 및 Git 반영';
+            }
+        }
+    }
+
+    function openEditorModal(targetDate = null) {
+        let dateToOpen = targetDate;
+        if (!dateToOpen) {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, "0");
+            const day = String(today.getDate()).padStart(2, "0");
+            dateToOpen = `${year}-${month}-${day}`;
+        }
+
+        editorModal?.classList.remove("hidden");
+        loadHeatmapData();
+        loadLifelogFile(dateToOpen);
+        setTimeout(() => editorTextarea?.focus(), 150);
+    }
+
+    function closeEditorModal() {
+        editorModal?.classList.add("hidden");
+    }
+
+    function changeDateByOffset(offsetDays) {
+        if (!currentEditorDate) return;
+        const [y, m, d] = currentEditorDate.split("-").map(Number);
+        const dt = new Date(y, m - 1, d);
+        dt.setDate(dt.getDate() + offsetDays);
+
+        const year = dt.getFullYear();
+        const month = String(dt.getMonth() + 1).padStart(2, "0");
+        const day = String(dt.getDate()).padStart(2, "0");
+        const nextDateStr = `${year}-${month}-${day}`;
+        loadLifelogFile(nextDateStr);
+    }
+
+    // Event Listeners for Editor & Heatmap
+    heatmapBadge?.addEventListener("click", () => openEditorModal());
+    openEditorHeaderBtn?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openEditorModal();
+    });
+    btnOpenEditor?.addEventListener("click", () => openEditorModal());
+    closeEditorModalBtn?.addEventListener("click", closeEditorModal);
+    btnCloseEditor?.addEventListener("click", closeEditorModal);
+
+    btnEditorPrevDay?.addEventListener("click", () => changeDateByOffset(-1));
+    btnEditorNextDay?.addEventListener("click", () => changeDateByOffset(1));
+    btnEditorToday?.addEventListener("click", () => openEditorModal());
+
+    editorDatePicker?.addEventListener("change", (e) => {
+        const val = e.target.value;
+        if (val) loadLifelogFile(val);
+    });
+
+    // Real-time Live Preview
+    editorTextarea?.addEventListener("input", () => {
+        if (editorPreviewContent && editorTextarea) {
+            editorPreviewContent.innerHTML = renderMarkdownToHtml(editorTextarea.value);
+        }
+        if (editorFileStatus) {
+            const chars = editorTextarea?.value.length || 0;
+            editorFileStatus.innerText = `수정 중... (${chars.toLocaleString()}자)`;
+        }
+    });
+
+    // Mobile View Tabs
+    tabEditorWrite?.addEventListener("click", () => {
+        tabEditorWrite.classList.add("active");
+        tabEditorPreview?.classList.remove("active");
+        if (editorWorkspace) editorWorkspace.className = "editor-workspace view-write";
+    });
+
+    tabEditorPreview?.addEventListener("click", () => {
+        tabEditorPreview.classList.add("active");
+        tabEditorWrite?.classList.remove("active");
+        if (editorWorkspace) editorWorkspace.className = "editor-workspace view-preview";
+    });
+
+    btnSaveEditor?.addEventListener("click", saveLifelogFile);
+
+    // Check URL Query parameter for auto opening editor (?edit=YYYY-MM-DD)
+    function checkUrlEditParam() {
+        const params = new URLSearchParams(window.location.search);
+        const editDate = params.get("edit");
+        if (editDate) {
+            const cleanDate = (editDate === "today" || !editDate.match(/^\d{4}-\d{2}-\d{2}$/)) ? null : editDate;
+            openEditorModal(cleanDate);
+        }
+    }
+
     // Lifecycle & Connection Event Listeners (ADR-021)
     document.addEventListener("visibilitychange", async () => {
         if (!document.hidden) {
@@ -1575,6 +1939,9 @@ document.addEventListener("DOMContentLoaded", () => {
     loadGTDStatus();
     loadCommuteSettings();
     loadTelegramCommands();
+    loadHeatmapData();
+    checkUrlEditParam();
     checkHealth();
     setInterval(checkHealth, 25000);
 });
+

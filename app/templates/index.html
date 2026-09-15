@@ -86,6 +86,10 @@
                     <button id="clear-chat-btn" class="badge btn-clear-chat" title="현재 세션 대화 내용 비우기">
                         <i class="fa-solid fa-broom"></i> <span class="desktop-only">대화 비우기</span>
                     </button>
+                    <div id="heatmap-badge" class="badge heatmap-badge" title="클릭하여 연간 잔디 및 마크다운 일일 로그 편집기 열기">
+                        <i class="fa-solid fa-calendar-check"></i> <span id="heatmap-streak-text">연속: -일</span>
+                        <button id="open-editor-header-btn" class="editor-edit-btn" title="일일 로그 에디터 열기"><i class="fa-solid fa-pen-to-square"></i></button>
+                    </div>
                     <div id="commute-settings-badge" class="badge commute-badge" title="클릭하여 출근길 날씨 & 버스 브리핑 설정">
                         <i class="fa-solid fa-bus"></i> <span id="commute-status-text">출근: 07:30</span>
                         <button id="change-commute-btn" class="commute-edit-btn" title="출근 브리핑 설정"><i class="fa-solid fa-gear"></i></button>
@@ -428,6 +432,96 @@
                 </div>
             </div>
 
+            <!-- Lifelog Heatmap & In-Place Editor Modal (ADR-045) -->
+            <div id="lifelog-editor-modal" class="modal hidden">
+                <div class="modal-content lifelog-editor-modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fa-solid fa-calendar-days"></i> 일일 로그 잔디 & 인플레이스 에디터</h3>
+                        <button id="close-editor-modal-btn" class="close-btn">&times;</button>
+                    </div>
+                    <div class="modal-body editor-modal-body">
+                        <!-- Heatmap Section -->
+                        <div class="heatmap-section">
+                            <div class="heatmap-header">
+                                <div class="heatmap-stats" id="heatmap-stats-bar">
+                                    <span class="stat-pill streak"><i class="fa-solid fa-fire"></i> <strong id="stat-streak">-</strong>일 연속</span>
+                                    <span class="stat-pill total"><i class="fa-solid fa-calendar"></i> 총 <strong id="stat-total-days">-</strong>일 기록</span>
+                                    <span class="stat-pill tasks"><i class="fa-solid fa-circle-check"></i> 완료 <strong id="stat-total-tasks">-</strong>개</span>
+                                    <span class="stat-pill rate"><i class="fa-solid fa-chart-pie"></i> 달성률 <strong id="stat-rate">-</strong>%</span>
+                                </div>
+                                <div class="heatmap-legend">
+                                    <span class="legend-label">적음</span>
+                                    <span class="legend-cell level-0" title="기록 없음"></span>
+                                    <span class="legend-cell level-1" title="1~200자"></span>
+                                    <span class="legend-cell level-2" title="201~600자"></span>
+                                    <span class="legend-cell level-3" title="601~1200자"></span>
+                                    <span class="legend-cell level-4" title="1200자 이상"></span>
+                                    <span class="legend-label">많음</span>
+                                </div>
+                            </div>
+                            <div class="heatmap-grid-wrapper" id="heatmap-grid-wrapper">
+                                <div class="heatmap-scroll" id="heatmap-scroll">
+                                    <div class="heatmap-grid" id="heatmap-grid">
+                                        <!-- Dynamically populated by JS -->
+                                    </div>
+                                </div>
+                                <div class="heatmap-tooltip hidden" id="heatmap-tooltip"></div>
+                            </div>
+                        </div>
+
+                        <!-- In-Place Markdown Editor Section -->
+                        <div class="editor-section">
+                            <div class="editor-toolbar">
+                                <div class="editor-date-nav">
+                                    <button type="button" class="btn-nav" id="btn-editor-prev-day" title="이전 날짜"><i class="fa-solid fa-chevron-left"></i></button>
+                                    <input type="date" id="editor-date-picker" class="editor-date-input" />
+                                    <button type="button" class="btn-nav btn-nav-today" id="btn-editor-today" title="오늘 날짜로 이동">오늘</button>
+                                    <button type="button" class="btn-nav" id="btn-editor-next-day" title="다음 날짜"><i class="fa-solid fa-chevron-right"></i></button>
+                                </div>
+                                <div class="editor-file-meta">
+                                    <span id="editor-file-status" class="file-status-badge"></span>
+                                    <span id="editor-file-path" class="file-path-label"></span>
+                                </div>
+                                <div class="editor-view-tabs mobile-only">
+                                    <button type="button" class="view-tab active" id="tab-editor-write"><i class="fa-solid fa-pen"></i> 편집</button>
+                                    <button type="button" class="view-tab" id="tab-editor-preview"><i class="fa-solid fa-eye"></i> 미리보기</button>
+                                </div>
+                            </div>
+
+                            <div class="editor-workspace split-view" id="editor-workspace">
+                                <!-- Left: Raw Markdown Editor -->
+                                <div class="editor-pane write-pane" id="editor-write-pane">
+                                    <div class="pane-header desktop-only"><i class="fa-solid fa-code"></i> 마크다운 원문 편집기</div>
+                                    <textarea id="editor-textarea" class="editor-textarea" placeholder="이 날짜의 일일 로그를 작성하거나 수정하세요..." spellcheck="false"></textarea>
+                                </div>
+
+                                <!-- Right: Live Rendered Preview -->
+                                <div class="editor-pane preview-pane" id="editor-preview-pane">
+                                    <div class="pane-header desktop-only"><i class="fa-solid fa-desktop"></i> 실시간 렌더링 미리보기</div>
+                                    <div id="editor-preview-content" class="preview-content markdown-body">
+                                        <!-- Live preview rendered here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer editor-modal-footer">
+                        <div class="commit-options">
+                            <input type="text" id="editor-commit-msg" class="editor-commit-input" placeholder="커밋 메시지 (예: 저녁 회고 및 일정 보완)" />
+                            <label class="auto-push-label">
+                                <input type="checkbox" id="editor-auto-push-chk" checked />
+                                <span><i class="fa-solid fa-cloud-arrow-up"></i> GitHub 자동 푸시</span>
+                            </label>
+                        </div>
+                        <div class="footer-buttons">
+                            <button type="button" id="btn-close-editor" class="btn-secondary">닫기</button>
+                            <button type="button" id="btn-save-editor" class="btn-primary"><i class="fa-solid fa-floppy-disk"></i> 저장 및 Git 반영</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Chat Console Area -->
             <div class="chat-console-wrapper">
                 <div id="chat-messages" class="chat-messages-container">
@@ -448,6 +542,7 @@
                         <button type="button" class="watson-chip-btn" id="btn-commute-view" title="출근길 날씨·미세먼지·버스 정보 설정"><i class="fa-solid fa-bus"></i> 🚌 출근길 설정</button>
                         <button type="button" class="watson-chip-btn" data-cmd="/bus" title="출근 버스 실시간 도착 현황 및 인라인 갱신"><i class="fa-solid fa-clock-rotate-left"></i> 🚍 버스 도착</button>
                         <button type="button" class="watson-chip-btn" id="btn-schedule-view" title="브리핑 스케줄 및 오늘 일정 확인"><i class="fa-solid fa-clock"></i> ⏰ 스케줄</button>
+                        <button type="button" class="watson-chip-btn" id="btn-open-editor" title="연간 잔디 및 마크다운 일일 로그 인플레이스 편집기 열기"><i class="fa-solid fa-pen-to-square"></i> ✏️ 잔디 & 로그 편집</button>
                         <button type="button" class="watson-chip-btn" data-cmd="/weekly" title="지난 7일간 기록 통계 및 주간 결산 리포트"><i class="fa-solid fa-chart-line"></i> 📊 주간 결산</button>
                         <button type="button" class="watson-chip-btn" data-cmd="/vision " title="사진·영수증·운동인증 Vision AI 분석"><i class="fa-solid fa-camera"></i> 📷 사진 분석</button>
                         <button type="button" class="watson-chip-btn" data-cmd="/search " title="과거 라이프로그 및 GTD 문서 고속 검색"><i class="fa-solid fa-magnifying-glass"></i> 🔍 기록 검색</button>
@@ -470,6 +565,6 @@
         </main>
     </div>
 
-    <script src="/static/js/main.js?v=1.3.7"></script>
+    <script src="/static/js/main.js?v=1.3.8"></script>
 </body>
 </html>

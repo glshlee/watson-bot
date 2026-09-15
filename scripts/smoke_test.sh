@@ -551,6 +551,72 @@ else
 fi
 rm -f "$TMP_SMOKE_IMG"
 
+WATSON_EDIT_RES=$(run_curl -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_test_session", "message": "/edit 2026-09-15", "channel": "web"}')
+if echo "$WATSON_EDIT_RES" | grep -q '"intent":"lifelog_edit"'; then
+    echo "  ✅ 3-13-20. Watson /edit Command Passed (intent=lifelog_edit - ADR-045)"
+else
+    echo "  ❌ 3-13-20. Watson /edit Command Failed: $WATSON_EDIT_RES"
+    exit 1
+fi
+
+WATSON_HEATMAP_RES=$(run_curl -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_test_session", "message": "/heatmap", "channel": "web"}')
+if echo "$WATSON_HEATMAP_RES" | grep -q '"intent":"lifelog_heatmap"'; then
+    echo "  ✅ 3-13-21. Watson /heatmap Command Passed (intent=lifelog_heatmap - ADR-045)"
+else
+    echo "  ❌ 3-13-21. Watson /heatmap Command Failed: $WATSON_HEATMAP_RES"
+    exit 1
+fi
+
+DEV_EDIT_RES=$(run_curl -X POST "$SERVER_URL/api/dev/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_dev_session", "message": "/edit 2026-09-15"}')
+if echo "$DEV_EDIT_RES" | grep -q '"action_type":"tool_edit"'; then
+    echo "  ✅ 3-13-22. Dev Agent /edit Passed (action_type=tool_edit - ADR-045)"
+else
+    echo "  ❌ 3-13-22. Dev Agent /edit Failed: $DEV_EDIT_RES"
+    exit 1
+fi
+
+DEV_HEATMAP_RES=$(run_curl -X POST "$SERVER_URL/api/dev/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_dev_session", "message": "/heatmap"}')
+if echo "$DEV_HEATMAP_RES" | grep -q '"action_type":"tool_heatmap"'; then
+    echo "  ✅ 3-13-23. Dev Agent /heatmap Passed (action_type=tool_heatmap - ADR-045)"
+else
+    echo "  ❌ 3-13-23. Dev Agent /heatmap Failed: $DEV_HEATMAP_RES"
+    exit 1
+fi
+
+API_HEATMAP_RES=$(run_curl "$SERVER_URL/api/lifelog/heatmap?days=30")
+if echo "$API_HEATMAP_RES" | grep -q '"status":"success"' && echo "$API_HEATMAP_RES" | grep -q '"days"'; then
+    echo "  ✅ 3-13-24. GET /api/lifelog/heatmap Passed (days grid & summary - ADR-045)"
+else
+    echo "  ❌ 3-13-24. GET /api/lifelog/heatmap Failed: $API_HEATMAP_RES"
+    exit 1
+fi
+
+API_LIFELOG_FILE_RES=$(run_curl "$SERVER_URL/api/lifelog/file?date=2026-09-15")
+if echo "$API_LIFELOG_FILE_RES" | grep -q '"status":"success"' && echo "$API_LIFELOG_FILE_RES" | grep -q '"exists"'; then
+    echo "  ✅ 3-13-25. GET /api/lifelog/file Passed (file query - ADR-045)"
+else
+    echo "  ❌ 3-13-25. GET /api/lifelog/file Failed: $API_LIFELOG_FILE_RES"
+    exit 1
+fi
+
+API_LIFELOG_SAVE_RES=$(run_curl -X POST "$SERVER_URL/api/lifelog/save" \
+  -H "Content-Type: application/json" \
+  -d '{"date": "2026-09-15", "content": "# 2026-09-15\n\n- [21:00] 스모크 테스트 저장 검증 완료\n", "commit_msg": "test: smoke test lifelog save", "auto_push": false}')
+if echo "$API_LIFELOG_SAVE_RES" | grep -q '"status":"success"' && echo "$API_LIFELOG_SAVE_RES" | grep -q '"success":true'; then
+    echo "  ✅ 3-13-26. POST /api/lifelog/save Passed (atomic commit & save - ADR-045)"
+else
+    echo "  ❌ 3-13-26. POST /api/lifelog/save Failed: $API_LIFELOG_SAVE_RES"
+    exit 1
+fi
+
 echo "  3-14. Testing Telegram Briefing Push Scheduler (ADR-026)..."
 SCHED_STATUS_RES=$(run_curl "$SERVER_URL/api/briefing/scheduler/status")
 if echo "$SCHED_STATUS_RES" | grep -q '"morning_time":"08:30 KST"'; then

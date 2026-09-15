@@ -727,6 +727,30 @@ class LLMProvider:
                 category="Vision",
             )
 
+        # 마크다운 일일 로그 인플레이스 편집기 (/edit, /editor - ADR-045)
+        is_edit_cmd = prompt_lower.startswith(("/edit", "/editor", "/수정", "/편집"))
+        is_edit_nlp = any(k in prompt_lower for k in ["일기 편집", "로그 편집", "로그 수정", "일기 수정", "마크다운 편집", "일기 고쳐", "로그 고쳐"])
+        if (is_edit_cmd or is_edit_nlp) and not has_record_action and not has_remove_trigger:
+            parts = prompt.strip().split(maxsplit=1)
+            target_date = parts[1].strip() if (is_edit_cmd and len(parts) > 1) else ""
+            return IntentResult(
+                intent="lifelog_edit",
+                ai_response="",
+                log_content=target_date,
+                category="LifeLogEditor",
+            )
+
+        # 라이프로그 잔디(Contribution Heatmap) 요약 질의 (/heatmap, /잔디 - ADR-045)
+        is_heatmap_cmd = prompt_lower.startswith(("/heatmap", "/잔디", "/기여도"))
+        is_heatmap_nlp = any(k in prompt_lower for k in ["잔디 확인", "잔디 보여줘", "히트맵", "스트릭", "기록 스트릭", "연속 기록 몇일"])
+        if (is_heatmap_cmd or is_heatmap_nlp) and not has_record_action and not has_remove_trigger:
+            return IntentResult(
+                intent="lifelog_heatmap",
+                ai_response="",
+                log_content=None,
+                category="Heatmap",
+            )
+
         # (C) 출근길 날씨·미세먼지·버스 브리핑 설정 및 실시간 날씨 질의 (/commute, /weather - ADR-030, ADR-033)
         # (C-1) 동네 설정 및 스마트 지오코딩 자동 매핑 (/location, /동네 - ADR-034)
         is_loc_cmd = prompt_lower.startswith(("/location", "/동네", "/지역"))

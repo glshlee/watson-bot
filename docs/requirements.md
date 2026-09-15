@@ -256,7 +256,13 @@
 - **FR-43.3**: 영수증 및 지출 사진 수신 시 상호명/일시/금액을 추출하고 카드번호 등 민감정보를 자동 마스킹하며, GTD 수집함 가계부 정리 태스크를 자동 생성해야 한다.
 - **FR-43.4**: 텔레그램 사진 수신 시 즉시 커밋하지 않고 2단계 사전 검토 초안 카드와 인라인 키보드(`[✅ 응, 기록해줘]`, `[❌ 아니야]`)를 제시해야 한다.
 - **FR-43.5**: 캡션에 `/log` 또는 `!` 포함 시 사전 검토를 생략하고 즉시 라이프로그에 반영 후 Git 커밋·푸시하는 패스트트랙을 지원해야 한다.
-- **FR-43.6**: `POST /api/vision/analyze`, `POST /api/vision/upload-and-log` REST API 및 DevBot `/vision [경로] [캡션]` 툴체인, 텔레그램 봇 메뉴 18종을 제공해야 한다.
+### FR-44: 웹 대시보드 연간 잔디(Heatmap) & 마크다운 인플레이스 에디터 (ADR-045)
+- **FR-44.1**: `HeatmapService`를 통해 `logs/daily/*.md` 및 마크다운 일일 로그 전수를 스캔하여 날짜별 글자수 및 완료 태스크 기반 GitHub 표준 5단계(0~4) 기여도 레벨을 계산해야 한다.
+- **FR-44.2**: 현재 연속 기록 스트릭(`current_streak`), 역대 최장 스트릭(`longest_streak`), 총 기록 일수, 연간 달성률(%)을 정확히 산출해야 한다.
+- **FR-44.3**: 웹 대시보드 상단에 연간 잔디 뱃지(`#heatmap-badge`), 퀵 바 칩(`[✏️ 잔디 & 로그 편집]`), 52주 잔디 그리드 및 호버 툴팁을 시각화해야 한다.
+- **FR-44.4**: 웹 대시보드 내 좌우 분할 에디터(Textarea + 실시간 마크다운 프리뷰)를 통해 일일 로그를 인플레이스 편집하고 커밋 메시지 입력 및 원터치 Git 커밋·푸시를 집행해야 한다.
+- **FR-44.5**: `/?edit=YYYY-MM-DD` 딥링크 접속 시 해당 일자의 에디터 모달을 즉시 오픈해야 하며, `/edit [날짜]`, `/heatmap` 인텐트 및 안내 카드를 제공해야 한다.
+- **FR-44.6**: `GET /api/lifelog/heatmap`, `GET /api/lifelog/file`, `POST /api/lifelog/save` REST API 엔드포인트 및 텔레그램 봇 메뉴 20종(`edit`, `heatmap` 추가)을 제공해야 한다.
 
 ---
 
@@ -324,6 +330,7 @@
 | **FR-41** | `app/services/due_date_service.py`, `app/services/briefing_service.py`, `app/services/agent_service.py`, `app/services/llm_provider.py`, `app/services/supervisor_service.py`, `app/services/telegram_service.py` | Pytest 단위 테스트(`test_due_date_service.py`) & cURL 스모크 검증(3-13-7, 3-13-8) |
 | **FR-42** | `app/services/search_service.py`, `app/services/weekly_review_service.py`, `app/services/briefing_scheduler.py`, `app/routers/web_router.py`, `app/services/dev_agent_service.py`, `app/services/supervisor_service.py` | Pytest 단위 테스트(`test_search_and_weekly_service.py`) & cURL 스모크 검증(3-13-9 ~ 3-13-15) |
 | **FR-43** | `app/services/vision_service.py`, `app/routers/web_router.py`, `app/services/telegram_service.py`, `app/services/dev_agent_service.py` | Pytest 단위 테스트(`test_vision_service.py`) & cURL 스모크 검증(3-13-16 ~ 3-13-19) |
+| **FR-44** | `app/services/heatmap_service.py`, `app/routers/web_router.py`, `app/templates/index.html`, `app/static/js/main.js`, `app/static/css/style.css` | Pytest 단위 테스트(`test_heatmap_service.py`) & cURL 스모크 검증(3-13-20 ~ 3-13-26) |
 
 
 

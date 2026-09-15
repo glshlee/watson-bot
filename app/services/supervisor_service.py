@@ -6,7 +6,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.config import get_app_timezone, get_now
+from app.config import get_app_timezone, get_now, settings
 from app.services.agent_service import AgentService
 from app.services.briefing_service import BriefingService
 from app.services.commute_config_service import CommuteConfigService
@@ -352,6 +352,49 @@ class SupervisorService:
                     gtd_task=analysis.gtd_task,
                     is_dual=bool(analysis.gtd_task),
                 )
+
+        elif intent_res.intent == "lifelog_edit":
+            # (D-3i) 일일 로그 인플레이스 편집기 안내 (ADR-045)
+            from app.services.heatmap_service import HeatmapService
+
+            heatmap_service = HeatmapService(base_dir=self.settings_service.get_gtd_path())
+            target_date = (intent_res.log_content or "").strip()
+            if not target_date:
+                target_date = get_now().strftime("%Y-%m-%d")
+
+            tunnel_file = os.path.join(settings.REPO_PATH, "tunnel_url.txt")
+            base_url = ""
+            if os.path.exists(tunnel_file):
+                try:
+                    with open(tunnel_file, "r", encoding="utf-8") as f:
+                        base_url = f.read().strip()
+                except OSError:
+                    base_url = ""
+
+            final_response = heatmap_service.format_edit_card(date_str=target_date, base_url=base_url)
+
+        elif intent_res.intent == "lifelog_heatmap":
+            # (D-3j) 라이프로그 연간/월간 잔디 기여도 요약 브리핑 (ADR-045)
+            from app.services.heatmap_service import HeatmapService
+
+            heatmap_service = HeatmapService(base_dir=self.settings_service.get_gtd_path())
+            hm_data = heatmap_service.get_heatmap_data(days=365)
+            s = hm_data["summary"]
+
+            recent_14 = hm_data["days"][-14:]
+            bar = "".join("🟩" if d["level"] > 0 else "⬜" for d in recent_14)
+
+            final_response = (
+                f"### 🟩 **Watson 라이프로그 잔디(Contribution Heatmap) 요약** 🌱\n\n"
+                f"• **총 기록 일수**: **{s['total_days_logged']}일** / {s['range_days']}일 ({s['completion_rate']}%)\n"
+                f"• **🔥 현재 연속 기록**: **{s['current_streak']}일 연속** 달성 중\n"
+                f"• **🏆 최장 연속 기록**: **{s['longest_streak']}일**\n"
+                f"• **✅ 완료된 GTD 태스크**: 총 **{s['total_completed_tasks']}개**\n"
+                f"• **📝 총 기록 글자 수**: 약 **{s['total_chars']:,}자**\n\n"
+                f"#### 📅 **최근 2주간의 잔디 현황**\n"
+                f"`{bar}` *(최근 14일)*\n\n"
+                f"웹 대시보드(`/watson`)에서 365일 인터랙티브 잔디 뷰와 마크다운 분할 에디터를 확인하실 수 있습니다! 🖥️✨"
+            )
 
         elif intent_res.intent == "commute_inspect":
             # (D-3e) 출근길 모닝 브리핑 설정 및 실시간 카드 프리뷰 (ADR-030, ADR-037)

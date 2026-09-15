@@ -71,13 +71,14 @@
 * **GTD 마감일 & D-Day 브리핑 알림 (ADR-042)**: GTD 태스크 마감일 태그(~YYYY-MM-DD, @due) 파싱 및 상대일자("내일까지") 계산, 긴급도 4단계(초과/당일/임박/예정) 분류, 아침/저녁 브리핑 우선순위 자동 정렬 및 /dday 단독 점검·텔레그램 인라인 액션을 보장할 것.
 * **과거 검색 & 주간 결산 리포트 (ADR-043)**: 일일 로그 및 GTD 전역 다중 키워드 AND 검색 및 하이라이트 스니펫(/search), 7일 기록률·완료 태스크·활동 통계 기반 주간 회고 리포트(/weekly) 및 일요일 정기 능동 푸시를 보장할 것.
 * **사진·영수증·운동인증 Vision AI 멀티모달 분석 (ADR-044)**: 사진 첨부 수신 시 Gemini Vision/지능형 휴리스틱 5대 도메인 자동 분류, 운동 메트릭 파싱, 영수증 민감정보 마스킹 및 가계부 태스크 자동 생성, 2단계 사전 검토 초안 카드와 패스트트랙(/log)을 보장할 것.
+* **웹 잔디(Heatmap) & 마크다운 인플레이스 에디터 (ADR-045)**: 365일 일일 로그 전수 스캔 기반 5단계 기여도 레벨 및 연속 스트릭 집계, 웹 헤더 배지/52주 잔디 그리드 시각화, 웹 분할 에디터(Textarea+실시간 렌더러) 인플레이스 수정 및 원터치 커밋·푸시(/edit, /heatmap)를 보장할 것.
 * **Explicit User Commit Trigger Only (에이전트 코드 커밋 수칙)**: 코드 수정 및 기능 구현 후 Git 커밋(`git commit`)은 에이전트가 임의로 자동 실행하지 않으며, 오직 **사용자가 명시적으로 "커밋해" 지시를 내렸을 때만** 수행할 것.
 * **Curl-Based Live Verification (필수)**: 모든 코드 수정 후 반드시 `./scripts/smoke_test.sh` cURL 테스트를 실행하여 실제 라이브 API 수신 및 500 에러 부재를 검증할 것.
 * **Self-Verification & Evolution Loop**: 코드 변경 시 `pytest`/`mypy`/`ruff` 및 cURL 검증 수행 후 실패 시 `evolution.md` 지침에 따라 하네스 자가 진화 집행.
 
 ### 4. Progressive Disclosure (상세 문서 참조)
 * **제품 기획서 개요**: `docs/PRD.md` | **기능 요구사항**: `docs/requirements.md`
-* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-044)
+* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-045)
 
 
 ---

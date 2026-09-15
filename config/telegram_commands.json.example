@@ -25,6 +25,16 @@
     "enabled": true
   },
   {
+    "command": "edit",
+    "description": "일일 로그 웹 분할 에디터 열기 (/edit [날짜])",
+    "enabled": true
+  },
+  {
+    "command": "heatmap",
+    "description": "라이프로그 연간 잔디 및 기록 스트릭 확인",
+    "enabled": true
+  },
+  {
     "command": "dday",
     "description": "GTD 마감일(D-Day) 및 임박 태스크 확인",
     "enabled": true

@@ -31,6 +31,8 @@ class TelegramService:
         {"command": "weekly", "description": "지난 7일간 기록 통계 및 주간 결산 리포트"},
         {"command": "search", "description": "과거 라이프로그 및 GTD 고속 검색 (/search [키워드])"},
         {"command": "vision", "description": "사진·영수증·운동인증 Vision AI 분석 안내"},
+        {"command": "edit", "description": "일일 로그 웹 분할 에디터 열기 (/edit [날짜])"},
+        {"command": "heatmap", "description": "라이프로그 연간 잔디 및 기록 스트릭 확인"},
         {"command": "dday", "description": "GTD 마감일(D-Day) 및 임박 태스크 확인"},
         {"command": "bus", "description": "실시간 출근 버스 도착 현황 및 갱신"},
         {"command": "log", "description": "오늘 라이프로그에 즉시 기록 (/log [내용])"},

@@ -432,6 +432,37 @@ class DevAgentService:
                 vision_res = vision_svc.analyze_image(image_path=abs_path, user_caption=caption, image_rel_path=target_path)
                 ai_response = vision_svc.format_draft_card(vision_res)
 
+        elif lower_msg.startswith(("/edit", "/editor", "/수정", "/편집")):
+            action_type = "tool_edit"
+            parts = clean_msg.split(maxsplit=1)
+            target_date = parts[1].strip() if len(parts) > 1 else ""
+            from app.services.heatmap_service import HeatmapService
+            settings_svc = SettingsService()
+            heatmap_svc = HeatmapService(base_dir=settings_svc.get_gtd_path())
+            d_str = target_date or get_now().strftime("%Y-%m-%d")
+            ai_response = heatmap_svc.format_edit_card(date_str=d_str)
+
+        elif lower_msg.startswith(("/heatmap", "/잔디", "/기여도")):
+            action_type = "tool_heatmap"
+            from app.services.heatmap_service import HeatmapService
+            settings_svc = SettingsService()
+            heatmap_svc = HeatmapService(base_dir=settings_svc.get_gtd_path())
+            hm_data = heatmap_svc.get_heatmap_data(days=365)
+            s = hm_data["summary"]
+            recent_14 = hm_data["days"][-14:]
+            bar = "".join("🟩" if d["level"] > 0 else "⬜" for d in recent_14)
+            ai_response = (
+                f"### 🟩 **Watson 라이프로그 잔디(Contribution Heatmap) 요약** 🌱\n\n"
+                f"• **총 기록 일수**: **{s['total_days_logged']}일** / {s['range_days']}일 ({s['completion_rate']}%)\n"
+                f"• **🔥 현재 연속 기록**: **{s['current_streak']}일 연속** 달성 중\n"
+                f"• **🏆 최장 연속 기록**: **{s['longest_streak']}일**\n"
+                f"• **✅ 완료된 GTD 태스크**: 총 **{s['total_completed_tasks']}개**\n"
+                f"• **📝 총 기록 글자 수**: 약 **{s['total_chars']:,}자**\n\n"
+                f"#### 📅 **최근 2주간의 잔디 현황**\n"
+                f"`{bar}` *(최근 14일)*\n\n"
+                f"웹 대시보드(`/watson`)에서 365일 인터랙티브 잔디 뷰와 마크다운 분할 에디터를 확인하실 수 있습니다! 🖥️✨"
+            )
+
         elif lower_msg in ["/help", "help", "도움말", "명령어", "도구"]:
             action_type = "tool_help"
             ai_response = (
@@ -450,6 +481,9 @@ class DevAgentService:
                 "  * `/gtd`: 현재 연결된 GTD 수집함(`inbox.md`) 및 다음 행동(`next_actions.md`) 마크다운 직접 확인\n"
                 "* **📷 멀티모달 시각 지능 (ADR-044)**:\n"
                 "  * `/vision [경로] [캡션]`: 운동 인증샷, 영수증, 음식, 메모 사진 Vision AI 분석 및 초안 생성\n"
+                "* **✏️ 일일 로그 편집 & 잔디 시각화 (ADR-045)**:\n"
+                "  * `/edit [날짜]`: 특정 일자 또는 오늘 마크다운 일일 로그 웹 분할 에디터 열기\n"
+                "  * `/heatmap`: 최근 1년간 잔디(Contribution Heatmap) 및 기록 스트릭 통계 요약\n"
                 "* **🧪 자동화 CI & 검증 도구**:\n"
                 "  * `/test [경로]`: pytest 단위 테스트 비동기 실행 (예: `/test`, `/test tests/test_auth.py`)\n"
                 "  * `/lint`: Ruff 린터 및 Mypy 타입 검사 즉시 실행\n"

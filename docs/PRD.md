@@ -408,7 +408,21 @@
   * `POST /api/vision/analyze`: 사진 멀티파트 업로드 및 시각 분석 결과 JSON/초안 반환.
   * `POST /api/vision/upload-and-log`: 사진 업로드 후 사전 검토 보류 또는 패스트트랙 즉시 기록.
   * DevBot 전용 `/vision [경로] [캡션]` 툴체인 및 웹 콘솔 퀵 바 칩(`[📷 사진 분석]`) 추가.
-  * 텔레그램 네이티브 봇 메뉴 18종으로 `/vision` 추가 등록.
+### 3.42 웹 대시보드 연간 잔디(Heatmap) & 마크다운 인플레이스 에디터 (ADR-045)
+* **연간 잔디 기여도 및 스트릭 집계 엔진 (`HeatmapService`)**:
+  * 최근 365일간 저장소 내 모든 일일 로그 파일(`logs/daily/*.md`, `lifelogs/`) 전수 스캔.
+  * 글자수 및 완료 태스크 기반 GitHub 표준 5단계(0~4) 기여도 레벨 정규화.
+  * 현재 연속 기록 스트릭(`current_streak`), 역대 최장 스트릭(`longest_streak`), 총 기록 일수, 연간 달성률(%) 집계.
+* **마크다운 인플레이스 파일 입출력 및 1기록 1커밋**:
+  * 특정 일자 마크다운 원문 조회(`get_lifelog_content`) 및 미작성 일자 표준 기본 템플릿 자동 제공.
+  * 인플레이스 디스크 저장 후 Git 커밋 및 선택적 원격 푸시 집행(`save_lifelog_content`).
+* **웹 대시보드 반응형 인터랙티브 UI & 딥링크**:
+  * 상단 헤더 잔디 뱃지 (`#heatmap-badge`) 및 퀵 바 원터치 칩 (`[✏️ 잔디 & 로그 편집]`).
+  * 인터랙티브 모달 (`#lifelog-editor-modal`): 52주 잔디 그리드, 날짜별 호버 툴팁 및 셀 클릭 이동, 날짜 네비게이션, 좌우 분할 에디터(Textarea + 실시간 마크다운 렌더링), 원터치 커밋·푸시.
+  * 딥링크 (`/?edit=YYYY-MM-DD`) 및 인텐트(`/edit`, `/heatmap`) 연동으로 즉각적인 일일 로그 수정 경로 제공.
+* **REST API 및 명령어 20종 확장**:
+  * `GET /api/lifelog/heatmap?days=365`, `GET /api/lifelog/file?date=YYYY-MM-DD`, `POST /api/lifelog/save`.
+  * 텔레그램 네이티브 봇 메뉴 20종(`edit`, `heatmap` 추가) 및 DevBot 전용 `/edit`, `/heatmap` 툴체인 지원.
 
 ---
 

@@ -447,11 +447,25 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 
 ## 🔮 차세대 기능 백로그 (Future Backlog - 상세 설계: `docs/ideas.md` 참조)
 
-### Phase 44: 웹 대시보드 연간 잔디(Heatmap) & 마크다운 인플레이스 에디터
-- [ ] `HeatmapService` & `GET /api/lifelog/heatmap`: 최근 365일간 날짜별 글자 수, 완료 태스크, 커밋 수 집계 API
-- [ ] 웹 콘솔 상단 GitHub 스타일 연간/월간 잔디(Contribution Heatmap) 경량 SVG/CSS Grid 시각화
-- [ ] 캘린더 뷰에서 과거 특정 일자 클릭 시 해당 일일 로그(`YYYY-MM-DD.md`) 즉시 열람
-- [ ] 마크다운 인플레이스 분할 에디터(좌측 텍스트 / 우측 실시간 렌더링) 및 원터치 Git 커밋/푸시 지원
+### Phase 44: 웹 대시보드 연간 잔디(Heatmap) & 마크다운 인플레이스 에디터 (`/edit`, `/heatmap` - ADR-045) - ✅ 완료
+- [x] `HeatmapService` 구축 (`app/services/heatmap_service.py`):
+  - 최근 365일간 일일 로그 파일 전수 스캔 및 5단계(0~4) GitHub 스타일 기여도 레벨 정규화
+  - 연속 기록 일수(`current_streak`), 최장 스트릭(`longest_streak`), 총 기록 일수, 연간 달성률(%) 집계
+  - 일일 로그 원문 조회(`get_lifelog_content`) 및 마크다운 디스크 저장 & 원자적 Git 커밋/푸시(`save_lifelog_content`)
+- [x] REST API 엔드포인트 신설 (`app/routers/web_router.py`):
+  - `GET /api/lifelog/heatmap?days=365`: 연간 잔디 그리드 및 통계 메트릭 JSON 반환
+  - `GET /api/lifelog/file?date=YYYY-MM-DD`: 특정 일자 일일 로그 원문 및 메타데이터 반환
+  - `POST /api/lifelog/save`: 마크다운 편집 내용 저장 및 Git 커밋·푸시 집행
+- [x] 웹 대시보드 인터랙티브 UI & 딥링크 (`index.html`, `style.css`, `main.js`):
+  - 헤더 연간 잔디 뱃지 (`#heatmap-badge`) 및 퀵 바 칩 (`[✏️ 잔디 & 로그 편집]`)
+  - 인터랙티브 모달 (`#lifelog-editor-modal`): 52주 잔디 그리드(호버 툴팁, 셀 클릭 이동), 날짜 네비게이션, 좌우 분할 에디터(Textarea + 실시간 마크다운 프리뷰), 원터치 커밋·푸시
+  - 딥링크 연동 (`/?edit=YYYY-MM-DD` 접속 시 해당 일자 에디터 자동 오픈)
+- [x] 인텐트 라우팅 및 텔레그램/콘솔 연동:
+  - `/edit [날짜]`, "일기 편집", "로그 수정" ➔ `lifelog_edit` 인텐트 및 안내 카드 연동
+  - `/heatmap`, "잔디 보여줘", "기여도 히트맵" ➔ `lifelog_heatmap` 인텐트 연동
+  - DevBot 콘솔 `/edit`, `/heatmap` 툴체인 단독 실행 및 `/help` 갱신
+  - 텔레그램 네이티브 봇 메뉴 20종 명령어로 `edit`, `heatmap` 추가 등록 (`TelegramService.DEFAULT_COMMANDS`)
+- [x] 단위 테스트(`tests/test_heatmap_service.py`), Ruff/Mypy 정적 검사 및 `./scripts/smoke_test.sh` 3-13-20 ~ 3-13-26 단계 라이브 검증 완료
 
 ### Phase 45: 1-Click 셀프호스팅 배포 패키지 & 셋업 위저드 (타인 배포 1단계)
 - [ ] Docker Compose 올인원 배포 템플릿 및 GitHub Template 레포지토리화

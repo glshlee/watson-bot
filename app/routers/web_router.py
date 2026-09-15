@@ -34,6 +34,12 @@ class DevChatRequest(BaseModel):
 class UpdateSessionRequest(BaseModel):
     title: str
 
+class LifelogSaveRequest(BaseModel):
+    date: str
+    content: str
+    commit_msg: str | None = None
+    auto_push: bool = True
+
 @router.get("/", response_class=HTMLResponse)
 def read_root(request: Request):
     """에이전트 허브 대시보드 포털 렌더링 (ADR-018)."""
@@ -436,6 +442,56 @@ async def upload_and_log_image(
             "draft_card": draft_card,
             "data": vision_service.to_dict(analysis),
         }
+
+
+@router.get("/api/lifelog/heatmap")
+def get_lifelog_heatmap(
+    days: int = Query(365, ge=7, le=730, description="조회 일수 (기본값: 365)"),
+):
+    """ADR-045: 연간/월간 잔디(Contribution Heatmap) 및 기록 통계 API."""
+    from app.services.heatmap_service import HeatmapService
+    from app.services.settings_service import SettingsService
+
+    gtd_path = SettingsService().get_gtd_path()
+    heatmap_service = HeatmapService(base_dir=gtd_path)
+    data = heatmap_service.get_heatmap_data(days=days)
+    return {"status": "success", "data": data}
+
+
+@router.get("/api/lifelog/file")
+def get_lifelog_file(
+    date: str = Query(..., description="조회할 일자 (YYYY-MM-DD)"),
+):
+    """ADR-045: 특정 일자의 마크다운 일일 로그 원문 및 메타데이터 조회 API."""
+    from app.services.heatmap_service import HeatmapService
+    from app.services.settings_service import SettingsService
+
+    gtd_path = SettingsService().get_gtd_path()
+    heatmap_service = HeatmapService(base_dir=gtd_path)
+    data = heatmap_service.get_lifelog_content(date_str=date)
+    return {"status": "success", "data": data}
+
+
+@router.post("/api/lifelog/save")
+def save_lifelog_file(
+    req: LifelogSaveRequest,
+):
+    """ADR-045: 마크다운 일일 로그 인플레이스 저장 및 원자적 Git 커밋/푸시 API."""
+    from app.services.heatmap_service import HeatmapService
+    from app.services.settings_service import SettingsService
+
+    gtd_path = SettingsService().get_gtd_path()
+    heatmap_service = HeatmapService(base_dir=gtd_path)
+    res = heatmap_service.save_lifelog_content(
+        date_str=req.date,
+        content=req.content,
+        commit_msg=req.commit_msg,
+        auto_push=req.auto_push,
+    )
+    if not res.get("success"):
+        raise HTTPException(status_code=500, detail=str(res.get("error", "파일 저장 실패")))
+    return {"status": "success", "data": res}
+
 
 
 
