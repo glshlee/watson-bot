@@ -289,6 +289,30 @@ class SupervisorService:
                 base_date=get_now(),
             )
 
+        elif intent_res.intent == "search_query":
+            # (D-3f) 라이프로그 & GTD 고속 검색 (ADR-043)
+            from app.services.search_service import SearchService
+
+            query = intent_res.log_content or ""
+            search_service = SearchService(base_dir=self.settings_service.get_gtd_path())
+            search_results = search_service.search(query=query)
+            final_response = search_service.format_search_results_card(
+                query=query,
+                results=search_results,
+            )
+
+        elif intent_res.intent == "weekly_review":
+            # (D-3g) 주간 결산 회고 리포트 (ADR-043)
+            self.git_service.pull()
+            from app.services.weekly_review_service import WeeklyReviewService
+
+            weekly_service = WeeklyReviewService(
+                base_dir=self.settings_service.get_gtd_path(),
+                llm_provider=self.llm_provider,
+            )
+            weekly_data = weekly_service.generate_weekly_review()
+            final_response = weekly_data["markdown"]
+
         elif intent_res.intent == "commute_inspect":
             # (D-3e) 출근길 모닝 브리핑 설정 및 실시간 카드 프리뷰 (ADR-030, ADR-037)
             cfg = self.commute_config_service.get_masked_config()

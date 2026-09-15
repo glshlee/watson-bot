@@ -393,15 +393,37 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
   - 사용자가 "내일까지 보고서 제출 GTD에 추가해줘" 발화 시 `_extract_actionable_task`에서 상대일자를 파싱하여 `~YYYY-MM-DD` 태그 자동 부착
 - [x] 단위 테스트(`tests/test_due_date_service.py`), Ruff/Mypy 정적 검사 및 `./scripts/smoke_test.sh` 3-13-7, 3-13-8 단계 라이브 검증 완료
 
+### Phase 42: 과거 라이프로그·GTD 고속 검색 & 주간 결산 리포트 (`/search`, `/weekly` - ADR-043) - ✅ 완료
+- [x] `SearchService` 구축 (`app/services/search_service.py`):
+  - 일일 로그(`logs/daily/*.md`), GTD 문서(`gtd/*.md`, `inbox.md`), 프로젝트 문서 대상 고속 마크다운 검색 엔진 구현
+  - 공백 구분 다중 키워드 AND 검색 및 대소문자 무시 지원
+  - 본문 볼드 하이라이트(`**키워드**`) 및 220자 문맥 스니펫 생성
+  - 일일 로그 최신성, 완전 일치, GTD 수집함 결합 관련도 스코어링 및 역순 정렬
+  - 검색 결과 요약 마크다운 카드 포맷터(`format_search_results_card`) 구현
+- [x] `WeeklyReviewService` 구축 (`app/services/weekly_review_service.py`):
+  - 기준일(KST 오늘)로부터 지난 7일간의 일일 로그 파싱 및 정량 메트릭 수집 (기록 달성률 %, 완료 태스크 `- [x]`, 카테고리별 활동)
+  - `gtd/inbox.md` 미분류 태스크 체류 점검 및 `next_actions.md` 정리 가이드 제공
+  - LLM 지능형 총평 및 기록률 기반 정교한 룰 기반 하이브리드 "왓슨의 주간 한마디" 합성
+  - 주간 결산 마크다운 리포트 카드 생성(`generate_weekly_review`)
+- [x] 일요일 21:00 KST 능동 푸시 스케줄러 (`BriefingScheduler`):
+  - 매주 일요일 21:00 KST 정각 주간 결산 능동 발송 루프 구현 (`dispatch_weekly_review`)
+  - 일자별 중복 발송 방지(`self.last_dispatched["weekly"]`), 텔레그램 세션 히스토리 영속화
+  - 발송 시 `[📥 Inbox 정리하기]`, `[⏳ D-Day 확인]`, `[🔄 원격 최신화]`, `[🚀 푸시]` 인라인 키보드 부착
+- [x] REST API 엔드포인트 신설 (`app/routers/web_router.py`):
+  - `GET /api/search?q=키워드`: 검색 결과 목록 및 카드 JSON 반환
+  - `GET /api/weekly?days=7`: 주간 결산 메트릭 및 리포트 카드 반환
+  - `POST /api/weekly/trigger-push`: 주간 결산 텔레그램 푸시 즉시 테스트
+- [x] 인텐트 라우팅 및 텔레그램/웹 콘솔 연동:
+  - `/search [키워드]`, `/find [키워드]`, 자연어 질의("지난달 서산 맛집 찾아줘") ➔ `search_query` 인텐트 연동
+  - `/weekly`, `/review`, "주간 결산", "이번 주 회고" ➔ `weekly_review` 인텐트 연동
+  - DevBot 콘솔 `/search`, `/weekly` 툴체인 단독 실행 및 `/help` 갱신
+  - 텔레그램 네이티브 봇 메뉴 17종 명령어로 `weekly`, `search` 추가 등록
+  - 웹 대시보드 왓슨 및 DevBot 퀵 숏컷 바에 `[🔍 기록 검색]`, `[📊 주간 결산]` 원터치 칩 추가
+- [x] 단위 테스트(`tests/test_search_and_weekly_service.py`), Ruff/Mypy 정적 검사 및 `./scripts/smoke_test.sh` 3-13-9 ~ 3-13-15 단계 라이브 검증 완료
+
 ---
 
 ## 🔮 차세대 기능 백로그 (Future Backlog - 상세 설계: `docs/ideas.md` 참조)
-
-### Phase 42: 과거 라이프로그·GTD 고속 검색 & 주간 결산 리포트 (`/search`, `/weekly`)
-- [ ] `SearchService`: 일일 로그(`logs/daily/*.md`) 및 GTD 파일 전체 대상 고속 텍스트/키워드 검색 엔진 구축
-- [ ] `/search [키워드]` 슬래시 커맨드 및 자연어 질의("지난달 서산 맛집 찾아줘") 라우팅 및 하이라이트 스니펫 카드 제공
-- [ ] 매주 일요일 21:00 KST 주간 결산 회고 브리핑 능동 푸시 (`WeeklyReviewService`)
-- [ ] 지난 7일간 완료한 GTD 태스크 집계, 카테고리별 일수 통계 및 장기 체류 수집함 정리 권유
 
 ### Phase 43: 사진·영수증·운동인증 Vision AI 멀티모달 분석 & 스마트 기록
 - [ ] `VisionService`: 텔레그램 사진 수신 시 Gemini Flash Vision 멀티모달 분석 파이프라인 연동

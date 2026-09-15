@@ -10,6 +10,16 @@
     "enabled": true
   },
   {
+    "command": "weekly",
+    "description": "지난 7일간 기록 통계 및 주간 결산 리포트",
+    "enabled": true
+  },
+  {
+    "command": "search",
+    "description": "과거 라이프로그 및 GTD 고속 검색 (/search [키워드])",
+    "enabled": true
+  },
+  {
     "command": "dday",
     "description": "GTD 마감일(D-Day) 및 임박 태스크 확인",
     "enabled": true

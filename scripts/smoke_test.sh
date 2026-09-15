@@ -439,6 +439,72 @@ else
     exit 1
 fi
 
+SEARCH_CHAT_RES=$(run_curl -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_butler_session", "message": "/search 운동", "auto_push": false}')
+if echo "$SEARCH_CHAT_RES" | grep -q '"intent":"search_query"'; then
+    echo "  ✅ 3-13-9. Watson /search Passed (intent=search_query - ADR-043)"
+else
+    echo "  ❌ 3-13-9. Watson /search Failed: $SEARCH_CHAT_RES"
+    exit 1
+fi
+
+DEV_SEARCH_RES=$(run_curl -X POST "$SERVER_URL/api/dev/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_dev_session", "message": "/search 운동"}')
+if echo "$DEV_SEARCH_RES" | grep -q '"action_type":"tool_search"'; then
+    echo "  ✅ 3-13-10. Dev Agent /search Passed (action_type=tool_search - ADR-043)"
+else
+    echo "  ❌ 3-13-10. Dev Agent /search Failed: $DEV_SEARCH_RES"
+    exit 1
+fi
+
+API_SEARCH_RES=$(run_curl -G --data-urlencode "q=운동" "$SERVER_URL/api/search")
+if echo "$API_SEARCH_RES" | grep -q '"status":"success"'; then
+    echo "  ✅ 3-13-11. GET /api/search Passed (status=success - ADR-043)"
+else
+    echo "  ❌ 3-13-11. GET /api/search Failed: $API_SEARCH_RES"
+    exit 1
+fi
+
+WEEKLY_CHAT_RES=$(run_curl -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_butler_session", "message": "/weekly", "auto_push": false}')
+if echo "$WEEKLY_CHAT_RES" | grep -q '"intent":"weekly_review"'; then
+    echo "  ✅ 3-13-12. Watson /weekly Passed (intent=weekly_review - ADR-043)"
+else
+    echo "  ❌ 3-13-12. Watson /weekly Failed: $WEEKLY_CHAT_RES"
+    exit 1
+fi
+
+DEV_WEEKLY_RES=$(run_curl -X POST "$SERVER_URL/api/dev/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_dev_session", "message": "/weekly"}')
+if echo "$DEV_WEEKLY_RES" | grep -q '"action_type":"tool_weekly"'; then
+    echo "  ✅ 3-13-13. Dev Agent /weekly Passed (action_type=tool_weekly - ADR-043)"
+else
+    echo "  ❌ 3-13-13. Dev Agent /weekly Failed: $DEV_WEEKLY_RES"
+    exit 1
+fi
+
+API_WEEKLY_RES=$(run_curl "$SERVER_URL/api/weekly")
+if echo "$API_WEEKLY_RES" | grep -q '"status":"success"'; then
+    echo "  ✅ 3-13-14. GET /api/weekly Passed (status=success - ADR-043)"
+else
+    echo "  ❌ 3-13-14. GET /api/weekly Failed: $API_WEEKLY_RES"
+    exit 1
+fi
+
+API_WEEKLY_PUSH_RES=$(run_curl -X POST "$SERVER_URL/api/weekly/trigger-push" \
+  -H "Content-Type: application/json" \
+  -d '{"mode": "weekly"}')
+if echo "$API_WEEKLY_PUSH_RES" | grep -q '"status":"success"'; then
+    echo "  ✅ 3-13-15. POST /api/weekly/trigger-push Passed (ADR-043 Weekly Push Dispatched)"
+else
+    echo "  ❌ 3-13-15. POST /api/weekly/trigger-push Failed: $API_WEEKLY_PUSH_RES"
+    exit 1
+fi
+
 echo "  3-14. Testing Telegram Briefing Push Scheduler (ADR-026)..."
 SCHED_STATUS_RES=$(run_curl "$SERVER_URL/api/briefing/scheduler/status")
 if echo "$SCHED_STATUS_RES" | grep -q '"morning_time":"08:30 KST"'; then

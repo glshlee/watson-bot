@@ -670,6 +670,50 @@ class LLMProvider:
                 category="GTD",
             )
 
+        # 과거 라이프로그 & GTD 고속 검색 (/search, /find, "서산 맛집 찾아줘" 등 - ADR-043)
+        is_search_cmd = prompt_lower.startswith(("/search", "/find", "/검색", "/찾기"))
+        search_query_kw = None
+
+        if is_search_cmd:
+            parts = prompt.strip().split(maxsplit=1)
+            search_query_kw = parts[1].strip() if len(parts) > 1 else ""
+        elif not has_record_action and not has_remove_trigger:
+            search_nlp_match = re.search(
+                r"^(?:(?:과거|이전|예전|지난|옛날|라이프로그|일기|로그|gtd)\s*(?:에서|의)?\s*)?"
+                r"(.+?)\s*"
+                r"(?:검색해줘|검색해|검색|찾아줘|찾아봐|찾아|있나\s*찾아줘|있나\s*찾아봐|어디\s*적었지|어디\s*있지)[\.\!\?\s]*$",
+                prompt.strip(),
+                re.IGNORECASE,
+            )
+            if search_nlp_match:
+                extracted = search_nlp_match.group(1).strip()
+                extracted = re.sub(r"^(?:과거|이전|예전|지난|라이프로그|일기|로그|gtd)\s*(?:에서|의)?\s*", "", extracted, flags=re.IGNORECASE).strip()
+                extracted = re.sub(r"(?:내용|기록|일지|메모|정보)\s*$", "", extracted).strip()
+                if extracted and len(extracted) >= 1:
+                    search_query_kw = extracted
+
+        if search_query_kw is not None and not has_record_action:
+            return IntentResult(
+                intent="search_query",
+                ai_response="",
+                log_content=search_query_kw,
+                category="Search",
+            )
+
+        # 주간 결산 회고 리포트 (/weekly, /review, "주간 결산" 등 - ADR-043)
+        is_weekly_shortcut = prompt_lower in ["/weekly", "/review", "/주간", "/주간결산", "/주간회고", "weekly", "주간결산", "주간회고"]
+        weekly_patterns = [
+            r"^(?:왓슨\s*)?(?:주간\s*결산|주간\s*회고|주간\s*리포트|주간\s*보고|주간\s*통계|이번\s*주\s*결산|이번\s*주\s*회고|이번\s*주\s*돌아보기|한\s*주\s*돌아보기|한\s*주\s*정리|이번주\s*결산|이번주\s*회고)\s*(?:해줘|알려줘|보여줘|부탁해|해|해봐)?[\.\!\?\s]*$",
+        ]
+        is_weekly_review = is_weekly_shortcut or any(re.search(pat, prompt_lower, re.IGNORECASE) for pat in weekly_patterns)
+        if is_weekly_review and not has_record_action and not has_remove_trigger:
+            return IntentResult(
+                intent="weekly_review",
+                ai_response="",
+                log_content=None,
+                category="WeeklyReview",
+            )
+
         # (C) 출근길 날씨·미세먼지·버스 브리핑 설정 및 실시간 날씨 질의 (/commute, /weather - ADR-030, ADR-033)
         # (C-1) 동네 설정 및 스마트 지오코딩 자동 매핑 (/location, /동네 - ADR-034)
         is_loc_cmd = prompt_lower.startswith(("/location", "/동네", "/지역"))

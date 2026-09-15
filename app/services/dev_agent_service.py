@@ -384,6 +384,29 @@ class DevAgentService:
                 base_date=get_now(),
             )
 
+        elif lower_msg.startswith(("/search", "/find", "/검색", "/찾기")):
+            action_type = "tool_search"
+            parts = clean_msg.split(maxsplit=1)
+            query = parts[1].strip() if len(parts) > 1 else ""
+            from app.services.search_service import SearchService
+
+            settings_svc = SettingsService()
+            search_service = SearchService(base_dir=settings_svc.get_gtd_path())
+            results = search_service.search(query=query)
+            ai_response = search_service.format_search_results_card(query=query, results=results)
+
+        elif lower_msg in ["/weekly", "/review", "/주간", "/주간결산", "/주간회고", "weekly", "주간결산", "주간회고"]:
+            action_type = "tool_weekly"
+            from app.services.weekly_review_service import WeeklyReviewService
+
+            settings_svc = SettingsService()
+            weekly_service = WeeklyReviewService(
+                base_dir=settings_svc.get_gtd_path(),
+                llm_provider=self.llm_provider,
+            )
+            weekly_data = weekly_service.generate_weekly_review()
+            ai_response = weekly_data["markdown"]
+
         elif lower_msg in ["/help", "help", "도움말", "명령어", "도구"]:
             action_type = "tool_help"
             ai_response = (
@@ -393,7 +416,9 @@ class DevAgentService:
                 "  * `/diff`: 변경 코드(Staged/Unstaged) 실시간 비교\n"
                 "  * `/log`: 최근 7건의 Git 커밋 히스토리 확인\n"
                 "  * `/branch`: 브랜치 목록 조회\n"
-                "* **📋 라이프로그 & GTD 브리핑/열람 (ADR-022, ADR-024, ADR-042)**:\n"
+                "* **📋 라이프로그 & GTD 브리핑/열람/검색 (ADR-022, ADR-024, ADR-042, ADR-043)**:\n"
+                "  * `/search [키워드]`: 과거 라이프로그 및 GTD 문서 고속 텍스트/키워드 검색\n"
+                "  * `/weekly`: 지난 7일간의 기록 달성률, 완료 태스크 및 주간 결산 리포트\n"
                 "  * `/briefing [morning|evening]`: 아침 집중 과제 및 저녁 일과 회고 맞춤형 브리핑\n"
                 "  * `/dday`: GTD 마감일(D-Day) 현황 및 기한 임박/초과 과제 종합 점검\n"
                 "  * `/today`: 오늘자 작성된 일일 로그(`logs/daily/YYYY-MM-DD.md`) 즉시 열람\n"

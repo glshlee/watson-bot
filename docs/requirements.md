@@ -242,6 +242,14 @@
 - **FR-41.5**: `/dday`, `/deadline`, "마감일 확인" 명령어 수신 시 단독 마감 리포트를 즉시 출력하고, 텔레그램 인라인 키보드 `[⏳ D-Day 마감 확인]` 및 웹 콘솔 퀵 바 칩을 제공해야 한다.
 - **FR-41.6**: 사용자가 대화 중 "내일까지 보고서 제출 GTD에 추가해줘" 요청 시 `~YYYY-MM-DD` 태그가 부착된 마크다운 할 일로 자동 정제해야 한다.
 
+### FR-42: 과거 라이프로그·GTD 고속 검색 및 주간 결산 회고 리포트 (ADR-043)
+- **FR-42.1**: `SearchService`를 통해 `logs/daily/*.md`, `gtd/*.md` 및 마크다운 파일 전체를 대상으로 공백 구분 다중 키워드 AND 검색 및 본문 볼드 하이라이트 스니펫을 0.5초 이내 반환해야 한다.
+- **FR-42.2**: `/search [키워드]`, `/find [키워드]`, 자연어 질의("지난달 서산 맛집 찾아줘") 수신 시 `search_query` 인텐트로 라우팅하여 일치 카드 리포트를 즉시 출력해야 한다.
+- **FR-42.3**: `WeeklyReviewService`를 통해 기준일(KST 오늘)로부터 지난 7일간의 기록 달성률(%), 완료 태스크 수(`- [x]`), 카테고리별 활동(운동/업무/생각)을 정량 집계해야 한다.
+- **FR-42.4**: `gtd/inbox.md`의 미분류 태스크를 점검하여 수집함 정리 가이드 및 다음 행동 배치를 권유해야 한다.
+- **FR-42.5**: 매주 일요일 21:00 KST에 허용된 텔레그램 사용자에게 주간 결산 리포트 및 인라인 액션 키보드를 능동 푸시 발송해야 한다.
+- **FR-42.6**: `GET /api/search`, `GET /api/weekly`, `POST /api/weekly/trigger-push` REST API 엔드포인트를 제공하고 텔레그램 봇 메뉴 17종 및 웹 퀵 바 칩(`[🔍 기록 검색]`, `[📊 주간 결산]`)을 제공해야 한다.
+
 ---
 
 
@@ -306,6 +314,7 @@
 | **FR-39** | `app/services/telegram_service.py`, `app/routers/telegram_router.py`, `tests/test_telegram_service.py`, `scripts/smoke_test.sh` | Pytest 단위 테스트(`test_telegram_service.py`) & cURL 스모크 검증(4-1, 4-2) |
 | **FR-40** | `app/services/telegram_service.py`, `app/routers/telegram_router.py`, `app/templates/index.html`, `app/static/js/main.js`, `app/static/css/style.css` | Pytest 단위 테스트(`test_telegram_service.py`) & cURL 스모크 검증(4-3, 4-4) |
 | **FR-41** | `app/services/due_date_service.py`, `app/services/briefing_service.py`, `app/services/agent_service.py`, `app/services/llm_provider.py`, `app/services/supervisor_service.py`, `app/services/telegram_service.py` | Pytest 단위 테스트(`test_due_date_service.py`) & cURL 스모크 검증(3-13-7, 3-13-8) |
+| **FR-42** | `app/services/search_service.py`, `app/services/weekly_review_service.py`, `app/services/briefing_scheduler.py`, `app/routers/web_router.py`, `app/services/dev_agent_service.py`, `app/services/supervisor_service.py` | Pytest 단위 테스트(`test_search_and_weekly_service.py`) & cURL 스모크 검증(3-13-9 ~ 3-13-15) |
 
 
 

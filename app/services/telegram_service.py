@@ -28,6 +28,8 @@ class TelegramService:
     DEFAULT_COMMANDS: ClassVar[list[dict[str, str]]] = [
         {"command": "today", "description": "오늘 작성된 일일 로그 확인"},
         {"command": "briefing", "description": "오늘의 GTD 아침/저녁 맞춤 브리핑"},
+        {"command": "weekly", "description": "지난 7일간 기록 통계 및 주간 결산 리포트"},
+        {"command": "search", "description": "과거 라이프로그 및 GTD 고속 검색 (/search [키워드])"},
         {"command": "dday", "description": "GTD 마감일(D-Day) 및 임박 태스크 확인"},
         {"command": "bus", "description": "실시간 출근 버스 도착 현황 및 갱신"},
         {"command": "log", "description": "오늘 라이프로그에 즉시 기록 (/log [내용])"},
@@ -443,6 +445,15 @@ class TelegramService:
                 result = supervisor.process_user_request(
                     session_id=session_id,
                     user_message="/dday",
+                    channel="telegram",
+                    auto_push=False,
+                )
+                await self.send_message(chat_id, result["ai_response"])
+            elif data == "action_weekly_review":
+                await self.answer_callback_query(cb_id, text="주간 결산 리포트를 불러옵니다... 📊")
+                result = supervisor.process_user_request(
+                    session_id=session_id,
+                    user_message="/weekly",
                     channel="telegram",
                     auto_push=False,
                 )

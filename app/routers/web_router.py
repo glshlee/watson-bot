@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -208,5 +208,70 @@ async def trigger_briefing_push(
     target_chat_ids = [payload.chat_id] if payload and payload.chat_id else None
     result = await scheduler.dispatch_briefing(mode=mode, target_chat_ids=target_chat_ids)
     return {"status": "success", "data": result}
+
+
+@router.get("/api/search")
+def search_lifelog(
+    q: str = Query(..., description="검색할 키워드"),
+    limit: int = Query(10, ge=1, le=50, description="최대 결과 개수"),
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    """라이프로그 및 GTD 마크다운 고속 검색 엔드포인트 (ADR-043)."""
+    from app.services.search_service import SearchService
+    from app.services.settings_service import SettingsService
+
+    settings_service = SettingsService()
+    gtd_path = settings_service.get_gtd_path()
+    search_service = SearchService(base_dir=gtd_path)
+
+    results = search_service.search(query=q, max_results=limit)
+    markdown_card = search_service.format_search_results_card(query=q, results=results)
+
+    return {
+        "status": "success",
+        "query": q,
+        "total_count": len(results),
+        "results": results,
+        "markdown": markdown_card,
+    }
+
+
+@router.get("/api/weekly")
+def get_weekly_review(
+    days: int = Query(7, ge=1, le=30, description="조회 기간 (일수)"),
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    """주간 결산 회고 리포트 조회 엔드포인트 (ADR-043)."""
+    from app.services.settings_service import SettingsService
+    from app.services.supervisor_service import SupervisorService
+    from app.services.weekly_review_service import WeeklyReviewService
+
+    supervisor = SupervisorService(db=db)
+    settings_service = SettingsService()
+    gtd_path = settings_service.get_gtd_path()
+
+    weekly_service = WeeklyReviewService(
+        base_dir=gtd_path,
+        llm_provider=supervisor.llm_provider,
+    )
+    result = weekly_service.generate_weekly_review(days=days)
+    return {"status": "success", "data": result}
+
+
+@router.post("/api/weekly/trigger-push")
+async def trigger_weekly_push(
+    request: Request,
+    payload: TriggerPushRequest | None = None,
+):
+    """텔레그램 주간 결산 리포트 푸시 즉시 발송/테스트 엔드포인트 (ADR-043)."""
+    from app.services.briefing_scheduler import BriefingScheduler
+
+    scheduler: BriefingScheduler | None = getattr(request.app.state, "briefing_scheduler", None)
+    if not scheduler:
+        scheduler = BriefingScheduler()
+    target_chat_ids = [payload.chat_id] if payload and payload.chat_id else None
+    result = await scheduler.dispatch_weekly_review(target_chat_ids=target_chat_ids)
+    return {"status": "success", "data": result}
+
 
 

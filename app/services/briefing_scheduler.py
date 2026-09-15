@@ -33,6 +33,7 @@ class BriefingScheduler:
         self.last_dispatched: dict[str, str | None] = {
             "morning": None,
             "evening": None,
+            "weekly": None,
         }
 
     def get_scheduler_status(self) -> dict[str, Any]:
@@ -44,6 +45,7 @@ class BriefingScheduler:
             "current_date": now.strftime("%Y-%m-%d"),
             "morning_time": "08:30 KST",
             "evening_time": "20:00 KST",
+            "weekly_time": "매주 일요일 21:00 KST",
             "last_dispatched": self.last_dispatched,
             "telegram_configured": self.telegram_service.is_configured(),
             "recipients": self.telegram_service.allowed_chat_ids,
@@ -78,6 +80,12 @@ class BriefingScheduler:
                     logger.info(f"🌇 Time matched 20:00 KST. Dispatching Evening Briefing for {today_str}...")
                     self.last_dispatched["evening"] = today_str
                     asyncio.create_task(self.dispatch_briefing(mode="evening"))
+
+                # 📊 Weekly Review Check: Sunday 21:00 KST (ADR-043)
+                elif now.weekday() == 6 and now.hour == 21 and now.minute == 0 and self.last_dispatched.get("weekly") != today_str:
+                    logger.info(f"📊 Time matched Sunday 21:00 KST. Dispatching Weekly Review for {today_str}...")
+                    self.last_dispatched["weekly"] = today_str
+                    asyncio.create_task(self.dispatch_weekly_review())
 
             except Exception:
                 logger.exception("Error in BriefingScheduler loop")
@@ -178,6 +186,106 @@ class BriefingScheduler:
             return {
                 "status": "success",
                 "mode": resolved_mode,
+                "sent_count": sent_count,
+                "recipients": successful_recipients,
+                "timestamp": get_now().isoformat(),
+            }
+        finally:
+            db.close()
+
+    async def dispatch_weekly_review(
+        self,
+        target_chat_ids: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """
+        주간 결산 리포트를 생성하여 허용된 텔레그램 사용자들에게 능동 푸시 발송합니다 (ADR-043).
+        매주 일요일 21:00 KST 또는 수동 트리거 시 동작합니다.
+        """
+        recipients = target_chat_ids or self.telegram_service.allowed_chat_ids
+        if not self.telegram_service.is_configured():
+            logger.warning("Telegram Bot Token is not configured. Skipping weekly review dispatch.")
+            return {
+                "status": "skipped",
+                "reason": "telegram_not_configured",
+                "sent_count": 0,
+                "recipients": [],
+            }
+
+        if not recipients:
+            logger.warning("No allowed Telegram Chat IDs configured. Skipping weekly review dispatch.")
+            return {
+                "status": "skipped",
+                "reason": "no_recipients",
+                "sent_count": 0,
+                "recipients": [],
+            }
+
+        db = SessionLocal()
+        try:
+            supervisor = SupervisorService(db=db)
+
+            # 원격 Git 저장소 최신화 시도 (ADR-009)
+            try:
+                supervisor.git_service.pull()
+            except Exception as e:  # noqa: BLE001
+                logger.warning(f"Git pull before weekly review dispatch failed (continuing): {e}")
+
+            from app.services.weekly_review_service import WeeklyReviewService
+
+            weekly_service = WeeklyReviewService(
+                base_dir=supervisor.base_dir,
+                llm_provider=supervisor.llm_provider,
+            )
+            weekly_data = weekly_service.generate_weekly_review()
+            raw_markdown = weekly_data.get("markdown", "")
+
+            header_badge = "📊 **[왓슨 정기 주간 결산 리포트 (일요일 21:00 KST)]**"
+            message_text = f"{header_badge}\n\n{raw_markdown}"
+
+            # 인라인 액션 키보드
+            reply_markup = {
+                "inline_keyboard": [
+                    [
+                        {"text": "📥 Inbox 정리하기", "callback_data": "action_show_next"},
+                        {"text": "⏳ D-Day 확인", "callback_data": "action_show_dday"},
+                    ],
+                    [
+                        {"text": "🔄 원격 최신화", "callback_data": "action_sync"},
+                        {"text": "🚀 푸시", "callback_data": "action_push"},
+                    ],
+                ]
+            }
+
+            sent_count = 0
+            successful_recipients: list[str] = []
+
+            for cid in recipients:
+                try:
+                    sent = await self.telegram_service.send_message(
+                        chat_id=cid,
+                        text=message_text,
+                        reply_markup=reply_markup,
+                        parse_mode="Markdown",
+                    )
+                    if sent:
+                        sent_count += 1
+                        successful_recipients.append(str(cid))
+                        session_id = f"telegram:{cid}"
+                        supervisor.session_service.get_or_create_session(session_id=session_id, channel="telegram")
+                        supervisor.session_service.add_message(
+                            session_id=session_id,
+                            role="assistant",
+                            content=message_text,
+                        )
+                except Exception as e:  # noqa: BLE001
+                    logger.error(f"Failed to send weekly review to chat_id={cid}: {e}")
+
+            logger.info(
+                f"✅ Dispatched weekly review to {sent_count}/{len(recipients)} recipients."
+            )
+            return {
+                "status": "success",
+                "mode": "weekly",
                 "sent_count": sent_count,
                 "recipients": successful_recipients,
                 "timestamp": get_now().isoformat(),
