@@ -1,4 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+)
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -272,6 +281,162 @@ async def trigger_weekly_push(
     target_chat_ids = [payload.chat_id] if payload and payload.chat_id else None
     result = await scheduler.dispatch_weekly_review(target_chat_ids=target_chat_ids)
     return {"status": "success", "data": result}
+
+
+@router.post("/api/vision/analyze")
+async def analyze_vision_image(
+    file: UploadFile = File(...),  # noqa: B008
+    caption: str = Form(""),
+):
+    """
+    업로드된 사진에 대한 Vision AI 멀티모달 시각 분석 API (ADR-044).
+    """
+    import os
+
+    from app.config import get_now
+    from app.services.settings_service import SettingsService
+    from app.services.vision_service import VisionService
+
+    settings_service = SettingsService()
+    gtd_path = settings_service.get_gtd_path()
+
+    now = get_now()
+    year_str = now.strftime("%Y")
+    month_str = now.strftime("%m")
+    clean_filename = os.path.basename(file.filename or "upload.jpg")
+    safe_name = f"web_{int(now.timestamp())}_{clean_filename}"
+
+    attachments_dir = os.path.join(gtd_path, "attachments", year_str, month_str)
+    os.makedirs(attachments_dir, exist_ok=True)
+    abs_path = os.path.join(attachments_dir, safe_name)
+    rel_path = f"attachments/{year_str}/{month_str}/{safe_name}"
+
+    contents = await file.read()
+    with open(abs_path, "wb") as f:  # noqa: ASYNC230
+        f.write(contents)
+
+    vision_service = VisionService()
+    analysis = vision_service.analyze_image(
+        image_path=abs_path,
+        user_caption=caption,
+        image_rel_path=rel_path,
+    )
+
+    return {
+        "status": "success",
+        "data": vision_service.to_dict(analysis),
+        "draft_card": vision_service.format_draft_card(analysis),
+    }
+
+
+@router.post("/api/vision/upload-and-log")
+async def upload_and_log_image(
+    file: UploadFile = File(...),  # noqa: B008
+    caption: str = Form(""),
+    session_id: str = Form("web_default_session"),
+    auto_confirm: bool = Form(False),
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    """
+    사진 업로드 후 2단계 사전 검토 또는 즉시 기록을 수행하는 통합 API (ADR-044).
+    """
+    import os
+
+    from app.config import get_now
+    from app.services.agent_service import AgentService
+    from app.services.git_service import GitService
+    from app.services.session_service import SessionService
+    from app.services.settings_service import SettingsService
+    from app.services.vision_service import VisionService
+
+    settings_service = SettingsService()
+    gtd_path = settings_service.get_gtd_path()
+
+    now = get_now()
+    year_str = now.strftime("%Y")
+    month_str = now.strftime("%m")
+    clean_filename = os.path.basename(file.filename or "upload.jpg")
+    safe_name = f"web_{int(now.timestamp())}_{clean_filename}"
+
+    attachments_dir = os.path.join(gtd_path, "attachments", year_str, month_str)
+    os.makedirs(attachments_dir, exist_ok=True)
+    abs_path = os.path.join(attachments_dir, safe_name)
+    rel_path = f"attachments/{year_str}/{month_str}/{safe_name}"
+
+    contents = await file.read()
+    with open(abs_path, "wb") as f:  # noqa: ASYNC230
+        f.write(contents)
+
+    vision_service = VisionService()
+    analysis = vision_service.analyze_image(
+        image_path=abs_path,
+        user_caption=caption,
+        image_rel_path=rel_path,
+    )
+
+    session_service = SessionService(db=db)
+
+    if auto_confirm:
+        agent_service = AgentService(base_dir=gtd_path)
+        git_service = GitService(repo_path=gtd_path)
+
+        filepath = agent_service.append_or_update_lifelog(
+            content=analysis.markdown_content,
+            category=analysis.suggested_category,
+            date_obj=now,
+        )
+        if analysis.gtd_task:
+            agent_service.append_to_gtd_inbox(analysis.gtd_task)
+
+        date_str = now.strftime("%Y-%m-%d")
+        commit_msg = f"docs(lifelog): [{analysis.suggested_category}] {analysis.summary[:30]} ({date_str}) [{session_id}]"
+        git_service.sync_and_commit_push(commit_message=commit_msg, file_path=filepath)
+
+        session_service.add_message(
+            session_id=session_id,
+            role="user",
+            content=f"[사진 업로드: {caption or clean_filename}]",
+        )
+        session_service.add_message(
+            session_id=session_id,
+            role="assistant",
+            content=f"📷 사진 시각 분석 완료 및 라이프로그 반영:\n\n{analysis.markdown_content}",
+        )
+
+        return {
+            "status": "success",
+            "logged": True,
+            "message": f"라이프로그 [{analysis.suggested_category}]에 안전하게 기록 및 푸시되었습니다.",
+            "data": vision_service.to_dict(analysis),
+        }
+    else:
+        draft_card = vision_service.format_draft_card(analysis)
+        session_service.set_pending_log(
+            session_id=session_id,
+            content=analysis.markdown_content,
+            category=analysis.suggested_category,
+            gtd_task=analysis.gtd_task,
+            is_dual=bool(analysis.gtd_task),
+        )
+
+        session_service.add_message(
+            session_id=session_id,
+            role="user",
+            content=f"[사진 업로드: {caption or clean_filename}]",
+        )
+        session_service.add_message(
+            session_id=session_id,
+            role="assistant",
+            content=draft_card,
+        )
+
+        return {
+            "status": "success",
+            "logged": False,
+            "draft_card": draft_card,
+            "data": vision_service.to_dict(analysis),
+        }
+
 
 
 

@@ -336,7 +336,13 @@ class BriefingService:
                     )
 
                 ai_res = self.llm_provider._call_ai_engine(prompt=prompt)
-                if ai_res and len(ai_res) > 80 and not any(f in ai_res for f in ["시간이 필요", "이야기 들려주세요"]):
+                is_valid_briefing = (
+                    ai_res
+                    and len(ai_res) > 100
+                    and not any(f in ai_res for f in ["시간이 필요", "이야기 들려주세요", "Watson AI 비서입니다", "삶의 기록(Life Log)과 GTD를 관리하는"])
+                    and any(k in ai_res for k in ["Briefing", "브리핑", "과제", "Next Actions", "일과", "일정"])
+                )
+                if is_valid_briefing and ai_res:
                     # 만약 AI 브리핑에 날씨 섹션이 누락되었다면 상단에 실시간 날씨 카드 보강
                     if active_mode == "morning" and "날씨" not in ai_res and weather_card:
                         ai_res = f"{weather_card}\n\n{ai_res}"

@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import random
@@ -714,6 +715,18 @@ class LLMProvider:
                 category="WeeklyReview",
             )
 
+        # Vision AI 사진 분석 (/vision, /photo, /사진 - ADR-044)
+        if prompt_lower.startswith(("/vision", "/photo", "/이미지", "/사진")):
+            parts = prompt.strip().split(maxsplit=2)
+            target_path = parts[1].strip() if len(parts) > 1 else ""
+            caption = parts[2].strip() if len(parts) > 2 else ""
+            return IntentResult(
+                intent="vision_inspect",
+                ai_response="",
+                log_content=json.dumps({"path": target_path, "caption": caption}, ensure_ascii=False),
+                category="Vision",
+            )
+
         # (C) 출근길 날씨·미세먼지·버스 브리핑 설정 및 실시간 날씨 질의 (/commute, /weather - ADR-030, ADR-033)
         # (C-1) 동네 설정 및 스마트 지오코딩 자동 매핑 (/location, /동네 - ADR-034)
         is_loc_cmd = prompt_lower.startswith(("/location", "/동네", "/지역"))
@@ -1032,6 +1045,10 @@ class LLMProvider:
                     return res.stdout.strip()
             except (subprocess.SubprocessError, OSError) as e:
                 logger.warning(f"AGY execution error: {e}")
+
+        # 브리핑 생성 프롬프트인 경우 잡담 폴백을 우회하고 빈 문자열 반환 (결정론적 룰 기반 브리핑으로 폴백 유도)
+        if any(b in prompt for b in ["Morning Briefing", "Evening Briefing", "Briefing]"]):
+            return ""
 
         # 스마트 로컬 Fallback
         if any(w in prompt for w in ["누구", "왓슨"]):

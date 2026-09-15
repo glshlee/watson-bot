@@ -407,6 +407,31 @@ class DevAgentService:
             weekly_data = weekly_service.generate_weekly_review()
             ai_response = weekly_data["markdown"]
 
+        elif lower_msg.startswith(("/vision", "/photo", "/이미지", "/사진")):
+            action_type = "tool_vision"
+            parts = clean_msg.split(maxsplit=2)
+            target_path = parts[1].strip() if len(parts) > 1 else ""
+            caption = parts[2].strip() if len(parts) > 2 else ""
+
+            from app.services.vision_service import VisionService
+
+            vision_svc = VisionService()
+            if not target_path:
+                ai_response = (
+                    "### 📷 Vision AI 시각 지능 도구 (ADR-044)\n\n"
+                    "* **사용법**: `/vision [이미지 상대/절대 경로] [선택적 캡션]`\n"
+                    "* **지원 도메인**: 🏃 운동 인증, 🧾 영수증/지출, 🍲 식사/맛집, 📝 메모/손글씨, 🖼️ 일반 일상\n\n"
+                    "* **예시**:\n"
+                    "  * `/vision attachments/2026/09/running.jpg 오늘 야외 러닝 5km 420kcal 완료`\n"
+                    "  * `/vision attachments/2026/09/receipt.jpg 용현집 어죽 결제 18000원`\n\n"
+                    "분석 결과는 도메인별 메트릭 추출, 민감정보 마스킹 및 정갈한 라이프로그 초안 카드를 제공합니다."
+                )
+            else:
+                settings_svc = SettingsService()
+                abs_path = target_path if os.path.isabs(target_path) else os.path.join(settings_svc.get_gtd_path(), target_path)
+                vision_res = vision_svc.analyze_image(image_path=abs_path, user_caption=caption, image_rel_path=target_path)
+                ai_response = vision_svc.format_draft_card(vision_res)
+
         elif lower_msg in ["/help", "help", "도움말", "명령어", "도구"]:
             action_type = "tool_help"
             ai_response = (
@@ -423,6 +448,8 @@ class DevAgentService:
                 "  * `/dday`: GTD 마감일(D-Day) 현황 및 기한 임박/초과 과제 종합 점검\n"
                 "  * `/today`: 오늘자 작성된 일일 로그(`logs/daily/YYYY-MM-DD.md`) 즉시 열람\n"
                 "  * `/gtd`: 현재 연결된 GTD 수집함(`inbox.md`) 및 다음 행동(`next_actions.md`) 마크다운 직접 확인\n"
+                "* **📷 멀티모달 시각 지능 (ADR-044)**:\n"
+                "  * `/vision [경로] [캡션]`: 운동 인증샷, 영수증, 음식, 메모 사진 Vision AI 분석 및 초안 생성\n"
                 "* **🧪 자동화 CI & 검증 도구**:\n"
                 "  * `/test [경로]`: pytest 단위 테스트 비동기 실행 (예: `/test`, `/test tests/test_auth.py`)\n"
                 "  * `/lint`: Ruff 린터 및 Mypy 타입 검사 즉시 실행\n"

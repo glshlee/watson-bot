@@ -505,6 +505,52 @@ else
     exit 1
 fi
 
+VISION_CHAT_RES=$(run_curl -X POST "$SERVER_URL/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_butler_session", "message": "/vision", "auto_push": false}')
+if echo "$VISION_CHAT_RES" | grep -q '"intent":"vision_inspect"'; then
+    echo "  ✅ 3-13-16. Watson /vision Passed (intent=vision_inspect - ADR-044)"
+else
+    echo "  ❌ 3-13-16. Watson /vision Failed: $VISION_CHAT_RES"
+    exit 1
+fi
+
+DEV_VISION_RES=$(run_curl -X POST "$SERVER_URL/api/dev/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_dev_session", "message": "/vision"}')
+if echo "$DEV_VISION_RES" | grep -q '"action_type":"tool_vision"'; then
+    echo "  ✅ 3-13-17. Dev Agent /vision Passed (action_type=tool_vision - ADR-044)"
+else
+    echo "  ❌ 3-13-17. Dev Agent /vision Failed: $DEV_VISION_RES"
+    exit 1
+fi
+
+TMP_SMOKE_IMG="/tmp/smoke_test_run.jpg"
+echo "fake_image_data_for_smoke_test" > "$TMP_SMOKE_IMG"
+
+API_VISION_RES=$(run_curl -X POST "$SERVER_URL/api/vision/analyze" \
+  -F "file=@$TMP_SMOKE_IMG" \
+  -F "caption=야외 러닝 5km 400kcal 완료")
+if echo "$API_VISION_RES" | grep -q '"status":"success"' && echo "$API_VISION_RES" | grep -q '"domain":"workout"'; then
+    echo "  ✅ 3-13-18. POST /api/vision/analyze Passed (domain=workout - ADR-044)"
+else
+    echo "  ❌ 3-13-18. POST /api/vision/analyze Failed: $API_VISION_RES"
+    exit 1
+fi
+
+API_VISION_LOG_RES=$(run_curl -X POST "$SERVER_URL/api/vision/upload-and-log" \
+  -F "file=@$TMP_SMOKE_IMG" \
+  -F "caption=용현집 어죽 결제 18000원 영수증" \
+  -F "session_id=smoke_vision_session" \
+  -F "auto_confirm=false")
+if echo "$API_VISION_LOG_RES" | grep -q '"status":"success"' && echo "$API_VISION_LOG_RES" | grep -q '"logged":false'; then
+    echo "  ✅ 3-13-19. POST /api/vision/upload-and-log Passed (draft preview - ADR-044)"
+else
+    echo "  ❌ 3-13-19. POST /api/vision/upload-and-log Failed: $API_VISION_LOG_RES"
+    exit 1
+fi
+rm -f "$TMP_SMOKE_IMG"
+
 echo "  3-14. Testing Telegram Briefing Push Scheduler (ADR-026)..."
 SCHED_STATUS_RES=$(run_curl "$SERVER_URL/api/briefing/scheduler/status")
 if echo "$SCHED_STATUS_RES" | grep -q '"morning_time":"08:30 KST"'; then

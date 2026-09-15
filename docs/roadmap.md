@@ -421,16 +421,31 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
   - 웹 대시보드 왓슨 및 DevBot 퀵 숏컷 바에 `[🔍 기록 검색]`, `[📊 주간 결산]` 원터치 칩 추가
 - [x] 단위 테스트(`tests/test_search_and_weekly_service.py`), Ruff/Mypy 정적 검사 및 `./scripts/smoke_test.sh` 3-13-9 ~ 3-13-15 단계 라이브 검증 완료
 
+### Phase 43: 사진·영수증·운동인증 Vision AI 멀티모달 분석 & 스마트 기록 (`/vision` - ADR-044) - ✅ 완료
+- [x] `VisionService` 구축 (`app/services/vision_service.py`):
+  - Gemini 1.5 Flash Vision REST API 멀티모달 프롬프트 및 Base64 전송 파이프라인 연동
+  - 5대 도메인 자동 분류: 🏃 운동 인증(workout), 🍲 식사/맛집(meal), 🧾 영수증/지출(receipt), 📝 메모/손글씨(memo), 🖼️ 일상 사진(general)
+  - 운동 지표(시간, 거리, 칼로리, 심박수) 추출 및 `## 🏃 운동 & 건강 (Workout & Health)` 섹션 포맷팅
+  - 영수증 상호/일시/금액 추출, 카드번호 자동 마스킹 및 GTD 가계부 정리 태스크 자동 제안
+  - 오프라인/키 부재 시 100% 무중단 지능형 휴리스틱 스마트 분석 폴백 엔진 구현
+  - 초안 미리보기 카드 포맷터(`format_draft_card`) 구현
+- [x] 텔레그램 사진 수신 파이프라인 고도화 (`app/services/telegram_service.py`):
+  - 사진 수신 시 디스크 저장 및 Vision AI 자동 분석
+  - 2단계 사전 검토 초안 카드 및 인라인 키보드(`[✅ 응, 기록해줘]`, `[❌ 아니야]`) 부착
+  - 캡션 내 `/log` 또는 `!` 포함 시 즉시 커밋·푸시하는 패스트트랙 지원
+- [x] REST API 엔드포인트 신설 (`app/routers/web_router.py`):
+  - `POST /api/vision/analyze`: 사진 파일 멀티파트 업로드 및 시각 분석 결과 JSON 반환
+  - `POST /api/vision/upload-and-log`: 사진 업로드 후 사전 검토 세션 보류 또는 패스트트랙 즉시 기록
+- [x] 인텐트 라우팅 및 텔레그램/웹 콘솔 연동:
+  - `/vision [경로] [캡션]`, `/photo`, "사진 분석" ➔ `vision_inspect` 인텐트 및 `SupervisorService` 연동
+  - DevBot 콘솔 `/vision [경로] [캡션]` 전용 엔지니어링 도구 체인 및 `/help` 안내 갱신
+  - 텔레그램 네이티브 봇 메뉴 18종 명령어로 `vision` 추가 등록 (`TelegramService.DEFAULT_COMMANDS`)
+  - 웹 대시보드 왓슨 및 DevBot 퀵 숏컷 바에 `[📷 사진 분석]` (`data-cmd="/vision "`) 원터치 칩 추가
+- [x] 단위 테스트(`tests/test_vision_service.py`), Ruff/Mypy 정적 검사 및 `./scripts/smoke_test.sh` 3-13-16 ~ 3-13-19 단계 라이브 검증 완료
+
 ---
 
 ## 🔮 차세대 기능 백로그 (Future Backlog - 상세 설계: `docs/ideas.md` 참조)
-
-### Phase 43: 사진·영수증·운동인증 Vision AI 멀티모달 분석 & 스마트 기록
-- [ ] `VisionService`: 텔레그램 사진 수신 시 Gemini Flash Vision 멀티모달 분석 파이프라인 연동
-- [ ] 운동 인증샷(애플워치/인바디): 종목, 심박수, 칼로리, 시간 추출 및 운동 섹션 표 서식화
-- [ ] 식사/맛집 사진: 메뉴명, 분위기 분석 및 맛집 저널 초안 생성
-- [ ] 영수증/지출 사진: 상호, 일시, 금액 추출(민감정보 마스킹) 및 가계부/GTD 구매 확인 연동
-- [ ] 2단계 사전 검토 카드(`log_suggest`) 연계 및 원터치 승인 커밋
 
 ### Phase 44: 웹 대시보드 연간 잔디(Heatmap) & 마크다운 인플레이스 에디터
 - [ ] `HeatmapService` & `GET /api/lifelog/heatmap`: 최근 365일간 날짜별 글자 수, 완료 태스크, 커밋 수 집계 API

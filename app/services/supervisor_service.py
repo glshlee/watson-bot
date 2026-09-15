@@ -1,3 +1,4 @@
+import json
 import os
 import re
 from datetime import datetime
@@ -312,6 +313,45 @@ class SupervisorService:
             )
             weekly_data = weekly_service.generate_weekly_review()
             final_response = weekly_data["markdown"]
+
+        elif intent_res.intent == "vision_inspect":
+            # (D-3h) Vision AI 멀티모달 시각 분석 및 초안 제안 (ADR-044)
+            from app.services.vision_service import VisionService
+
+            vision_service = VisionService()
+            try:
+                parsed_args = json.loads(intent_res.log_content or "{}")
+            except Exception:  # noqa: BLE001
+                parsed_args = {}
+            target_path = parsed_args.get("path", "")
+            caption = parsed_args.get("caption", "")
+
+            if not target_path:
+                final_response = (
+                    "📷 **Vision AI 멀티모달 시각 지능 안내 (ADR-044)**\n\n"
+                    "• **명령어 사용법**: `/vision [이미지 경로] [선택적 캡션]`\n"
+                    "• **예시**:\n"
+                    "  - `/vision attachments/2026/09/running.jpg 오늘 야외 러닝 5km 420kcal 완료`\n"
+                    "  - `/vision attachments/2026/09/receipt.jpg 용현집 어죽 결제 18000원`\n\n"
+                    "스마트폰 텔레그램에서는 대화창에 사진을 바로 전송하시면 Vision AI가 자동 분석 후 초안 카드를 제시합니다. 📲"
+                )
+            else:
+                abs_path = target_path if os.path.isabs(target_path) else os.path.join(self.settings_service.get_gtd_path(), target_path)
+                analysis = vision_service.analyze_image(
+                    image_path=abs_path,
+                    user_caption=caption,
+                    image_rel_path=target_path,
+                )
+                final_response = vision_service.format_draft_card(analysis)
+
+                # 2단계 승인 워크플로우를 위한 pending_log 설정 (ADR-029)
+                self.session_service.set_pending_log(
+                    session_id=session_id,
+                    content=analysis.markdown_content,
+                    category=analysis.suggested_category,
+                    gtd_task=analysis.gtd_task,
+                    is_dual=bool(analysis.gtd_task),
+                )
 
         elif intent_res.intent == "commute_inspect":
             # (D-3e) 출근길 모닝 브리핑 설정 및 실시간 카드 프리뷰 (ADR-030, ADR-037)

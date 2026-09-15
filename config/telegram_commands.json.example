@@ -20,6 +20,11 @@
     "enabled": true
   },
   {
+    "command": "vision",
+    "description": "사진·영수증·운동인증 Vision AI 분석 안내",
+    "enabled": true
+  },
+  {
     "command": "dday",
     "description": "GTD 마감일(D-Day) 및 임박 태스크 확인",
     "enabled": true

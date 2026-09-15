@@ -30,6 +30,7 @@ class TelegramService:
         {"command": "briefing", "description": "오늘의 GTD 아침/저녁 맞춤 브리핑"},
         {"command": "weekly", "description": "지난 7일간 기록 통계 및 주간 결산 리포트"},
         {"command": "search", "description": "과거 라이프로그 및 GTD 고속 검색 (/search [키워드])"},
+        {"command": "vision", "description": "사진·영수증·운동인증 Vision AI 분석 안내"},
         {"command": "dday", "description": "GTD 마감일(D-Day) 및 임박 태스크 확인"},
         {"command": "bus", "description": "실시간 출근 버스 도착 현황 및 갱신"},
         {"command": "log", "description": "오늘 라이프로그에 즉시 기록 (/log [내용])"},
@@ -634,22 +635,92 @@ class TelegramService:
 
             success = await self.download_file(file_id, abs_path)
             if success:
-                # 마크다운 라이프로그에 이미지 링크 추가
-                agent_service = AgentService(base_dir=gtd_path)
-                git_service = GitService(repo_path=gtd_path)
-                img_md = f"![{caption}](/{rel_path})\n  > {caption}"
-                filepath = agent_service.append_or_update_lifelog(
-                    content=img_md,
-                    category="Media & Attachments",
-                    date_obj=now,
-                )
-                commit_msg = f"docs(lifelog): Add photo attachment for {now.strftime('%Y-%m-%d')} [telegram:{chat_id}]"
-                git_service.sync_and_commit_push(commit_message=commit_msg, file_path=filepath)
+                from app.services.vision_service import VisionService
 
-                await self.send_message(
-                    chat_id,
-                    "📷 소중한 사진과 메모를 오늘 자 라이프로그 **[Media & Attachments]**에 안전하게 보관하고 GitHub에 커밋했습니다! ✨",
+                vision_service = VisionService()
+                analysis = vision_service.analyze_image(
+                    image_path=abs_path,
+                    user_caption=caption,
+                    image_rel_path=rel_path,
                 )
+
+                session_id = f"telegram:{chat_id}"
+                supervisor = SupervisorService(db=db)
+                session_service = supervisor.session_service
+
+                # 1) 패스트트랙 (/log 또는 ! 시작 시 즉시 커밋 및 푸시)
+                is_fasttrack = "/log" in caption or caption.startswith("!") or any(cmd in caption for cmd in ["즉시 기록", "바로 기록"])
+                if is_fasttrack:
+                    agent_service = AgentService(base_dir=gtd_path)
+                    git_service = GitService(repo_path=gtd_path)
+                    filepath = agent_service.append_or_update_lifelog(
+                        content=analysis.markdown_content,
+                        category=analysis.suggested_category,
+                        date_obj=now,
+                    )
+                    if analysis.gtd_task:
+                        agent_service.append_to_gtd_inbox(analysis.gtd_task)
+
+                    date_str = now.strftime("%Y-%m-%d")
+                    commit_msg = f"docs(lifelog): [{analysis.suggested_category}] {analysis.summary[:30]} ({date_str}) [telegram:{chat_id}]"
+                    git_service.sync_and_commit_push(commit_message=commit_msg, file_path=filepath)
+
+                    session_service.add_message(
+                        session_id=session_id,
+                        role="user",
+                        content=f"[사진 전송: {caption}]",
+                    )
+                    session_service.add_message(
+                        session_id=session_id,
+                        role="assistant",
+                        content=f"⚡ **패스트트랙 사진 즉시 기록 완료**\n\n{analysis.markdown_content}",
+                    )
+
+                    await self.send_message(
+                        chat_id,
+                        f"⚡ **사진 패스트트랙 즉시 기록 완료!**\n\n"
+                        f"• 분류: **{analysis.domain_kr}**\n"
+                        f"• 섹션: `## {analysis.suggested_category}`\n\n"
+                        f"{analysis.markdown_content}\n\n"
+                        f"오늘 자 라이프로그에 안전하게 기록하고 GitHub에 커밋·푸시했습니다! ✨",
+                    )
+                else:
+                    # 2) 2단계 사전 검토 초안 카드 제시 (ADR-029, ADR-044)
+                    draft_card = vision_service.format_draft_card(analysis)
+
+                    session_service.set_pending_log(
+                        session_id=session_id,
+                        content=analysis.markdown_content,
+                        category=analysis.suggested_category,
+                        gtd_task=analysis.gtd_task,
+                        is_dual=bool(analysis.gtd_task),
+                    )
+
+                    session_service.add_message(
+                        session_id=session_id,
+                        role="user",
+                        content=f"[사진 전송: {caption}]",
+                    )
+                    session_service.add_message(
+                        session_id=session_id,
+                        role="assistant",
+                        content=draft_card,
+                    )
+
+                    reply_markup = {
+                        "inline_keyboard": [
+                            [
+                                {"text": "✅ 응, 기록해줘", "callback_data": "confirm_log"},
+                                {"text": "❌ 아니야", "callback_data": "reject_log"},
+                            ],
+                            [
+                                {"text": "⏳ D-Day 확인", "callback_data": "action_show_dday"},
+                                {"text": "🔄 원격 최신화", "callback_data": "action_sync"},
+                            ],
+                        ]
+                    }
+
+                    await self.send_message(chat_id, draft_card, reply_markup=reply_markup)
             else:
                 await self.send_message(chat_id, "⚠️ 사진을 다운로드하는 도중 오류가 발생했습니다.")
             return
