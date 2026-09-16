@@ -1,0 +1,87 @@
+<!-- Telegram Bot Menu Modal (ADR-041) -->
+<div id="telegram-menu-modal" class="modal hidden">
+    <div class="modal-content telegram-modal-content">
+        <div class="modal-header">
+            <h2><i class="fa-brands fa-telegram"></i> 텔레그램 봇 메뉴 설정 (Bot Commands)</h2>
+            <button id="close-telegram-menu-modal-btn" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body" id="telegram-modal-body">
+            <!-- Status Bar -->
+            <div class="telegram-status-bar">
+                <div class="tg-status-item">
+                    <i class="fa-solid fa-circle-check text-success"></i>
+                    <span>봇 상태: <strong id="tg-status-configured">연결됨</strong></span>
+                </div>
+                <div class="tg-status-item">
+                    <i class="fa-solid fa-list-check text-info"></i>
+                    <span>활성 명령어: <strong id="tg-active-count-badge">14</strong> / <span id="tg-total-count-badge">14</span>개</span>
+                </div>
+                <div class="tg-status-item desktop-only">
+                    <i class="fa-solid fa-user-shield"></i>
+                    <span>Chat ID: <span id="tg-chat-id-badge">설정됨</span></span>
+                </div>
+            </div>
+
+            <!-- 2-Column Responsive Layout -->
+            <div class="telegram-modal-layout">
+                <!-- Left: Commands Management -->
+                <div class="telegram-commands-editor">
+                    <div class="commands-editor-header">
+                        <span class="editor-title"><i class="fa-solid fa-sliders"></i> 명령어 목록 관리</span>
+                        <span class="editor-hint">체크를 끄면 텔레그램 메뉴에서 즉시 숨겨집니다.</span>
+                    </div>
+                    
+                    <div id="telegram-commands-list" class="commands-list-container">
+                        <!-- Dynamic rows loaded by JS -->
+                    </div>
+
+                    <!-- Add New Command Box -->
+                    <div class="add-command-box">
+                        <div class="add-cmd-title"><i class="fa-solid fa-plus-circle"></i> 새 명령어 추가</div>
+                        <div class="add-cmd-row">
+                            <div class="cmd-input-group">
+                                <span class="cmd-slash">/</span>
+                                <input type="text" id="new-cmd-name" placeholder="명령어(영문)" maxlength="32">
+                            </div>
+                            <input type="text" id="new-cmd-desc" placeholder="설명 (예: 일정 계획 세우기)" maxlength="256">
+                            <button type="button" id="btn-add-command" class="btn-sm btn-secondary"><i class="fa-solid fa-plus"></i> 추가</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Telegram Mobile UI Preview -->
+                <div class="telegram-preview-pane">
+                    <div class="preview-title"><i class="fa-solid fa-mobile-screen-button"></i> 텔레그램 모바일 메뉴 미리보기</div>
+                    <div class="mock-telegram-frame">
+                        <div class="mock-tg-header">
+                            <div class="mock-tg-chat-title">
+                                <i class="fa-solid fa-robot"></i> <strong>Watson Butler</strong>
+                                <span class="mock-tg-bot-badge">bot</span>
+                            </div>
+                        </div>
+                        <div class="mock-tg-chat-area">
+                            <div class="mock-tg-bubble">
+                                <span>채팅창 좌측 하단 <strong>[/]</strong> 메뉴 버튼을 탭했을 때 팝업되는 실제 화면입니다.</span>
+                            </div>
+                        </div>
+                        <div class="mock-tg-menu-popup" id="mock-tg-menu-popup">
+                            <!-- Active commands rendered live -->
+                        </div>
+                        <div class="mock-tg-input-bar">
+                            <div class="mock-tg-menu-btn active"><i class="fa-solid fa-bars"></i> 메뉴</div>
+                            <div class="mock-tg-placeholder">메시지 보내기...</div>
+                            <i class="fa-solid fa-paper-plane mock-tg-send"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="btn-reset-telegram-commands" type="button" class="btn-secondary" title="기본 14종 명령어로 초기화"><i class="fa-solid fa-rotate-left"></i> 기본값 복원</button>
+            <div class="footer-actions">
+                <button id="cancel-telegram-menu-btn" type="button" class="btn-secondary">닫기</button>
+                <button id="save-telegram-menu-btn" type="button" class="btn-primary"><i class="fa-solid fa-cloud-arrow-up"></i> 텔레그램에 즉시 반영</button>
+            </div>
+        </div>
+    </div>
+</div>

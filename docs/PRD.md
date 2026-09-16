@@ -447,8 +447,15 @@
   * 자정~오전 9시 사이 접속 시에도 `Intl.DateTimeFormat` 기반 KST 타임존 날짜(`YYYY-MM-DD`)를 정확히 계산하여 항상 당일 일일 로그가 열리도록 보장.
 * **출근길 브리핑 스케줄러 능동 연동**:
   * `BriefingScheduler` 백그라운드 루프에서 `commute_config`의 발송 희망 시각(`send_time`, 예: `07:30 KST`) 일치를 감지하여 출근길 날씨·버스 브리핑을 텔레그램으로 능동 푸시 발송.
+### 3.45. ⚡ 단위 테스트 초고속화 & 템플릿 컴포넌트 모듈화 리팩터링 (Test Speedup & Modular UI - ADR-048)
+* **단위 테스트 격리 및 초고속화 (14분 27초 ➔ 2분 16초)**:
+  * `tests/conftest.py`에 `fast_unit_test_environment` 글로벌 픽스처를 구축하여 단위 테스트 중 실제 `agy` CLI 바이너리 구동 및 원격 LLM 호출을 차단하고 스마트 결정론적 폴백 엔진으로 즉시 응답하도록 격리.
+  * `DevAgentService`의 중첩 subprocess 실행(Mypy, Pytest) 및 `test_weather_service.py` 외부 네트워크 API 호출을 Mocking하여 전체 133개 테스트 소요 시간을 84% 단축(6.4배 가속).
+* **UI 템플릿 8대 모달 컴포넌트 분할 (`app/templates/modals/`)**:
+  * `index.html`에 집중되어 있던 400여 줄의 8개 모달 DOM(`rename`, `delete`, `clear`, `gtd`, `schedule`, `commute`, `telegram_menu`, `lifelog_editor`)을 독립 컴포넌트 파일로 분할하고 Jinja2 `{% include %}`로 조립하여 메인 템플릿 크기를 574줄에서 183줄로 68% 슬림화.
 
 ---
+
 
 ## 4. 시스템 아키텍처 개요 (System Architecture Overview)
 

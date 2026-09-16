@@ -1,0 +1,19 @@
+<!-- Rename Session Modal (ADR-017) -->
+<div id="rename-modal" class="modal hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-pen-to-square"></i> 세션 이름 변경</h3>
+            <button id="close-rename-modal-btn" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="rename-session-input">새로운 세션 이름:</label>
+                <input type="text" id="rename-session-input" placeholder="세션 이름을 입력하세요" maxlength="60" />
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="cancel-rename-btn" class="btn-secondary">취소</button>
+            <button id="save-rename-btn" class="btn-primary">변경 완료</button>
+        </div>
+    </div>
+</div>

@@ -278,6 +278,11 @@
 - **FR-46.5**: `app/main.py` 수명 주기 시작 시 `os.environ["TZ"] = settings.TIMEZONE` 및 `time.tzset()`을 호출하여 프로세스, C 라이브러리, Git 서브프로세스를 KST로 고정해야 한다.
 - **FR-46.6**: `BriefingScheduler` 루프에서 `commute_config`의 `send_time`(KST) 일치를 모니터링하여 활성화된 출근길 브리핑을 능동 푸시 발송해야 한다.
 
+### FR-47: 단위 테스트 초고속화 & 템플릿 컴포넌트 모듈화 리팩터링 (ADR-048)
+- **FR-47.1**: `tests/conftest.py`에 `fast_unit_test_environment` autouse 픽스처를 구축하여 단위 테스트 중 AGY 외부 CLI 프로세스 실행, 중첩 Mypy/Pytest 툴체인 및 외부 기상 API 호출을 격리/모킹하고, 단위 테스트 실행 시간을 14분대에서 2분대 이하(84% 단축)로 가속화해야 한다.
+- **FR-47.2**: 574라인에 달하던 `app/templates/index.html` 내 인라인 모달 마크업을 `app/templates/modals/` 8개 전용 컴포넌트 템플릿으로 분리 모듈화하고 Jinja2 `{% include %}` 구문으로 경량화(183라인, 68% 단축)해야 한다.
+- **FR-47.3**: 모듈화된 8개 팝업 모달(세션 변경/삭제/비우기, GTD 설정, 스케줄, 출근길, 텔레그램 메뉴, 잔디 에디터)의 DOM ID 및 인터랙티브 JavaScript 이벤트 바인딩 호환성을 100% 유지해야 한다.
+
 ---
 
 
@@ -347,6 +352,8 @@
 | **FR-44** | `app/services/heatmap_service.py`, `app/routers/web_router.py`, `app/templates/index.html`, `app/static/js/main.js`, `app/static/css/style.css` | Pytest 단위 테스트(`test_heatmap_service.py`) & cURL 스모크 검증(3-13-20 ~ 3-13-26) |
 | **FR-45** | `scripts/setup_wizard.sh`, `app/services/setup_service.py`, `app/routers/web_router.py`, `Dockerfile`, `docker-compose.yml` | Pytest 단위 테스트(`test_setup_service.py`) & cURL 스모크 검증(3-13-27 ~ 3-13-29) |
 | **FR-46** | `app/models/session.py`, `app/services/session_service.py`, `app/main.py`, `app/services/briefing_scheduler.py`, `app/templates/index.html`, `app/templates/dev.html`, `app/static/js/main.js`, `app/static/js/dev.js` | Pytest 단위 테스트(`test_session_service.py`, `test_briefing_scheduler.py`) & cURL 스모크 검증(0-1, 2) |
+| **FR-47** | `tests/conftest.py`, `app/templates/modals/*.html`, `app/templates/index.html` | Pytest 단위 테스트 & cURL 스모크 검증(0-1, 0-2) |
+
 
 
 

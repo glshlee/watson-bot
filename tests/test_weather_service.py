@@ -7,23 +7,36 @@ def test_weather_service_get_live_weather():
     # Clear cache before testing
     WeatherService._cache.clear()
 
-    # Fetch live weather (or fallback if offline)
-    res = WeatherService.get_live_weather(
-        latitude=37.55,
-        longitude=127.02,
-        location_name="서울 성동구 금호동",
-    )
+    mock_live = {
+        "temp": "18.5°C",
+        "feels_like": "17.0°C",
+        "sky": "맑음 ☀️",
+        "rain_prob": "10%",
+        "umbrella_tip": "우산 불필요 ☀️",
+        "pm10": "좋음 🟢 (25 µg/m³)",
+        "pm25": "좋음 🟢 (12 µg/m³)",
+        "source": "Open-Meteo API",
+        "updated_time": "14:00",
+        "is_live": True,
+    }
+    with patch.object(WeatherService, "_fetch_open_meteo", return_value=mock_live):
+        # Fetch live weather (or fallback if offline)
+        res = WeatherService.get_live_weather(
+            latitude=37.55,
+            longitude=127.02,
+            location_name="서울 성동구 금호동",
+        )
 
-    assert "temp" in res
-    assert "feels_like" in res
-    assert "sky" in res
-    assert "rain_prob" in res
-    assert "umbrella_tip" in res
-    assert "pm10" in res
-    assert "pm25" in res
-    assert "source" in res
-    assert "updated_time" in res
-    assert "°C" in res["temp"]
+        assert "temp" in res
+        assert "feels_like" in res
+        assert "sky" in res
+        assert "rain_prob" in res
+        assert "umbrella_tip" in res
+        assert "pm10" in res
+        assert "pm25" in res
+        assert "source" in res
+        assert "updated_time" in res
+        assert "°C" in res["temp"]
 
 
 def test_weather_service_caching():

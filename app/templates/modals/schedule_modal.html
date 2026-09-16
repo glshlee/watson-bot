@@ -1,0 +1,18 @@
+<!-- Schedule Modal (ADR-025) -->
+<div id="schedule-modal" class="modal hidden">
+    <div class="modal-content schedule-modal-content">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-clock"></i> 브리핑 & 일정 스케줄</h3>
+            <button id="close-schedule-modal-btn" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body" id="schedule-modal-body">
+            <div class="schedule-loading" style="text-align:center; padding:30px; color:var(--text-secondary);">
+                <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+                <p style="margin-top:10px; font-size:0.9rem;">스케줄 정보를 불러오는 중...</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="close-schedule-btn" class="btn-secondary">닫기</button>
+        </div>
+    </div>
+</div>

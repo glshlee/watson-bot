@@ -1,0 +1,16 @@
+<!-- Delete Session Modal (ADR-017) -->
+<div id="delete-modal" class="modal hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-triangle-exclamation" style="color:#ef4444"></i> 세션 삭제 확인</h3>
+            <button id="close-delete-modal-btn" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p class="modal-desc" id="delete-modal-msg">이 세션과 모든 대화 기록을 완전히 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</p>
+        </div>
+        <div class="modal-footer">
+            <button id="cancel-delete-btn" class="btn-secondary">취소</button>
+            <button id="confirm-delete-btn" class="btn-danger"><i class="fa-solid fa-trash"></i> 삭제</button>
+        </div>
+    </div>
+</div>

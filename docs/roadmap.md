@@ -500,7 +500,28 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
   - `BriefingScheduler` 백그라운드 루프에 `commute_config`의 `send_time`(KST) 일치 검사 및 출근 브리핑 푸시 파이프라인 연동
 - [x] 단위 테스트(`test_session_service.py`, `test_briefing_scheduler.py`, `test_web_router.py`) 및 `./scripts/smoke_test.sh` 라이브 검증 완료
 
-### Phase 47: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
+### Phase 47: 단위 테스트 초고속화 & UI 템플릿 컴포넌트화 리팩터링 (ADR-048) - ✅ 완료
+- [x] 단위 테스트 실행 환경 초고속화 (`tests/conftest.py`):
+  - `fast_unit_test_environment` autouse 픽스처 구축으로 단위 테스트 시 외부 서브프로세스 격리
+  - `LLMProvider._find_agy_path -> None` 모킹으로 45초 AGY CLI 타임아웃 및 원격 LLM 호출 차단 (`test_llm_provider.py` 128초 ➔ 0.4초, 320배 가속)
+  - `DevAgentService._run_lint` 및 `_run_pytest` 중첩 재귀 실행 모킹으로 불필요한 반복 검사 제거
+  - `test_weather_service.py` 외부 네트워크 API 호출 모킹으로 10초 대기열 제거
+  - 전체 단위 테스트 수행 시간 867초(14분 27초) ➔ 136초(2분 16초)로 84% 단축 달성
+- [x] 웹 UI 템플릿 컴포넌트 모듈화 (`app/templates/index.html` & `app/templates/modals/`):
+  - 574라인 단일 모놀리식 템플릿에서 8개 모달 컴포넌트를 `app/templates/modals/`로 완전 분리:
+    - `rename_modal.html` (세션 이름 변경)
+    - `delete_modal.html` (세션 삭제)
+    - `clear_modal.html` (메시지 전체 비우기)
+    - `gtd_modal.html` (GTD 작업 경로 설정)
+    - `schedule_modal.html` (브리핑 스케줄 및 타임라인)
+    - `commute_modal.html` (출근길 날씨·대기질·버스 설정)
+    - `telegram_menu_modal.html` (텔레그램 봇 메뉴 관리)
+    - `lifelog_editor_modal.html` (연간 잔디 및 일일 로그 인플레이스 에디터)
+  - `index.html` 라인 수 574라인 ➔ 183라인으로 68% 경량화 및 가독성/유지보수성 극대화
+  - 모든 DOM ID, 폼 액션 및 JavaScript 바인딩 100% 호환 유지
+- [x] 단위 테스트, 정적 타입/린트 검사(`mypy`, `ruff`) 및 `./scripts/smoke_test.sh` 라이브 검증 완료
+
+### Phase 48: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
 - [ ] `User` 모델 및 테넌트별 저장소/컨텍스트 격리 (`/data/tenants/{user_id}/`)
 - [ ] 단일 텔레그램 봇 기반 다중 사용자 라우팅 및 계정 바인딩 (`/start [연동코드]`)
 - [ ] 사용자 GitHub PAT 및 외부 API 키 AES-256 (Fernet) 암호화 보관
