@@ -1,9 +1,10 @@
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.config import get_app_timezone, get_now
 from app.models.session import ChatMessageModel, SessionModel
 
 
@@ -33,7 +34,7 @@ class SessionService:
         session = self.get_or_create_session(session_id)
         msg = ChatMessageModel(session_id=session_id, role=role, content=content)
         self.db.add(msg)
-        session.updated_at = datetime.now(timezone.utc)  # type: ignore[assignment]
+        session.updated_at = get_now()  # type: ignore[assignment]
         self.db.commit()
         self.db.refresh(msg)
         return msg
@@ -92,7 +93,7 @@ class SessionService:
         if not session:
             return None
         session.title = title.strip() or "Untitled Session"  # type: ignore[assignment]
-        session.updated_at = datetime.now(timezone.utc)  # type: ignore[assignment]
+        session.updated_at = get_now()  # type: ignore[assignment]
         self.db.commit()
         self.db.refresh(session)
         return session
@@ -128,9 +129,19 @@ class SessionService:
             return False
         self.db.query(ChatMessageModel).filter(ChatMessageModel.session_id == session_id).delete()
         session.pending_log = None  # type: ignore[assignment]
-        session.updated_at = datetime.now(timezone.utc)  # type: ignore[assignment]
+        session.updated_at = get_now()  # type: ignore[assignment]
         self.db.commit()
         return True
+
+    def _format_datetime_iso(self, dt: datetime | None) -> str:
+        """datetime 객체를 KST(Asia/Seoul) 타임존 오프셋(+09:00)이 포함된 ISO 형식으로 변환합니다."""
+        if not dt:
+            return ""
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=get_app_timezone())
+        else:
+            dt = dt.astimezone(get_app_timezone())
+        return dt.isoformat()
 
     def list_sessions(self, agent_type: str | None = None) -> list[dict[str, Any]]:
         """세션 목록을 풍부한 메타데이터와 함께 반환합니다."""
@@ -149,8 +160,8 @@ class SessionService:
                 "title": str(s.title),
                 "channel": str(s.channel),
                 "agent_type": str(getattr(s, "agent_type", "watson") or "watson"),
-                "created_at": s.created_at.isoformat() if s.created_at else "",
-                "updated_at": s.updated_at.isoformat() if s.updated_at else "",
+                "created_at": self._format_datetime_iso(s.created_at),  # type: ignore[arg-type]
+                "updated_at": self._format_datetime_iso(s.updated_at),  # type: ignore[arg-type]
                 "message_count": msg_count,
                 "last_message": last_msg,
             })

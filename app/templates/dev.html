@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>DevBot - Software Engineering Console</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/static/css/style.css?v=1.3.3">
+    <link rel="stylesheet" href="/static/css/style.css?v=1.3.4">
 </head>
 <body class="dev-body">
     <div class="app-container">
@@ -68,6 +68,9 @@
                     <a href="/watson" class="badge btn-switch-agent" title="비서 Watson 콘솔로 이동">
                         <i class="fa-solid fa-robot"></i> <span class="desktop-only">비서 Watson</span>
                     </a>
+                    <div id="header-clock-badge" class="badge header-clock-badge desktop-only" title="현재 한국 표준시 (KST, Asia/Seoul)">
+                        <i class="fa-solid fa-clock"></i> <span id="header-live-clock">--:-- KST</span>
+                    </div>
                     <span class="badge dev-branch-badge" id="header-branch-badge"><i class="fa-solid fa-code-branch"></i> main</span>
                 </div>
             </header>
@@ -130,6 +133,6 @@
         </main>
     </div>
 
-    <script src="/static/js/dev.js?v=1.3.7"></script>
+    <script src="/static/js/dev.js?v=1.3.8"></script>
 </body>
 </html>

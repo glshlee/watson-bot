@@ -157,11 +157,29 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Relative Time Formatter
+    // Helper to get date string formatted in KST (YYYY-MM-DD)
+    function getKSTDateString(date = new Date()) {
+        try {
+            return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(date);
+        } catch {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const day = String(date.getDate()).padStart(2, "0");
+            return `${year}-${month}-${day}`;
+        }
+    }
+
+    // Relative Time Formatter (KST-aware & timezone robust)
     function formatRelativeTime(dateStr) {
         if (!dateStr) return "";
         try {
-            const d = new Date(dateStr);
+            let parseStr = dateStr.trim();
+            // If string has no timezone indicator, treat as KST (+09:00)
+            if (!parseStr.includes("Z") && !parseStr.includes("+") && !parseStr.match(/-\d{2}:\d{2}$/)) {
+                // Replace space with T if needed
+                parseStr = parseStr.replace(" ", "T") + "+09:00";
+            }
+            const d = new Date(parseStr);
             const now = new Date();
             const diffSec = Math.floor((now - d) / 1000);
             if (diffSec < 60) return "방금";
@@ -175,6 +193,26 @@ document.addEventListener("DOMContentLoaded", () => {
             return `${d.getMonth() + 1}월 ${d.getDate()}일`;
         } catch {
             return "";
+        }
+    }
+
+    // Live KST Header Clock
+    function updateLiveClock() {
+        const clockEl = document.getElementById("header-live-clock");
+        if (!clockEl) return;
+        try {
+            const now = new Date();
+            const timePart = new Intl.DateTimeFormat("ko-KR", {
+                timeZone: "Asia/Seoul",
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: false
+            }).format(now);
+            clockEl.textContent = `${timePart} KST`;
+        } catch {
+            const now = new Date();
+            clockEl.textContent = `${now.toLocaleTimeString()} KST`;
         }
     }
 
@@ -1824,11 +1862,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function openEditorModal(targetDate = null) {
         let dateToOpen = targetDate;
         if (!dateToOpen) {
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, "0");
-            const day = String(today.getDate()).padStart(2, "0");
-            dateToOpen = `${year}-${month}-${day}`;
+            dateToOpen = getKSTDateString();
         }
 
         editorModal?.classList.remove("hidden");
@@ -1941,6 +1975,8 @@ document.addEventListener("DOMContentLoaded", () => {
     loadTelegramCommands();
     loadHeatmapData();
     checkUrlEditParam();
+    updateLiveClock();
+    setInterval(updateLiveClock, 1000);
     checkHealth();
     setInterval(checkHealth, 25000);
 });

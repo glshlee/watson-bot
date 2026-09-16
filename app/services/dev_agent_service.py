@@ -1,7 +1,6 @@
 import logging
 import os
 import subprocess
-from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -69,7 +68,7 @@ class DevAgentService:
             "changed_files_count": changed_files,
             "status": "clean" if changed_files == 0 else "modified",
             "engine": "Antigravity CLI / Gemini Bridge",
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": get_now().isoformat(),
         }
 
     def _run_pytest(self, target: str = "") -> dict[str, Any]:
@@ -586,5 +585,5 @@ class DevAgentService:
             "user_message": clean_msg,
             "ai_response": ai_response,
             "action_type": action_type,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": get_now().isoformat(),
         }

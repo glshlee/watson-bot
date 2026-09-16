@@ -270,6 +270,14 @@
 - **FR-45.5**: `Dockerfile` (Python 3.12-slim, safe.directory, 헬스체크) 및 `docker-compose.yml` 볼륨 마운트 패키징을 제공해야 한다.
 - **FR-45.6**: 초보자용 10분 완성 1-Click 셀프호스팅 가이드(`docs/quickstart_guide.md`)를 완비해야 한다.
 
+### FR-46: 웹 콘솔 한국 표준시(KST) 동기화 및 실시간 시계 배지 연동 (ADR-047)
+- **FR-46.1**: `SessionModel` 및 `ChatMessageModel`의 `created_at`/`updated_at` 기본값 및 세션 갱신을 `get_now()`(KST)로 통일하고, `_format_datetime_iso()`를 통해 `+09:00` 타임존 오프셋을 포함해야 한다.
+- **FR-46.2**: 웹 프론트엔드 `formatRelativeTime(dateStr)`에서 타임존 표기가 누락된 문자열을 KST로 안전 보정하여 "9시간 전" 오표기를 해소하고 "방금" 등 실시간 상대 시각을 정확히 계산해야 한다.
+- **FR-46.3**: 웹 콘솔(Watson `/watson` 및 DevBot `/dev`) 상단 헤더에 `#header-clock-badge`를 탑재하여 초 단위 실시간 KST 디지털 시계를 출력해야 한다.
+- **FR-46.4**: 일일 로그 에디터 모달(`openEditorModal`)에서 `getKSTDateString()`을 사용하여 자정~오전 9시 접속 시에도 KST 당일 날짜 파일을 안정적으로 열어야 한다.
+- **FR-46.5**: `app/main.py` 수명 주기 시작 시 `os.environ["TZ"] = settings.TIMEZONE` 및 `time.tzset()`을 호출하여 프로세스, C 라이브러리, Git 서브프로세스를 KST로 고정해야 한다.
+- **FR-46.6**: `BriefingScheduler` 루프에서 `commute_config`의 `send_time`(KST) 일치를 모니터링하여 활성화된 출근길 브리핑을 능동 푸시 발송해야 한다.
+
 ---
 
 
@@ -338,6 +346,7 @@
 | **FR-43** | `app/services/vision_service.py`, `app/routers/web_router.py`, `app/services/telegram_service.py`, `app/services/dev_agent_service.py` | Pytest 단위 테스트(`test_vision_service.py`) & cURL 스모크 검증(3-13-16 ~ 3-13-19) |
 | **FR-44** | `app/services/heatmap_service.py`, `app/routers/web_router.py`, `app/templates/index.html`, `app/static/js/main.js`, `app/static/css/style.css` | Pytest 단위 테스트(`test_heatmap_service.py`) & cURL 스모크 검증(3-13-20 ~ 3-13-26) |
 | **FR-45** | `scripts/setup_wizard.sh`, `app/services/setup_service.py`, `app/routers/web_router.py`, `Dockerfile`, `docker-compose.yml` | Pytest 단위 테스트(`test_setup_service.py`) & cURL 스모크 검증(3-13-27 ~ 3-13-29) |
+| **FR-46** | `app/models/session.py`, `app/services/session_service.py`, `app/main.py`, `app/services/briefing_scheduler.py`, `app/templates/index.html`, `app/templates/dev.html`, `app/static/js/main.js`, `app/static/js/dev.js` | Pytest 단위 테스트(`test_session_service.py`, `test_briefing_scheduler.py`) & cURL 스모크 검증(0-1, 2) |
 
 
 

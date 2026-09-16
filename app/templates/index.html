@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Watson - 24/7 AI Agent Console</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/static/css/style.css?v=1.3.3">
+    <link rel="stylesheet" href="/static/css/style.css?v=1.3.4">
 </head>
 <body>
     <div class="app-container">
@@ -86,6 +86,9 @@
                     <button id="clear-chat-btn" class="badge btn-clear-chat" title="현재 세션 대화 내용 비우기">
                         <i class="fa-solid fa-broom"></i> <span class="desktop-only">대화 비우기</span>
                     </button>
+                    <div id="header-clock-badge" class="badge header-clock-badge desktop-only" title="현재 한국 표준시 (KST, Asia/Seoul)">
+                        <i class="fa-solid fa-clock"></i> <span id="header-live-clock">--:-- KST</span>
+                    </div>
                     <div id="heatmap-badge" class="badge heatmap-badge" title="클릭하여 연간 잔디 및 마크다운 일일 로그 편집기 열기">
                         <i class="fa-solid fa-calendar-check"></i> <span id="heatmap-streak-text">연속: -일</span>
                         <button id="open-editor-header-btn" class="editor-edit-btn" title="일일 로그 에디터 열기"><i class="fa-solid fa-pen-to-square"></i></button>
@@ -565,6 +568,6 @@
         </main>
     </div>
 
-    <script src="/static/js/main.js?v=1.3.8"></script>
+    <script src="/static/js/main.js?v=1.3.9"></script>
 </body>
 </html>

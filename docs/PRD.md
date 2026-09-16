@@ -437,6 +437,17 @@
   * `Dockerfile` (Python 3.12-slim, safe.directory, 헬스체크 내장) 및 `docker-compose.yml` 볼륨 영속화 완비.
   * 10분 만에 배포하는 초보자 가이드 (`docs/quickstart_guide.md`) 제공.
 
+### 3.44. ⏰ 웹 콘솔 한국 표준시(KST) 동기화 및 실시간 시계 배지 연동 (Web Console Timezone & Time Synchronization - ADR-047)
+* **세션 상대 시간 왜곡 원천 해결 ("방금" 정상화)**:
+  * `SessionModel` 및 `ChatMessageModel` 생성/갱신 기본값을 `get_now()`(KST)로 통일하고, API 직렬화 시 KST 오프셋(`+09:00`)을 명시하여 브라우저에서 방금 보낸 메시지가 "9시간 전"으로 오표기되던 UTC 시간 왜곡 결함을 100% 해소.
+  * 과거 생성된 세션 및 메시지 타임스탬프를 KST 기준으로 일괄 보정 마이그레이션.
+* **상단 헤더 실시간 디지털 KST 시계 배지**:
+  * 웹 콘솔(Watson `/watson` 및 DevBot `/dev`) 상단 헤더에 `#header-clock-badge`(`[⏰ 09:49:10 KST]`)를 탑재하여 초 단위 실시간 시간과 적용 타임존을 명확히 시각화.
+* **일일 로그 에디터 날짜 판별 보정**:
+  * 자정~오전 9시 사이 접속 시에도 `Intl.DateTimeFormat` 기반 KST 타임존 날짜(`YYYY-MM-DD`)를 정확히 계산하여 항상 당일 일일 로그가 열리도록 보장.
+* **출근길 브리핑 스케줄러 능동 연동**:
+  * `BriefingScheduler` 백그라운드 루프에서 `commute_config`의 발송 희망 시각(`send_time`, 예: `07:30 KST`) 일치를 감지하여 출근길 날씨·버스 브리핑을 텔레그램으로 능동 푸시 발송.
+
 ---
 
 ## 4. 시스템 아키텍처 개요 (System Architecture Overview)

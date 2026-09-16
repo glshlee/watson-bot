@@ -152,6 +152,26 @@ document.addEventListener("DOMContentLoaded", () => {
     closeSidebarBtn?.addEventListener("click", closeSidebar);
     sidebarBackdrop?.addEventListener("click", closeSidebar);
 
+    // Live KST Header Clock
+    function updateLiveClock() {
+        const clockEl = document.getElementById("header-live-clock");
+        if (!clockEl) return;
+        try {
+            const now = new Date();
+            const timePart = new Intl.DateTimeFormat("ko-KR", {
+                timeZone: "Asia/Seoul",
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: false
+            }).format(now);
+            clockEl.textContent = `${timePart} KST`;
+        } catch {
+            const now = new Date();
+            clockEl.textContent = `${now.toLocaleTimeString()} KST`;
+        }
+    }
+
     // Simple Markdown Formatter
     function formatMarkdown(text) {
         if (!text) return "";
@@ -396,6 +416,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // Initial Load & Heartbeat (every 25 seconds)
     loadDevStatus();
     loadSessions();
+    updateLiveClock();
+    setInterval(updateLiveClock, 1000);
     checkHealth();
     setInterval(checkHealth, 25000);
 });

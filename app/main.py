@@ -18,9 +18,20 @@ logger = logging.getLogger("watson.main")
 briefing_scheduler = BriefingScheduler()
 
 
+import time
+
+from app.config import get_now, settings
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """FastAPI 수명 주기 관리: DB 마이그레이션, 텔레그램 폴링 및 정기 브리핑 스케줄러 태스크 구동."""
+    """FastAPI 수명 주기 관리: 타임존 KST 고정, DB 마이그레이션, 텔레그램 폴링 및 정기 브리핑 스케줄러 태스크 구동."""
+    # 0. 프로세스 및 C 라이브러리/Git 서브프로세스 타임존 KST(Asia/Seoul) 동기화 (ADR-013)
+    os.environ["TZ"] = settings.TIMEZONE
+    if hasattr(time, "tzset"):
+        time.tzset()
+    logger.info(f"🌐 Application timezone initialized: {settings.TIMEZONE}")
+
     init_db()
 
     telegram_service = TelegramService()
@@ -56,8 +67,6 @@ async def lifespan(app: FastAPI):
             pass
 
 
-from datetime import datetime, timezone
-
 app = FastAPI(title="Watson GitHub LifeLog AI Agent", version="1.0.0", lifespan=lifespan)
 
 @app.get("/api/health")
@@ -66,7 +75,8 @@ def health_check():
     """초경량 헬스체크 엔드포인트: 터널 및 웹 프론트엔드 하트비트 연결 상태 확인용."""
     return {
         "status": "ok",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": get_now().isoformat(),
+        "timezone": settings.TIMEZONE,
         "service": "watson",
         "version": "1.0.0",
     }

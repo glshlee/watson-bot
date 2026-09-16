@@ -485,7 +485,22 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
   - 준비물 3종(봇 토큰, Chat ID, Gemini 키) 발급 방법, 위저드 실행, systemd/Docker 가동 및 FAQ 완비
 - [x] 단위 테스트(`tests/test_setup_service.py`), Ruff/Mypy 정적 검사 및 `./scripts/smoke_test.sh` 3-13-27 ~ 3-13-29 라이브 검증 완료
 
-### Phase 46: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
+### Phase 46: 웹 콘솔 한국 표준시(KST) 동기화 및 실시간 시계 배지 연동 (ADR-047) - ✅ 완료
+- [x] 세션 모델 및 서비스 KST 통일:
+  - `SessionModel` 및 `ChatMessageModel` 기본값을 `kst_now()`(`get_now()`, `Asia/Seoul`)로 전면 교체
+  - `SessionService._format_datetime_iso()` 도입으로 직렬화 시 KST 오프셋(`+09:00`) 항상 포함
+  - 기존 SQLite DB(`app.db`) 내 과거 UTC 세션/메시지 타임스탬프를 KST로 일괄 보정 마이그레이션
+- [x] 웹 프론트엔드 상대 시간 포맷터 및 에디터 날짜 보정:
+  - `formatRelativeTime(dateStr)` 개선: 무오프셋 문자열도 KST로 자동 보정하여 "9시간 전" 왜곡 해소 및 "방금" 정상화
+  - `getKSTDateString()` 구현: 자정~오전 9시 접속 시에도 KST 당일 날짜 파일이 열리도록 에디터 모달 보정
+- [x] 상단 헤더 실시간 KST 디지털 시계 배지 (`#header-clock-badge`):
+  - Watson 콘솔(`/watson`) 및 DevBot 콘솔(`/dev`) 상단 헤더에 `[⏰ 09:49:10 KST]` 초 단위 실시간 시계 탑재
+- [x] 프로세스 레벨 타임존 KST 고정 및 출근길 스케줄러 능동 연동:
+  - `app/main.py` lifespan에서 `os.environ["TZ"] = settings.TIMEZONE` 및 `time.tzset()` 호출로 Git 커밋(`+0900`) 전역 표준화
+  - `BriefingScheduler` 백그라운드 루프에 `commute_config`의 `send_time`(KST) 일치 검사 및 출근 브리핑 푸시 파이프라인 연동
+- [x] 단위 테스트(`test_session_service.py`, `test_briefing_scheduler.py`, `test_web_router.py`) 및 `./scripts/smoke_test.sh` 라이브 검증 완료
+
+### Phase 47: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
 - [ ] `User` 모델 및 테넌트별 저장소/컨텍스트 격리 (`/data/tenants/{user_id}/`)
 - [ ] 단일 텔레그램 봇 기반 다중 사용자 라우팅 및 계정 바인딩 (`/start [연동코드]`)
 - [ ] 사용자 GitHub PAT 및 외부 API 키 AES-256 (Fernet) 암호화 보관

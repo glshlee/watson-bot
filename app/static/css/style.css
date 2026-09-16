@@ -2273,7 +2273,25 @@ body.portal-body {
 
 /* ==============================================================================
    Commute & Weather Briefing Settings Modal & Components (ADR-030)
-============================================================================== */
+/* Live KST Clock Badge */
+.header-clock-badge {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(99, 102, 241, 0.15));
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    color: #60a5fa;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.header-clock-badge:hover {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(99, 102, 241, 0.25));
+    border-color: #3b82f6;
+    color: #ffffff;
+}
+
 .commute-badge {
     background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(234, 88, 12, 0.15));
     border: 1px solid rgba(245, 158, 11, 0.35);

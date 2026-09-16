@@ -87,6 +87,25 @@ class BriefingScheduler:
                     self.last_dispatched["weekly"] = today_str
                     asyncio.create_task(self.dispatch_weekly_review())
 
+                # 🚌 Commute Briefing Check: commute_cfg['send_time'] KST (ADR-030)
+                else:
+                    try:
+                        from app.services.commute_config_service import (
+                            CommuteConfigService,
+                        )
+                        commute_cfg = CommuteConfigService().get_config()
+                        if commute_cfg.get("enabled") and self.last_dispatched.get("commute") != today_str:
+                            is_weekend = now.weekday() >= 5
+                            if not (commute_cfg.get("weekdays_only") and is_weekend):
+                                send_time_str = commute_cfg.get("send_time", "07:30")
+                                shour, smin = map(int, send_time_str.split(":"))
+                                if now.hour == shour and now.minute == smin:
+                                    logger.info(f"🚌 Time matched {send_time_str} KST. Dispatching Commute Briefing for {today_str}...")
+                                    self.last_dispatched["commute"] = today_str
+                                    asyncio.create_task(self.dispatch_commute_briefing())
+                    except Exception as ce:  # noqa: BLE001
+                        logger.debug(f"Commute briefing schedule check skipped: {ce}")
+
             except Exception:
                 logger.exception("Error in BriefingScheduler loop")
 
@@ -286,6 +305,74 @@ class BriefingScheduler:
             return {
                 "status": "success",
                 "mode": "weekly",
+                "sent_count": sent_count,
+                "recipients": successful_recipients,
+                "timestamp": get_now().isoformat(),
+            }
+        finally:
+            db.close()
+
+    async def dispatch_commute_briefing(
+        self,
+        target_chat_ids: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """
+        출근길 맞춤형 날씨 및 버스 브리핑을 생성하여 허용된 텔레그램 사용자들에게 능동 푸시 발송합니다 (ADR-030).
+        """
+        recipients = target_chat_ids or self.telegram_service.allowed_chat_ids
+        if not self.telegram_service.is_configured():
+            logger.warning("Telegram Bot Token is not configured. Skipping commute briefing dispatch.")
+            return {
+                "status": "skipped",
+                "reason": "telegram_not_configured",
+                "sent_count": 0,
+                "recipients": [],
+            }
+
+        if not recipients:
+            logger.warning("No allowed Telegram Chat IDs configured. Skipping commute briefing dispatch.")
+            return {
+                "status": "skipped",
+                "reason": "no_recipients",
+                "sent_count": 0,
+                "recipients": [],
+            }
+
+        from app.services.commute_config_service import CommuteConfigService
+        service = CommuteConfigService()
+        raw_markdown = service.get_standalone_bus_card(force_refresh=True)
+
+        sent_count = 0
+        successful_recipients: list[str] = []
+        db = SessionLocal()
+        try:
+            supervisor = SupervisorService(db=db)
+            for cid in recipients:
+                try:
+                    sent = await self.telegram_service.send_message(
+                        chat_id=cid,
+                        text=raw_markdown,
+                        parse_mode="Markdown",
+                    )
+                    if sent:
+                        sent_count += 1
+                        successful_recipients.append(str(cid))
+                        session_id = f"telegram:{cid}"
+                        supervisor.session_service.get_or_create_session(session_id=session_id, channel="telegram")
+                        supervisor.session_service.add_message(
+                            session_id=session_id,
+                            role="assistant",
+                            content=raw_markdown,
+                        )
+                except Exception as e:  # noqa: BLE001
+                    logger.error(f"Failed to send commute briefing to chat_id={cid}: {e}")
+
+            logger.info(
+                f"✅ Dispatched commute briefing to {sent_count}/{len(recipients)} recipients."
+            )
+            return {
+                "status": "success",
+                "mode": "commute",
                 "sent_count": sent_count,
                 "recipients": successful_recipients,
                 "timestamp": get_now().isoformat(),
