@@ -12,15 +12,17 @@ services:
     env_file:
       - .env
     volumes:
-      # 1. SQLite 세션 DB 파일 영속화
+      # 1. SQLite 세션 및 대화 DB 파일 영속화
       - ./app.db:/app/app.db
-      # 2. 마크다운 라이프로그 저장소 영속화
-      - ./lifelogs:/app/lifelogs
-      # 3. 호스트 Git 설정 및 SSH 키 안전 공유 (Git Push 자동화용)
+      # 2. 시스템 설정 디렉토리 (GTD 경로, 출근길, 텔레그램 메뉴 설정) 영속화
+      - ./config:/app/config
+      # 3. 마크다운 라이프로그 및 GTD 저장소 영속화
+      - ${GTD_PATH:-./lifelogs}:/app/lifelogs
+      # 4. 호스트 Git 설정 및 SSH 키 안전 공유 (GitHub Push 자동화용)
       - ~/.gitconfig:/root/.gitconfig:ro
       - ~/.ssh:/root/.ssh:ro
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/sessions"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
       timeout: 5s
       retries: 3

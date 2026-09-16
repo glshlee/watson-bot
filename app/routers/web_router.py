@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Any
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -491,6 +495,18 @@ def save_lifelog_file(
     if not res.get("success"):
         raise HTTPException(status_code=500, detail=str(res.get("error", "파일 저장 실패")))
     return {"status": "success", "data": res}
+
+
+@router.get("/api/system/setup-status")
+def get_system_setup_status() -> dict[str, Any]:
+    """ADR-046: 1-Click 셀프호스팅 셋업 및 시스템 배포 준비 상태 진단 API."""
+    from app.services.setup_service import SetupService
+
+    service = SetupService()
+    data = service.get_setup_status()
+    report = service.format_status_report()
+    return {"status": "success", "data": data, "report": report}
+
 
 
 

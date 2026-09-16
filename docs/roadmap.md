@@ -467,10 +467,23 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
   - 텔레그램 네이티브 봇 메뉴 20종 명령어로 `edit`, `heatmap` 추가 등록 (`TelegramService.DEFAULT_COMMANDS`)
 - [x] 단위 테스트(`tests/test_heatmap_service.py`), Ruff/Mypy 정적 검사 및 `./scripts/smoke_test.sh` 3-13-20 ~ 3-13-26 단계 라이브 검증 완료
 
-### Phase 45: 1-Click 셀프호스팅 배포 패키지 & 셋업 위저드 (타인 배포 1단계)
-- [ ] Docker Compose 올인원 배포 템플릿 및 GitHub Template 레포지토리화
-- [ ] 대화형 터미널 셋업 위저드 스크립트 (`./scripts/setup_wizard.sh`): 토큰, ID, 경로, 동네 자동 설정
-- [ ] 초보자용 배포 가이드 문서 (`docs/quickstart_guide.md`) 작성
+### Phase 45: 1-Click 셀프호스팅 배포 패키지 & 셋업 위저드 (타인 배포 1단계 - ADR-046) - ✅ 완료
+- [x] 대화형 터미널 셋업 위저드 스크립트 (`./scripts/setup_wizard.sh`):
+  - 필수 시스템 도구(Python, Git, Curl) 확인 및 7단계 대화형 프롬프트(포트, 타임존, 텔레그램 토큰/Chat ID, Gemini 키, GTD 경로, 동네명, 웹 보안)
+  - `-y`/`--non-interactive`(무인 설치), `-d`/`--dry-run`(모의 테스트), `-c`/`--check`(설정 점검) 옵션 지원
+  - GTD 디렉토리 자동 생성(`logs/daily`, `gtd/inbox.md`, `gtd/next_actions.md`) 및 `git init` 자동화
+  - 호스트 경로 및 사용자 계정 자동 적응 systemd 서비스 유닛(`/tmp/watson.service`) 생성
+- [x] 올인원 Docker Compose 배포 템플릿 및 환경 파일 고도화:
+  - `Dockerfile`: `python:3.12-slim`, `safe.directory '*'` 설정, 초경량 헬스체크(`GET /api/health`) 연동
+  - `docker-compose.yml`: `./config`, SQLite DB, GTD 볼륨 마운트 및 자동 재시작 정책 완비
+  - `.env.example`: 초보자 친화적 상세 주석 및 무료 키 발급 링크 명시
+- [x] 시스템 배포 준비 상태 진단 서비스 및 엔드포인트:
+  - `SetupService` (`app/services/setup_service.py`): 텔레그램, LLM, GTD, 보안 등 8개 영역 진단 및 준비율(%) 산출
+  - `GET /api/system/setup-status`: 시스템 준비 상태 JSON 및 마크다운 리포트 반환
+  - DevBot 콘솔 `/setup`, `/설정점검` 툴체인 및 퀵 칩(`[⚙️ 배포점검]`), `/help` 갱신
+- [x] 초보자용 10분 완성 퀵스타트 가이드 (`docs/quickstart_guide.md`):
+  - 준비물 3종(봇 토큰, Chat ID, Gemini 키) 발급 방법, 위저드 실행, systemd/Docker 가동 및 FAQ 완비
+- [x] 단위 테스트(`tests/test_setup_service.py`), Ruff/Mypy 정적 검사 및 `./scripts/smoke_test.sh` 3-13-27 ~ 3-13-29 라이브 검증 완료
 
 ### Phase 46: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
 - [ ] `User` 모델 및 테넌트별 저장소/컨텍스트 격리 (`/data/tenants/{user_id}/`)

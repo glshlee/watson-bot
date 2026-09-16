@@ -218,6 +218,12 @@
   - **원터치 Git 커밋 & 푸시**: 커밋 메시지 직접 작성 및 자동 푸시 체크박스를 통해 외부 에디터나 터미널 없이 즉시 마크다운 파일을 영속화합니다.
   - **딥링크 및 원터치 숏컷**: `/?edit=YYYY-MM-DD` 딥링크 접속 시 해당 일자의 편집 모달이 자동 팝업되며, `/edit [날짜]`, `/heatmap` 명령어 및 웹 콘솔 퀵 바 칩(`[✏️ 잔디 & 로그 편집]`)을 지원합니다.
 
+- ⚡ **1-Click 셀프호스팅 배포 패키지 & 대화형 셋업 위저드 (1-Click Self-Hosting Setup Wizard - ADR-046)**
+  - **대화형 셋업 위저드 (`./scripts/setup_wizard.sh`)**: 포트, 타임존, 텔레그램 봇 토큰/Chat ID, 무료 Gemini 키, GTD 경로, 동네명, 웹 보안 설정을 7단계 질의응답으로 10분 만에 자동 구성하고 `.env` 및 `config/`를 완벽 생성합니다.
+  - **무인 자동화 & 모의 테스트**: CI/CD 및 자동화를 위한 `-y`(`--non-interactive`), 설정 모의 검증 `-d`(`--dry-run`), 환경 점검 `-c`(`--check`)를 지원합니다.
+  - **배포 준비 상태 진단 (`GET /api/system/setup-status`)**: 텔레그램, LLM, GTD, 웹 보안 등 8대 구성 요소의 무결성 및 준비율(%)을 실시간 진단하며, DevBot 콘솔에서 `/setup` 및 `[⚙️ 배포점검]` 원터치 칩으로 언제든 열람합니다.
+  - **초보자 10분 가이드**: [10분 완성 셀프호스팅 퀵스타트 가이드](docs/quickstart_guide.md)를 제공하여 비개발자도 손쉽게 자신만의 24/7 비서를 운영할 수 있습니다.
+
 
 
 
@@ -288,41 +294,36 @@ flowchart TB
 
 ## 🚀 24/7 배포 및 실행 가이드
 
-### 방법 1: Linux systemd 서비스 상시 구동 (권장)
+### ⚡ 가장 쉬운 방법: 1-Click 대화형 셋업 위저드 (강력 추천 ⭐️)
 
-Linux 서버(Ubuntu/Debian 등)에서 OS 데몬으로 백그라운드 24/7 상시 무중단 구동하는 표준 방식입니다.
+복잡한 수작업 설정 없이 대화형 마법사가 환경변수, 디렉토리 생성, Git 초기화, 가상환경, 서비스 등록까지 한 번에 완료해 줍니다:
 
 ```bash
-# 1. 저장소 클론 및 가상환경 생성
+# 1. 저장소 클론
 git clone https://github.com/glshlee/watson-bot.git
 cd watson-bot
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
 
-# 2. 환경변수 설정
-cp .env.example .env
-nano .env  # 텔레그램 토큰, 허용 Chat ID, GEMINI_API_KEY 등 입력
+# 2. 1-Click 대화형 셋업 위저드 실행 (10분 완성)
+./scripts/setup_wizard.sh
 
-# 3. systemd 서비스 등록 및 활성화
-sudo cp systemd/watson.service /etc/systemd/system/
+# 3. 위저드가 안내한 systemd 서비스 등록
+sudo cp /tmp/watson.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now watson.service
-
-# 4. 서비스 상태 및 실시간 로그 확인
-sudo systemctl status watson.service
-sudo journalctl -u watson.service -f
 ```
+
+> 📖 **초보자용 상세 가이드**: [10분 완성 셀프호스팅 퀵스타트 가이드 (docs/quickstart_guide.md)](docs/quickstart_guide.md)에서 텔레그램 봇 토큰 및 Gemini API 무료 발급부터 상세한 스크린샷 가이드를 확인하실 수 있습니다.
 
 ---
 
-### 방법 2: Docker Compose 기반 배포
+### 방법 2: Docker Compose 기반 격리 배포
 
 Docker를 선호하는 환경에서 컨테이너로 격리하여 실행합니다:
 
 ```bash
-# 1. 환경변수 설정
-cp .env.example .env
+# 1. 환경변수 설정 (셋업 위저드로 생성하거나 직접 작성)
+./scripts/setup_wizard.sh -y
+# 또는 cp .env.example .env && nano .env
 
 # 2. 도커 컨테이너 빌드 및 백그라운드 실행
 docker compose up -d --build

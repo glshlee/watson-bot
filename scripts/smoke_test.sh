@@ -617,6 +617,31 @@ else
     exit 1
 fi
 
+DEV_SETUP_RES=$(run_curl -X POST "$SERVER_URL/api/dev/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_dev_session", "message": "/setup"}')
+if echo "$DEV_SETUP_RES" | grep -q '"action_type":"tool_setup"'; then
+    echo "  ✅ 3-13-27. Dev Agent /setup Passed (action_type=tool_setup - ADR-046)"
+else
+    echo "  ❌ 3-13-27. Dev Agent /setup Failed: $DEV_SETUP_RES"
+    exit 1
+fi
+
+API_SETUP_RES=$(run_curl "$SERVER_URL/api/system/setup-status")
+if echo "$API_SETUP_RES" | grep -q '"status":"success"' && echo "$API_SETUP_RES" | grep -q '"readiness_percentage"'; then
+    echo "  ✅ 3-13-28. GET /api/system/setup-status Passed (readiness checks & report - ADR-046)"
+else
+    echo "  ❌ 3-13-28. GET /api/system/setup-status Failed: $API_SETUP_RES"
+    exit 1
+fi
+
+if ./scripts/setup_wizard.sh --dry-run >/dev/null 2>&1 && ./scripts/setup_wizard.sh --check >/dev/null 2>&1; then
+    echo "  ✅ 3-13-29. Setup Wizard Script Passed (--dry-run & --check - ADR-046)"
+else
+    echo "  ❌ 3-13-29. Setup Wizard Script Failed"
+    exit 1
+fi
+
 echo "  3-14. Testing Telegram Briefing Push Scheduler (ADR-026)..."
 SCHED_STATUS_RES=$(run_curl "$SERVER_URL/api/briefing/scheduler/status")
 if echo "$SCHED_STATUS_RES" | grep -q '"morning_time":"08:30 KST"'; then

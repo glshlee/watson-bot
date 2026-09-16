@@ -7,6 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     APP_NAME: str = "Watson GitHub LifeLog Agent"
     ENV: str = "development"
+    PORT: int = 8000
     DATABASE_URL: str = "sqlite:///./app.db"
     
     # Git & GTD Storage Configuration
@@ -24,6 +25,7 @@ class Settings(BaseSettings):
     
     # LLM Configuration (Gemini / OpenAI / Custom)
     LLM_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
     LLM_MODEL: str = "gemini-1.5-flash"
 
     # Web Authentication & Cloudflare Tunnel (ADR-015)

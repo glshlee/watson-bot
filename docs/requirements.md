@@ -262,7 +262,13 @@
 - **FR-44.3**: 웹 대시보드 상단에 연간 잔디 뱃지(`#heatmap-badge`), 퀵 바 칩(`[✏️ 잔디 & 로그 편집]`), 52주 잔디 그리드 및 호버 툴팁을 시각화해야 한다.
 - **FR-44.4**: 웹 대시보드 내 좌우 분할 에디터(Textarea + 실시간 마크다운 프리뷰)를 통해 일일 로그를 인플레이스 편집하고 커밋 메시지 입력 및 원터치 Git 커밋·푸시를 집행해야 한다.
 - **FR-44.5**: `/?edit=YYYY-MM-DD` 딥링크 접속 시 해당 일자의 에디터 모달을 즉시 오픈해야 하며, `/edit [날짜]`, `/heatmap` 인텐트 및 안내 카드를 제공해야 한다.
-- **FR-44.6**: `GET /api/lifelog/heatmap`, `GET /api/lifelog/file`, `POST /api/lifelog/save` REST API 엔드포인트 및 텔레그램 봇 메뉴 20종(`edit`, `heatmap` 추가)을 제공해야 한다.
+### FR-45: 1-Click 셀프호스팅 배포 패키지 & 대화형 셋업 위저드 (ADR-046)
+- **FR-45.1**: `./scripts/setup_wizard.sh`를 통해 시스템 도구 확인, 7단계 대화형 설정 질문(포트, 타임존, 봇 토큰, Chat ID, Gemini 키, GTD 경로, 동네명, 웹 보안) 및 `.env`/`config/` 자동 생성을 지원해야 한다.
+- **FR-45.2**: `-y`/`--non-interactive`(무인 설치), `-d`/`--dry-run`(모의 테스트), `-c`/`--check`(설정 점검) 옵션을 지원해야 한다.
+- **FR-45.3**: `SetupService`를 통해 텔레그램, LLM, GTD, 웹 보안 등 8개 핵심 영역의 설정 무결성을 진단하고 `GET /api/system/setup-status` REST API를 제공해야 한다.
+- **FR-45.4**: DevBot 콘솔에서 `/setup` 명령어를 통해 시스템 배포 준비 상태 리포트를 즉시 출력해야 한다.
+- **FR-45.5**: `Dockerfile` (Python 3.12-slim, safe.directory, 헬스체크) 및 `docker-compose.yml` 볼륨 마운트 패키징을 제공해야 한다.
+- **FR-45.6**: 초보자용 10분 완성 1-Click 셀프호스팅 가이드(`docs/quickstart_guide.md`)를 완비해야 한다.
 
 ---
 
@@ -331,6 +337,7 @@
 | **FR-42** | `app/services/search_service.py`, `app/services/weekly_review_service.py`, `app/services/briefing_scheduler.py`, `app/routers/web_router.py`, `app/services/dev_agent_service.py`, `app/services/supervisor_service.py` | Pytest 단위 테스트(`test_search_and_weekly_service.py`) & cURL 스모크 검증(3-13-9 ~ 3-13-15) |
 | **FR-43** | `app/services/vision_service.py`, `app/routers/web_router.py`, `app/services/telegram_service.py`, `app/services/dev_agent_service.py` | Pytest 단위 테스트(`test_vision_service.py`) & cURL 스모크 검증(3-13-16 ~ 3-13-19) |
 | **FR-44** | `app/services/heatmap_service.py`, `app/routers/web_router.py`, `app/templates/index.html`, `app/static/js/main.js`, `app/static/css/style.css` | Pytest 단위 테스트(`test_heatmap_service.py`) & cURL 스모크 검증(3-13-20 ~ 3-13-26) |
+| **FR-45** | `scripts/setup_wizard.sh`, `app/services/setup_service.py`, `app/routers/web_router.py`, `Dockerfile`, `docker-compose.yml` | Pytest 단위 테스트(`test_setup_service.py`) & cURL 스모크 검증(3-13-27 ~ 3-13-29) |
 
 
 

@@ -424,6 +424,19 @@
   * `GET /api/lifelog/heatmap?days=365`, `GET /api/lifelog/file?date=YYYY-MM-DD`, `POST /api/lifelog/save`.
   * 텔레그램 네이티브 봇 메뉴 20종(`edit`, `heatmap` 추가) 및 DevBot 전용 `/edit`, `/heatmap` 툴체인 지원.
 
+### 3.43 1-Click 셀프호스팅 배포 패키지 & 대화형 셋업 위저드 (ADR-046)
+* **대화형 셋업 위저드 스크립트 (`./scripts/setup_wizard.sh`)**:
+  * 터미널 환경에서 필수 도구 자동 확인 및 7단계 대화형 프롬프트(포트, 타임존, 봇 토큰, Chat ID, Gemini 키, GTD 경로, 동네명, 웹 보안)로 `.env` 및 `config/` 자동 생성.
+  * `-y`/`--non-interactive` 무인 자동화 모드 및 `-d`/`--dry-run` 사전 검증 지원.
+  * GTD 저장소 초기 디렉토리 구조(`logs/daily`, `gtd/inbox.md`, `gtd/next_actions.md`) 및 `git init` 자동 구성.
+  * 호스트 환경(경로, 계정, 포트) 자동 적응 systemd 서비스 파일(`/tmp/watson.service`) 합성.
+* **시스템 준비 상태 진단 엔진 (`SetupService`)**:
+  * 텔레그램 봇, 관리자 ID, LLM 키, GTD 저장소 및 Git 연동, 웹 보안, 출근길 설정 등 8대 핵심 구성 요소 무결성 진단 및 준비율(`readiness_percentage`) 산출.
+  * `GET /api/system/setup-status` REST API 및 DevBot `/setup` 명령어 툴체인 연동.
+* **올인원 컨테이너 패키징 및 초보자 퀵스타트 가이드**:
+  * `Dockerfile` (Python 3.12-slim, safe.directory, 헬스체크 내장) 및 `docker-compose.yml` 볼륨 영속화 완비.
+  * 10분 만에 배포하는 초보자 가이드 (`docs/quickstart_guide.md`) 제공.
+
 ---
 
 ## 4. 시스템 아키텍처 개요 (System Architecture Overview)

@@ -463,6 +463,12 @@ class DevAgentService:
                 f"웹 대시보드(`/watson`)에서 365일 인터랙티브 잔디 뷰와 마크다운 분할 에디터를 확인하실 수 있습니다! 🖥️✨"
             )
 
+        elif lower_msg.startswith(("/setup", "/배포", "/설정점검", "/setup-status")):
+            action_type = "tool_setup"
+            from app.services.setup_service import SetupService
+            setup_svc = SetupService()
+            ai_response = setup_svc.format_status_report()
+
         elif lower_msg in ["/help", "help", "도움말", "명령어", "도구"]:
             action_type = "tool_help"
             ai_response = (
@@ -472,6 +478,8 @@ class DevAgentService:
                 "  * `/diff`: 변경 코드(Staged/Unstaged) 실시간 비교\n"
                 "  * `/log`: 최근 7건의 Git 커밋 히스토리 확인\n"
                 "  * `/branch`: 브랜치 목록 조회\n"
+                "* **⚙️ 셀프호스팅 배포 & 환경 점검 (ADR-046)**:\n"
+                "  * `/setup`: 텔레그램, LLM, GTD, 보안 등 시스템 배포 준비 상태 종합 진단\n"
                 "* **📋 라이프로그 & GTD 브리핑/열람/검색 (ADR-022, ADR-024, ADR-042, ADR-043)**:\n"
                 "  * `/search [키워드]`: 과거 라이프로그 및 GTD 문서 고속 텍스트/키워드 검색\n"
                 "  * `/weekly`: 지난 7일간의 기록 달성률, 완료 태스크 및 주간 결산 리포트\n"
