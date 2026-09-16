@@ -75,13 +75,14 @@
 * **1-Click 셀프호스팅 배포 패키지 & 셋업 위저드 (ADR-046)**: 대화형 셋업 위저드(./scripts/setup_wizard.sh)로 7단계 초기 환경 자동 구성(-y/--dry-run/--check 지원), 시스템 준비 상태 진단(/api/system/setup-status, /setup), 초경량 헬스체크 및 올인원 Docker Compose 패키징을 보장할 것.
 * **웹 콘솔 KST 동기화 & 실시간 시계 배지 (ADR-047)**: 세션/메시지 생성·갱신 및 직렬화 시 KST(+09:00) 타임존을 강제하여 "9시간 전" 왜곡을 해소하고, 웹 콘솔 상단 헤더에 초 단위 실시간 디지털 시계 배지([⏰ KST]) 및 에디터 자정 경계 보정, 출근 스케줄 능동 푸시를 보장할 것.
 * **단위 테스트 초고속화 & 템플릿 컴포넌트 모듈화 (ADR-048)**: 테스트 실행 시 외부 LLM CLI/중첩 툴체인을 격리 모킹하여 초고속(14분➔2분) 검증 환경을 구축하고, 웹 모달을 컴포넌트 템플릿(`app/templates/modals/`)으로 분리하여 템플릿 경량화(574➔183라인)와 유지보수성을 보장할 것.
+* **프론트엔드 CSS 컴포넌트 모듈화 (ADR-049)**: 단일 모놀리식 style.css(3,423라인)를 7개 도메인별 CSS 모듈로 분할하고 메인 파일을 @import 오케스트레이터 번들(13라인, 99.6% 경량화)로 개편하여 100% 하위 호환성을 보장할 것.
 * **Explicit User Commit Trigger Only (에이전트 코드 커밋 수칙)**: 코드 수정 및 기능 구현 후 Git 커밋(`git commit`)은 에이전트가 임의로 자동 실행하지 않으며, 오직 **사용자가 명시적으로 "커밋해" 지시를 내렸을 때만** 수행할 것.
 * **Curl-Based Live Verification (필수)**: 모든 코드 수정 후 반드시 `./scripts/smoke_test.sh` cURL 테스트를 실행하여 실제 라이브 API 수신 및 500 에러 부재를 검증할 것.
 * **Self-Verification & Evolution Loop**: 코드 변경 시 `pytest`/`mypy`/`ruff` 및 cURL 검증 수행 후 실패 시 `evolution.md` 지침에 따라 하네스 자가 진화 집행.
 
 ### 4. Progressive Disclosure (상세 문서 참조)
 * **제품 기획서 개요**: `docs/PRD.md` | **기능 요구사항**: `docs/requirements.md`
-* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-048)
+* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-049)
 
 
 ---

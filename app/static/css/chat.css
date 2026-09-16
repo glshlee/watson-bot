@@ -1,0 +1,333 @@
+/* ==========================================================================
+   Chat Console, Messages, Input & Quick Chips (ADR-048 / Phase 1-2)
+   ========================================================================== */
+
+/* Chat Console Wrapper */
+.chat-console-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    min-height: 0;
+}
+
+.chat-messages-container {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.message {
+    display: flex;
+    gap: 12px;
+    max-width: 80%;
+    min-width: 0;
+}
+
+.message.user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+
+.message.assistant {
+    align-self: flex-start;
+}
+
+.message .avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--bg-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent-purple);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.message.user .avatar {
+    background: var(--accent-blue);
+    color: white;
+}
+
+.bubble {
+    padding: 12px 16px;
+    border-radius: 14px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    min-width: 0;
+}
+
+.message.user .bubble {
+    background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+    color: white;
+    border-bottom-right-radius: 2px;
+}
+
+.message.assistant .bubble {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-bottom-left-radius: 2px;
+}
+
+/* Input Area */
+.chat-input-wrapper {
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+    padding: 14px 18px;
+    flex-shrink: 0;
+}
+
+.category-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.category-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+select {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 6px 12px;
+    border-radius: 6px;
+    outline: none;
+}
+
+.push-status-badge {
+    margin-left: auto;
+    color: var(--accent-green);
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.input-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+textarea {
+    flex: 1;
+    height: 46px;
+    min-height: 46px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    resize: none;
+    outline: none;
+    line-height: 1.4;
+    transition: border-color 0.2s;
+}
+
+textarea:focus {
+    border-color: var(--accent-purple);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+    color: white;
+    border: none;
+    padding: 0 20px;
+    height: 46px;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+/* Quick Actions for Butler Suggestion */
+.quick-actions-container {
+    display: flex;
+    gap: 10px;
+    margin: 8px 0 16px 48px;
+}
+
+.btn-quick {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.88rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s ease;
+}
+
+.btn-quick.approve {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border-color: rgba(16, 185, 129, 0.4);
+}
+
+.btn-quick.approve:hover {
+    background: rgba(16, 185, 129, 0.3);
+    transform: translateY(-1px);
+}
+
+.btn-quick.reject {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+.btn-quick.reject:hover {
+    background: rgba(239, 68, 68, 0.3);
+    transform: translateY(-1px);
+}
+
+/* Real-time Bus Refresh Action Bar (ADR-039) */
+.bus-refresh-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.15);
+}
+
+.btn-bus-refresh {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    transition: all 0.2s ease;
+}
+
+.btn-bus-refresh:hover:not(:disabled) {
+    background: rgba(56, 189, 248, 0.28);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(56, 189, 248, 0.25);
+}
+
+.btn-bus-refresh:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.bus-refresh-badge {
+    font-size: 0.78rem;
+    display: inline-flex;
+    align-items: center;
+}
+
+.bus-refresh-badge .refresh-success {
+    color: #34d399;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.bus-refresh-badge .refresh-fail {
+    color: #f87171;
+    font-weight: 500;
+}
+
+
+
+/* Code block markdown formatting in messages */
+.code-block {
+    background: #070b14;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-family: "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 0.85rem;
+    color: #a7f3d0;
+    overflow-x: auto;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin: 8px 0;
+    white-space: pre;
+    -webkit-overflow-scrolling: touch;
+}
+
+.inline-code {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.88em;
+    color: #6ee7b7;
+    word-break: break-all;
+}
+
+/* Watson Quick Shortcut Chips Bar (ADR-022, ADR-023) */
+.watson-quick-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 0 8px 0;
+    background: transparent;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    margin-bottom: 8px;
+    overflow-x: auto;
+    flex-shrink: 0;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.watson-quick-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.watson-chip-btn {
+    padding: 5px 12px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 20px;
+    color: #cbd5e1;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.watson-chip-btn:hover {
+    background: #4f46e5;
+    border-color: #6366f1;
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+

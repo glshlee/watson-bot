@@ -521,7 +521,21 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
   - 모든 DOM ID, 폼 액션 및 JavaScript 바인딩 100% 호환 유지
 - [x] 단위 테스트, 정적 타입/린트 검사(`mypy`, `ruff`) 및 `./scripts/smoke_test.sh` 라이브 검증 완료
 
-### Phase 48: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
+### Phase 48: 프론트엔드 스타일시트(CSS) 컴포넌트 모듈화 리팩터링 (ADR-049) - ✅ 완료
+- [x] 7대 도메인별 CSS 모듈 분리 (`app/static/css/`):
+  - `variables.css` (69라인): CSS 전역 변수, 리셋, 100dvh 높이, 디스플레이 유틸리티, 공통 애니메이션
+  - `layout.css` (657라인): 사이드바, 세션 검색/필터/리스트, 연결 상태 배너, 헤더 배지 6종
+  - `chat.css` (333라인): 채팅 콘솔, 메시지 버블, 코드블록, 입력 바, 왓슨 퀵 액션/칩 바
+  - `modals.css` (1,370라인): 모달 기본 오버레이 및 8종 팝업 모달 스타일
+  - `portal.css` (457라인): 에이전트 허브 대시보드 포털 레이아웃, 메트릭 카드, 에이전트 그리드
+  - `dev.css` (120라인): DevBot 콘솔 전용 브랜치 배지, 툴체인 퀵 바, 명령어 칩
+  - `responsive.css` (468라인): 모바일/태블릿(`<=768px`, `<=600px`, `<=400px`) 미디어 쿼리 통합
+- [x] 메인 `style.css` 오케스트레이터 번들 전환:
+  - 3,423라인 ➔ 13라인 `@import url(...)` 선언문으로 전면 개편 (99.6% 경량화)
+  - 기존 HTML 템플릿(`<link rel="stylesheet" href="/static/css/style.css">`) 100% 하위 호환성 유지
+- [x] 정적 파일 HTTP 200 검증 및 `./scripts/smoke_test.sh` 라이브 검증 완료
+
+### Phase 49: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
 - [ ] `User` 모델 및 테넌트별 저장소/컨텍스트 격리 (`/data/tenants/{user_id}/`)
 - [ ] 단일 텔레그램 봇 기반 다중 사용자 라우팅 및 계정 바인딩 (`/start [연동코드]`)
 - [ ] 사용자 GitHub PAT 및 외부 API 키 AES-256 (Fernet) 암호화 보관

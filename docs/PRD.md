@@ -454,6 +454,12 @@
 * **UI 템플릿 8대 모달 컴포넌트 분할 (`app/templates/modals/`)**:
   * `index.html`에 집중되어 있던 400여 줄의 8개 모달 DOM(`rename`, `delete`, `clear`, `gtd`, `schedule`, `commute`, `telegram_menu`, `lifelog_editor`)을 독립 컴포넌트 파일로 분할하고 Jinja2 `{% include %}`로 조립하여 메인 템플릿 크기를 574줄에서 183줄로 68% 슬림화.
 
+### 3.46. 🎨 프론트엔드 스타일시트(CSS) 컴포넌트 모듈화 리팩터링 (CSS Modularization & Master Bundle - ADR-049)
+* **7대 도메인별 CSS 모듈 분리 (`app/static/css/`)**:
+  * 3,423라인 단일 모놀리식 `style.css`를 도메인 책임에 따라 7개 전용 모듈(`variables.css`, `layout.css`, `chat.css`, `modals.css`, `portal.css`, `dev.css`, `responsive.css`)로 완전 분할.
+* **`style.css` 마스터 번들 오케스트레이터 전환**:
+  * `style.css`를 3,423라인에서 13라인의 `@import url(...)` 선언문으로 전면 교체하여 기존 HTML 템플릿과의 100% 하위 호환성을 유지하고, HTTP/2 병렬 전송 효율 및 유지보수성을 극대화.
+
 ---
 
 

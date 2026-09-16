@@ -1,0 +1,468 @@
+/* ==========================================================================
+   Mobile & Tablet Responsive Styling (ADR-016, ADR-023, ADR-048)
+   ========================================================================== */
+
+/* =========================================================
+   Mobile & Tablet Responsive Styling (ADR-016)
+   ========================================================= */
+
+@media (max-width: 768px) {
+    .desktop-only {
+        display: none !important;
+    }
+
+    .mobile-only {
+        display: inline-block;
+    }
+
+    /* Off-canvas mobile drawer */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 280px;
+        max-width: 82vw;
+        height: 100%;
+        height: 100dvh;
+        z-index: 1000;
+        transform: translateX(-100%);
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: none;
+        border-right: 1px solid var(--border-color);
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+        box-shadow: 12px 0 32px rgba(0, 0, 0, 0.7);
+    }
+
+    .close-sidebar-btn {
+        display: flex;
+    }
+
+    .mobile-menu-btn {
+        display: flex;
+    }
+
+    .main-content {
+        padding: 6px 8px 8px 8px;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .top-header {
+        margin-bottom: 6px;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .header-left {
+        gap: 8px;
+        min-width: 0;
+        flex: 1;
+        overflow: hidden;
+    }
+
+    .header-title {
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .header-title h1 {
+        font-size: 1.1rem;
+        line-height: 1.2;
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .user-profile {
+        gap: 5px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+    }
+
+    .user-profile .badge {
+        padding: 0 8px;
+        height: 34px;
+        border-radius: 8px;
+        font-size: 0.78rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .user-profile a.badge,
+    .user-profile button.badge {
+        width: 34px;
+        padding: 0;
+    }
+
+    .gtd-badge {
+        width: auto !important;
+        max-width: 105px !important;
+        padding: 0 6px !important;
+        height: 34px;
+        font-size: 0.75rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .telegram-badge {
+        width: auto !important;
+        max-width: 100px !important;
+        padding: 0 6px !important;
+        height: 34px;
+        font-size: 0.75rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    #telegram-menu-text {
+        max-width: 48px;
+        display: inline-block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+
+    .telegram-edit-btn {
+        margin-left: 2px;
+        padding: 2px 4px;
+    }
+
+    #gtd-path-text {
+        max-width: 50px;
+        display: inline-block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+
+    .gtd-edit-btn {
+        margin-left: 2px;
+        padding: 2px 4px;
+    }
+
+    .dev-branch-badge {
+        padding: 0 8px !important;
+        height: 34px;
+        font-size: 0.75rem;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .connection-banner {
+        padding: 8px 12px;
+        font-size: 0.82rem;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    #connection-banner-text {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .btn-reconnect {
+        flex-shrink: 0;
+    }
+
+    .chat-console-wrapper {
+        border-radius: 12px;
+    }
+
+    .chat-messages-container {
+        padding: 10px 8px;
+        gap: 10px;
+    }
+
+    .message {
+        max-width: 92%;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .message .avatar {
+        width: 30px;
+        height: 30px;
+        font-size: 0.85rem;
+        flex-shrink: 0;
+    }
+
+    .bubble {
+        padding: 9px 12px;
+        font-size: 0.9rem;
+        line-height: 1.45;
+        border-radius: 12px;
+        min-width: 0;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+
+    .quick-actions-container {
+        margin: 4px 0 8px 38px;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .btn-quick {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+        min-height: 34px;
+    }
+
+    .chat-input-wrapper {
+        padding: 6px 8px;
+        padding-bottom: max(6px, env(safe-area-inset-bottom));
+    }
+
+    .watson-quick-bar {
+        padding: 0 0 5px 0;
+        margin-bottom: 5px;
+        gap: 5px;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .watson-quick-bar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .watson-chip-btn {
+        padding: 4px 9px;
+        font-size: 0.74rem;
+        border-radius: 14px;
+    }
+
+    .category-bar {
+        gap: 6px;
+        margin-bottom: 5px;
+        font-size: 0.78rem;
+    }
+
+    select {
+        padding: 3px 6px;
+        font-size: 0.78rem;
+        max-width: 140px;
+        height: 28px;
+    }
+
+    .push-status-badge {
+        font-size: 0.75rem;
+    }
+
+    .input-row {
+        gap: 6px;
+    }
+
+    textarea {
+        font-size: 16px; /* Prevents auto-zoom on iOS Safari */
+        height: 40px;
+        min-height: 40px;
+        padding: 9px 10px;
+        border-radius: 10px;
+    }
+
+    .btn-primary {
+        height: 40px;
+        min-width: 40px;
+        padding: 0 10px;
+        border-radius: 10px;
+    }
+
+    /* Responsive GTD Modal */
+    .modal {
+        padding: 12px;
+    }
+
+    .modal-content {
+        width: 100%;
+        max-width: 440px;
+        border-radius: 14px;
+    }
+
+    .modal-header {
+        padding: 14px 16px;
+    }
+
+    .modal-header h3 {
+        font-size: 1rem;
+    }
+
+    .modal-body {
+        padding: 16px;
+    }
+
+    .form-group input {
+        font-size: 16px; /* Prevents auto-zoom on iOS Safari */
+        padding: 10px 12px;
+    }
+
+    .modal-footer {
+        padding: 12px 16px;
+    }
+}
+
+@media (max-width: 400px) {
+    .gtd-badge {
+        max-width: 85px !important;
+        padding: 0 5px !important;
+    }
+
+    #gtd-path-text {
+        max-width: 35px;
+    }
+
+    .message {
+        max-width: 95%;
+    }
+
+    .quick-actions-container {
+        margin-left: 0;
+    }
+}
+
+
+
+
+
+@media (max-width: 768px) {
+    .portal-container {
+        padding: 16px 12px 60px 12px;
+        gap: 16px;
+    }
+    .portal-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding-bottom: 14px;
+    }
+    .portal-brand-text h1 {
+        font-size: 1.3rem;
+    }
+    .portal-metrics-section {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    .metric-card {
+        padding: 12px 14px;
+        gap: 10px;
+    }
+    .metric-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 1.1rem;
+    }
+    .metric-val {
+        font-size: 1.1rem;
+    }
+    .portal-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+    .agent-portal-card {
+        padding: 18px 16px;
+        gap: 12px;
+    }
+    .dev-quick-bar {
+        padding: 6px 10px;
+        gap: 6px;
+    }
+    .cmd-chip {
+        padding: 4px 9px;
+        font-size: 0.74rem;
+    }
+}
+
+
+
+@media (max-width: 600px) {
+    .form-grid-2 {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    .commute-modal-content {
+        width: 95%;
+    }
+}
+
+
+
+@media (max-width: 768px) {
+    .telegram-modal-layout {
+        grid-template-columns: 1fr;
+    }
+    .telegram-preview-pane {
+        max-height: 250px;
+    }
+}
+
+
+
+@media (max-width: 768px) {
+    .lifelog-editor-modal-content {
+        width: 100vw !important;
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+        border-radius: 0 !important;
+    }
+
+    .editor-workspace {
+        grid-template-columns: 1fr;
+    }
+
+    .editor-workspace.view-write .preview-pane {
+        display: none !important;
+    }
+
+    .editor-workspace.view-preview .write-pane {
+        display: none !important;
+    }
+
+    .editor-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .editor-date-nav {
+        justify-content: space-between;
+    }
+
+    .editor-file-meta {
+        justify-content: space-between;
+    }
+
+    .editor-view-tabs {
+        width: 100%;
+        display: flex !important;
+    }
+
+    .editor-view-tabs .view-tab {
+        flex: 1;
+        text-align: center;
+    }
+
+    .commit-options {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+    }
+
+    .footer-buttons {
+        width: 100%;
+    }
+
+    .footer-buttons button {
+        flex: 1;
+    }
+}
+
+
+

@@ -283,6 +283,11 @@
 - **FR-47.2**: 574라인에 달하던 `app/templates/index.html` 내 인라인 모달 마크업을 `app/templates/modals/` 8개 전용 컴포넌트 템플릿으로 분리 모듈화하고 Jinja2 `{% include %}` 구문으로 경량화(183라인, 68% 단축)해야 한다.
 - **FR-47.3**: 모듈화된 8개 팝업 모달(세션 변경/삭제/비우기, GTD 설정, 스케줄, 출근길, 텔레그램 메뉴, 잔디 에디터)의 DOM ID 및 인터랙티브 JavaScript 이벤트 바인딩 호환성을 100% 유지해야 한다.
 
+### FR-48: 프론트엔드 스타일시트(CSS) 컴포넌트 모듈화 리팩터링 (ADR-049)
+- **FR-48.1**: 3,423라인 단일 모놀리식 `style.css`를 7대 도메인별 모듈(`variables.css`, `layout.css`, `chat.css`, `modals.css`, `portal.css`, `dev.css`, `responsive.css`)로 분할하여 개별 모듈의 책임을 격리해야 한다.
+- **FR-48.2**: 메인 `app/static/css/style.css`를 13라인의 `@import url(...)` 마스터 오케스트레이터 번들로 전환하여 기존 HTML 템플릿의 `<link>` 태그 호환성을 100% 보장해야 한다.
+- **FR-48.3**: 분할된 모든 7개 CSS 모듈의 HTTP 200 서빙과 모바일/데스크톱 반응형 렌더링 무결성을 유지해야 한다.
+
 ---
 
 
@@ -353,6 +358,8 @@
 | **FR-45** | `scripts/setup_wizard.sh`, `app/services/setup_service.py`, `app/routers/web_router.py`, `Dockerfile`, `docker-compose.yml` | Pytest 단위 테스트(`test_setup_service.py`) & cURL 스모크 검증(3-13-27 ~ 3-13-29) |
 | **FR-46** | `app/models/session.py`, `app/services/session_service.py`, `app/main.py`, `app/services/briefing_scheduler.py`, `app/templates/index.html`, `app/templates/dev.html`, `app/static/js/main.js`, `app/static/js/dev.js` | Pytest 단위 테스트(`test_session_service.py`, `test_briefing_scheduler.py`) & cURL 스모크 검증(0-1, 2) |
 | **FR-47** | `tests/conftest.py`, `app/templates/modals/*.html`, `app/templates/index.html` | Pytest 단위 테스트 & cURL 스모크 검증(0-1, 0-2) |
+| **FR-48** | `app/static/css/*.css`, `app/static/css/style.css` | cURL 정적 파일 검증 및 스모크 테스트 |
+
 
 
 
