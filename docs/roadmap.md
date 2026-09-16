@@ -535,7 +535,24 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
   - 기존 HTML 템플릿(`<link rel="stylesheet" href="/static/css/style.css">`) 100% 하위 호환성 유지
 - [x] 정적 파일 HTTP 200 검증 및 `./scripts/smoke_test.sh` 라이브 검증 완료
 
-### Phase 49: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
+### Phase 49: 프론트엔드 자바스크립트(JS) 모듈화 및 모달 컨트롤러 분리 (ADR-050) - ✅ 완료
+- [x] 공통 유틸리티 모듈 분리 (`app/static/js/utils/`):
+  - `api.js` (114라인): 지수 백오프 네트워크 재시도(`fetchWithRetry`), 헬스체크 및 연결 상태 배너 제어(`window.WatsonAPI`)
+  - `date.js` (75라인): KST 기준 날짜 계산, 상대 시간 포맷터, 실시간 디지털 시계 배지 갱신(`window.WatsonDate`)
+  - `modal.js` (39라인): 모달 ESC/백드롭 닫기 이벤트, 오픈/클로즈 유틸리티 및 HTML 이스케이프(`window.WatsonModal`)
+- [x] 5대 도메인 전용 모달 컨트롤러 분리 (`app/static/js/modules/`):
+  - `gtd_modal.js` (124라인): GTD 경로 설정 및 상태 조회 (`window.WatsonGTD`)
+  - `schedule_modal.js` (215라인): 브리핑 스케줄 타임라인 및 능동 푸시 트리거 (`window.WatsonSchedule`)
+  - `commute_modal.js` (326라인): 지오코딩 자동 매핑, 버스 정류소 역조회, 출근 설정 저장/프리뷰 (`window.WatsonCommute`)
+  - `telegram_modal.js` (282라인): 14종 봇 메뉴 명령어 CRUD, 폰 목업 미리보기, 동기화/리셋 (`window.WatsonTelegram`)
+  - `editor_modal.js` (317라인): 연간 잔디(Heatmap) 렌더링, 일일 로그 로드, 마크다운 분할 에디터 및 커밋 (`window.WatsonEditor`)
+- [x] 메인 스크립트 슬림화 및 DevBot 중복 제거:
+  - `main.js`: 1,984라인 ➔ 662라인으로 66.6% 대폭 감축 (세션 관리 및 실시간 채팅 코어 전담)
+  - `dev.js`: 중복된 API 재시도 및 실시간 시계 로직을 공통 유틸리티로 대체하여 DRY 원칙 확립
+  - `index.html` 및 `dev.html` 스크립트 종속 순서 배치로 번들러 없이 100% 브라우저 네이티브 구동 보장
+- [x] 단위 테스트, 정적 타입/린트 검사(`mypy`, `ruff`) 및 `./scripts/smoke_test.sh` 라이브 검증 완료
+
+### Phase 50: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
 - [ ] `User` 모델 및 테넌트별 저장소/컨텍스트 격리 (`/data/tenants/{user_id}/`)
 - [ ] 단일 텔레그램 봇 기반 다중 사용자 라우팅 및 계정 바인딩 (`/start [연동코드]`)
 - [ ] 사용자 GitHub PAT 및 외부 API 키 AES-256 (Fernet) 암호화 보관

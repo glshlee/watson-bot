@@ -1,14 +1,28 @@
+/**
+ * Watson AI Agent - Main Application Controller (Session & Chat Engine)
+ * Modular Architecture (ADR-048, ADR-050 / Phase 2)
+ */
 document.addEventListener("DOMContentLoaded", () => {
+    // Shared Utilities from WatsonDate & WatsonAPI
+    const formatRelativeTime = window.WatsonDate?.formatRelativeTime || window.formatRelativeTime;
+    const fetchWithRetry = window.WatsonAPI?.fetchWithRetry || window.fetchWithRetry || fetch;
+    const updateConnectionUI = window.WatsonAPI?.updateConnectionUI || window.updateConnectionUI || (() => {});
+    const checkHealth = window.WatsonAPI?.checkHealth || (() => {});
+
+    // State Variables
     let currentSessionId = "web_default_session";
     let allSessions = [];
     let currentFilter = "all";
     let searchQuery = "";
     let targetActionSessionId = null;
 
+    // DOM Elements - Chat & Input
     const chatMessages = document.getElementById("chat-messages");
     const chatInput = document.getElementById("chat-input");
     const sendBtn = document.getElementById("send-btn");
     const categorySelect = document.getElementById("category-select");
+
+    // DOM Elements - Sidebar & Sessions
     const sessionList = document.getElementById("session-list");
     const newSessionBtn = document.getElementById("new-session-btn");
     const sessionSearchInput = document.getElementById("session-search-input");
@@ -23,7 +37,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const activeSessionMeta = document.getElementById("active-session-meta");
     const clearChatBtn = document.getElementById("clear-chat-btn");
 
-    // Modals
+    // DOM Elements - Session Modals
     const renameModal = document.getElementById("rename-modal");
     const closeRenameModalBtn = document.getElementById("close-rename-modal-btn");
     const cancelRenameBtn = document.getElementById("cancel-rename-btn");
@@ -41,102 +55,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const cancelClearBtn = document.getElementById("cancel-clear-btn");
     const confirmClearBtn = document.getElementById("confirm-clear-btn");
 
-    // Connection Resilience & Heartbeat Elements (ADR-021)
-    const connectionBanner = document.getElementById("connection-banner");
-    const connectionBannerText = document.getElementById("connection-banner-text");
+    // Connection Banner Reconnect
     const reconnectBtn = document.getElementById("reconnect-btn");
-    const systemStatus = document.querySelector(".system-status");
-    const statusIndicator = document.querySelector(".status-indicator");
-    const statusTitle = document.querySelector(".status-title");
-    const statusSub = document.querySelector(".status-sub");
 
-    let currentConnectionState = "online";
-    let isReconnecting = false;
-
-    function updateConnectionUI(state, message = "") {
-        currentConnectionState = state;
-        if (statusIndicator) {
-            statusIndicator.className = `status-indicator ${state}`;
-        }
-        if (systemStatus) {
-            systemStatus.className = `system-status ${state !== "online" ? state : ""}`;
-        }
-
-        if (state === "online") {
-            if (statusTitle) statusTitle.innerText = "Agent 24/7 Active";
-            if (statusSub) statusSub.innerText = "Git Sync & Context Memory";
-            if (connectionBanner) connectionBanner.classList.add("hidden");
-        } else if (state === "warning") {
-            if (statusTitle) statusTitle.innerText = "재연결 시도 중...";
-            if (statusSub) statusSub.innerText = message || "네트워크 상태 확인 중";
-            if (connectionBanner) {
-                connectionBanner.className = "connection-banner warning";
-                if (connectionBannerText) connectionBannerText.innerText = message || "서버 연결이 불안정하여 재연결 중입니다.";
-                connectionBanner.classList.remove("hidden");
-            }
-        } else if (state === "offline") {
-            if (statusTitle) statusTitle.innerText = "연결 끊김 (Offline)";
-            if (statusSub) statusSub.innerText = "인터넷 또는 터널 연결 확인 필요";
-            if (connectionBanner) {
-                connectionBanner.className = "connection-banner offline";
-                if (connectionBannerText) connectionBannerText.innerText = "네트워크 연결이 끊겼습니다. 인터넷 연결을 확인해 주세요.";
-                connectionBanner.classList.remove("hidden");
-            }
-        }
-    }
-
-    async function fetchWithRetry(url, options = {}, retries = 2, delay = 1200) {
-        for (let attempt = 0; attempt <= retries; attempt++) {
-            try {
-                let signal = options.signal;
-                if (!signal && typeof AbortSignal !== "undefined" && AbortSignal.timeout) {
-                    signal = AbortSignal.timeout(65000);
-                }
-                const res = await fetch(url, { ...options, signal });
-                if ([502, 503, 504].includes(res.status) && attempt < retries) {
-                    console.warn(`[Connection] Transient HTTP ${res.status} on ${url}. Retrying (${attempt + 1}/${retries})...`);
-                    updateConnectionUI("warning", "서버 응답 지연 중... 재연결 시도 중");
-                    await new Promise(r => setTimeout(r, delay * (attempt + 1)));
-                    continue;
-                }
-                return res;
-            } catch (err) {
-                if (attempt < retries) {
-                    console.warn(`[Connection] Network drop on ${url}. Retrying (${attempt + 1}/${retries})...`, err);
-                    updateConnectionUI("warning", "일시적 연결 끊김. 자동 재연결 중...");
-                    await new Promise(r => setTimeout(r, delay * (attempt + 1)));
-                } else {
-                    throw err;
-                }
-            }
-        }
-    }
-
-    async function checkHealth() {
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 6000);
-            const res = await fetch("/api/health", { signal: controller.signal });
-            clearTimeout(timeoutId);
-            if (res.ok) {
-                if (isReconnecting || currentConnectionState !== "online") {
-                    console.log("[Connection] Restored online status.");
-                    isReconnecting = false;
-                    updateConnectionUI("online");
-                    await syncActiveSessionHistory();
-                } else {
-                    updateConnectionUI("online");
-                }
-            } else {
-                updateConnectionUI("warning", `서버 응답 이상 (HTTP ${res.status})`);
-                isReconnecting = true;
-            }
-        } catch (e) {
-            updateConnectionUI("offline");
-            isReconnecting = true;
-        }
-    }
-
+    // Sync active session history upon reconnect
     async function syncActiveSessionHistory() {
         if (!currentSessionId) return;
         try {
@@ -154,65 +76,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         } catch (e) {
             console.debug("Failed to sync session history:", e);
-        }
-    }
-
-    // Helper to get date string formatted in KST (YYYY-MM-DD)
-    function getKSTDateString(date = new Date()) {
-        try {
-            return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(date);
-        } catch {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, "0");
-            const day = String(date.getDate()).padStart(2, "0");
-            return `${year}-${month}-${day}`;
-        }
-    }
-
-    // Relative Time Formatter (KST-aware & timezone robust)
-    function formatRelativeTime(dateStr) {
-        if (!dateStr) return "";
-        try {
-            let parseStr = dateStr.trim();
-            // If string has no timezone indicator, treat as KST (+09:00)
-            if (!parseStr.includes("Z") && !parseStr.includes("+") && !parseStr.match(/-\d{2}:\d{2}$/)) {
-                // Replace space with T if needed
-                parseStr = parseStr.replace(" ", "T") + "+09:00";
-            }
-            const d = new Date(parseStr);
-            const now = new Date();
-            const diffSec = Math.floor((now - d) / 1000);
-            if (diffSec < 60) return "방금";
-            const diffMin = Math.floor(diffSec / 60);
-            if (diffMin < 60) return `${diffMin}분 전`;
-            const diffHour = Math.floor(diffMin / 60);
-            if (diffHour < 24) return `${diffHour}시간 전`;
-            const diffDay = Math.floor(diffHour / 24);
-            if (diffDay === 1) return "어제";
-            if (diffDay < 7) return `${diffDay}일 전`;
-            return `${d.getMonth() + 1}월 ${d.getDate()}일`;
-        } catch {
-            return "";
-        }
-    }
-
-    // Live KST Header Clock
-    function updateLiveClock() {
-        const clockEl = document.getElementById("header-live-clock");
-        if (!clockEl) return;
-        try {
-            const now = new Date();
-            const timePart = new Intl.DateTimeFormat("ko-KR", {
-                timeZone: "Asia/Seoul",
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-                hour12: false
-            }).format(now);
-            clockEl.textContent = `${timePart} KST`;
-        } catch {
-            const now = new Date();
-            clockEl.textContent = `${now.toLocaleTimeString()} KST`;
         }
     }
 
@@ -252,6 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Render session cards with search and channel filter
     function renderSessionList() {
+        if (!sessionList) return;
         sessionList.innerHTML = "";
 
         const filtered = allSessions.filter(s => {
@@ -333,7 +197,6 @@ document.addEventListener("DOMContentLoaded", () => {
             closeSidebar();
         }
 
-        // Highlight active session item in sidebar
         document.querySelectorAll(".session-item").forEach(el => {
             el.classList.toggle("active", el.dataset.id === sessionId);
         });
@@ -344,7 +207,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 const data = await res.json();
                 renderHistory(data.history);
 
-                // Update Header with Session Name
                 const title = data.title || sessionId;
                 if (activeSessionTitle) activeSessionTitle.innerText = title;
                 if (mobileSessionTitle) mobileSessionTitle.innerText = title.length > 14 ? title.slice(0, 14) + "..." : title;
@@ -387,13 +249,13 @@ document.addEventListener("DOMContentLoaded", () => {
     // Rename Session Modal Logic
     function openRenameModal(sessionId, currentTitle) {
         targetActionSessionId = sessionId;
-        renameSessionInput.value = currentTitle;
-        renameModal.classList.remove("hidden");
-        setTimeout(() => renameSessionInput.focus(), 100);
+        if (renameSessionInput) renameSessionInput.value = currentTitle;
+        renameModal?.classList.remove("hidden");
+        setTimeout(() => renameSessionInput?.focus(), 100);
     }
 
     function closeRenameModal() {
-        renameModal.classList.add("hidden");
+        renameModal?.classList.add("hidden");
         targetActionSessionId = null;
     }
 
@@ -401,7 +263,7 @@ document.addEventListener("DOMContentLoaded", () => {
     cancelRenameBtn?.addEventListener("click", closeRenameModal);
 
     saveRenameBtn?.addEventListener("click", async () => {
-        const newTitle = renameSessionInput.value.trim();
+        const newTitle = renameSessionInput?.value.trim();
         if (!newTitle) {
             alert("세션 이름을 입력해 주세요.");
             return;
@@ -439,7 +301,7 @@ document.addEventListener("DOMContentLoaded", () => {
     renameSessionInput?.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
             e.preventDefault();
-            saveRenameBtn.click();
+            saveRenameBtn?.click();
         }
     });
 
@@ -449,11 +311,11 @@ document.addEventListener("DOMContentLoaded", () => {
         if (deleteModalMsg) {
             deleteModalMsg.innerText = `세션 '${title}' (${sessionId}) 및 모든 대화 기록을 완전히 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`;
         }
-        deleteModal.classList.remove("hidden");
+        deleteModal?.classList.remove("hidden");
     }
 
     function closeDeleteModal() {
-        deleteModal.classList.add("hidden");
+        deleteModal?.classList.add("hidden");
         targetActionSessionId = null;
     }
 
@@ -472,7 +334,6 @@ document.addEventListener("DOMContentLoaded", () => {
             if (res.ok) {
                 closeDeleteModal();
                 await loadSessions();
-                // If deleted session was active, switch to next available or default
                 if (currentSessionId === targetActionSessionId) {
                     const nextSession = allSessions.find(s => s.id !== targetActionSessionId);
                     const newId = nextSession ? nextSession.id : "web_default_session";
@@ -492,11 +353,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Clear Chat Messages Modal Logic
     clearChatBtn?.addEventListener("click", () => {
-        clearModal.classList.remove("hidden");
+        clearModal?.classList.remove("hidden");
     });
 
-    closeClearModalBtn?.addEventListener("click", () => clearModal.classList.add("hidden"));
-    cancelClearBtn?.addEventListener("click", () => clearModal.classList.add("hidden"));
+    closeClearModalBtn?.addEventListener("click", () => clearModal?.classList.add("hidden"));
+    cancelClearBtn?.addEventListener("click", () => clearModal?.classList.add("hidden"));
 
     confirmClearBtn?.addEventListener("click", async () => {
         confirmClearBtn.disabled = true;
@@ -508,8 +369,8 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             if (res.ok) {
-                clearModal.classList.add("hidden");
-                chatMessages.innerHTML = "";
+                clearModal?.classList.add("hidden");
+                if (chatMessages) chatMessages.innerHTML = "";
                 appendMessage("assistant", "대화 내용이 초기화되었습니다. 새로운 기록을 남겨보세요! 🤖");
                 await loadSessions();
                 if (activeSessionMeta) {
@@ -527,7 +388,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    // Chat Message Rendering & Scroll
     function renderHistory(history) {
+        if (!chatMessages) return;
         chatMessages.innerHTML = "";
         if (!history || history.length === 0) {
             appendMessage("assistant", "안녕하세요! 새 세션이 시작되었습니다. 무엇이든 기록해 주세요! 🤖");
@@ -540,6 +403,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function appendMessage(role, text) {
+        if (!chatMessages) return;
         const msgDiv = document.createElement("div");
         msgDiv.className = `message ${role}`;
 
@@ -555,7 +419,7 @@ document.addEventListener("DOMContentLoaded", () => {
         textContent.innerText = text;
         bubble.appendChild(textContent);
 
-        // 실시간 버스 도착 정보 원터치 인라인 갱신 버튼 부착 (ADR-039)
+        // Real-time bus arrival inline refresh (ADR-039)
         const isBusCard = role === "assistant" && typeof text === "string" && (
             text.includes("[실시간 출근 버스 도착 정보]") ||
             text.includes("출근길 버스 현황") ||
@@ -620,10 +484,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function scrollToBottom() {
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
     function appendQuickActions() {
+        if (!chatMessages) return;
         const actionDiv = document.createElement("div");
         actionDiv.className = "quick-actions-container";
         actionDiv.innerHTML = `
@@ -647,11 +512,15 @@ document.addEventListener("DOMContentLoaded", () => {
     async function sendTextMessage(text) {
         if (!text) return;
         appendMessage("user", text);
-        chatInput.value = "";
-        chatInput.style.height = "";
+        if (chatInput) {
+            chatInput.value = "";
+            chatInput.style.height = "";
+        }
 
-        sendBtn.disabled = true;
-        sendBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        if (sendBtn) {
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        }
 
         try {
             const res = await fetchWithRetry("/api/chat", {
@@ -681,7 +550,6 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (e) {
             console.error(e);
             updateConnectionUI("warning", "응답 대기 중 일시적 연결 지연이 발생했습니다.");
-            // Recovery: check if the assistant's reply was actually saved to SQLite before socket dropped
             await new Promise(r => setTimeout(r, 1000));
             try {
                 const checkRes = await fetch(`/api/sessions/${currentSessionId}/history`);
@@ -699,23 +567,23 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             appendMessage("assistant", "⚠️ 네트워크 연결이 일시적으로 끊겼습니다. 상단 재시도 버튼을 누르거나 잠시 후 다시 확인해 주세요.");
         } finally {
-            sendBtn.disabled = false;
-            sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> <span class="desktop-only">전송</span>';
+            if (sendBtn) {
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> <span class="desktop-only">전송</span>';
+            }
         }
     }
 
     // Auto-resize textarea on input
-    chatInput.addEventListener("input", () => {
+    chatInput?.addEventListener("input", () => {
         chatInput.style.height = "auto";
         chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + "px";
     });
 
     // Send Message Handler
-    sendBtn.addEventListener("click", () => {
-        const text = chatInput.value.trim();
-        if (text) {
-            sendTextMessage(text);
-        }
+    sendBtn?.addEventListener("click", () => {
+        const text = chatInput?.value.trim();
+        if (text) sendTextMessage(text);
     });
 
     // Watson Quick Shortcut Chips (ADR-022)
@@ -727,1219 +595,26 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    chatInput.addEventListener("keydown", (e) => {
+    chatInput?.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
-            sendBtn.click();
+            sendBtn?.click();
         }
     });
 
-    newSessionBtn.addEventListener("click", () => {
+    newSessionBtn?.addEventListener("click", () => {
         const newId = `web_session_${Date.now()}`;
-        if (window.innerWidth <= 768) {
-            closeSidebar();
-        }
+        if (window.innerWidth <= 768) closeSidebar();
         switchSession(newId);
     });
 
-    // GTD Directory Management (ADR-007)
-    const gtdStorageBadge = document.getElementById("gtd-storage-badge");
-    const gtdPathText = document.getElementById("gtd-path-text");
-    const changeGtdBtn = document.getElementById("change-gtd-btn");
-    const gtdModal = document.getElementById("gtd-modal");
-    const closeGtdModalBtn = document.getElementById("close-gtd-modal-btn");
-    const cancelGtdBtn = document.getElementById("cancel-gtd-btn");
-    const saveGtdBtn = document.getElementById("save-gtd-btn");
-    const gtdPathInput = document.getElementById("gtd-path-input");
-    const gtdModalStatus = document.getElementById("gtd-modal-status");
-
-    async function loadGTDStatus() {
-        try {
-            const res = await fetch("/api/settings/gtd-path");
-            if (res.ok) {
-                const data = await res.json();
-                const shortPath = data.gtd_path.split("/").slice(-2).join("/");
-                gtdPathText.innerText = `GTD: ${shortPath} ${data.is_git_repo ? '⚡Git' : '📁Local'}`;
-                gtdPathText.title = `경로: ${data.gtd_path} (${data.is_git_repo ? '독립 Git 레포지토리 연동' : '로컬 보관'})`;
-
-                if (data.is_git_repo) {
-                    gtdStorageBadge.classList.add("git-active");
-                } else {
-                    gtdStorageBadge.classList.remove("git-active");
-                }
-
-                gtdPathInput.value = data.gtd_path;
-                updateModalStatusBox(data);
-            }
-        } catch (e) {
-            console.error("Failed to load GTD status", e);
-            gtdPathText.innerText = "GTD: 경로 오류";
-        }
-    }
-
-    function updateModalStatusBox(data) {
-        gtdModalStatus.innerHTML = `
-            <strong>현재 연동 정보:</strong><br>
-            • 전체 경로: <code>${data.gtd_path}</code><br>
-            • Git 버전 관리: ${data.is_git_repo ? '<span style="color:#34d399">✅ 활성화 (독립 커밋/푸시)</span>' : '<span style="color:#94a3b8">📁 로컬 파일 전용 (Git 미연동)</span>'}<br>
-            • 격리 모드: ${data.is_external ? '<span style="color:#60a5fa">외부 분리 저장소 (External)</span>' : '봇 소스코드 기본'}<br>
-            • 구조 체계: <code>${data.structure_type}</code> (Inbox: ${data.has_inbox ? '있음' : '없음'}, Daily Logs: ${data.has_daily_logs ? '있음' : '없음'})
-        `;
-    }
-
-    function openGTDModal() {
-        gtdModal.classList.remove("hidden");
-    }
-
-    function closeGTDModal() {
-        gtdModal.classList.add("hidden");
-    }
-
-    changeGtdBtn?.addEventListener("click", (e) => {
-        e.stopPropagation();
-        openGTDModal();
-    });
-
-    gtdStorageBadge?.addEventListener("click", () => {
-        openGTDModal();
-    });
-
-    closeGtdModalBtn?.addEventListener("click", closeGTDModal);
-    cancelGtdBtn?.addEventListener("click", closeGTDModal);
-
-    gtdModal?.addEventListener("click", (e) => {
-        if (e.target === gtdModal) {
-            closeGTDModal();
-        }
-    });
-
-    saveGtdBtn?.addEventListener("click", async () => {
-        const newPath = gtdPathInput.value.trim();
-        if (!newPath) {
-            alert("디렉토리 경로를 입력해 주세요.");
-            return;
-        }
-
-        saveGtdBtn.disabled = true;
-        saveGtdBtn.innerText = "저장 중...";
-
-        try {
-            const res = await fetch("/api/settings/gtd-path", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ path: newPath, create_if_missing: true })
-            });
-
-            const result = await res.json();
-            if (res.ok) {
-                alert(`✅ GTD 관리 경로가 성공적으로 설정되었습니다!\n경로: ${result.data.gtd_path}`);
-                await loadGTDStatus();
-                closeGTDModal();
-            } else {
-                alert(`⚠️ 설정 실패: ${result.detail || "경로를 확인해 주세요."}`);
-            }
-        } catch (e) {
-            console.error(e);
-            alert("⚠️ 서버 통신 중 오류가 발생했습니다.");
-        } finally {
-            saveGtdBtn.disabled = false;
-            saveGtdBtn.innerText = "저장 및 적용";
-        }
-    });
-
-    // Schedule Modal (ADR-025)
-    const scheduleModal = document.getElementById("schedule-modal");
-    const closeScheduleModalBtn = document.getElementById("close-schedule-modal-btn");
-    const closeScheduleBtn = document.getElementById("close-schedule-btn");
-    const btnScheduleView = document.getElementById("btn-schedule-view");
-    const scheduleModalBody = document.getElementById("schedule-modal-body");
-
-    async function openScheduleModal() {
-        if (!scheduleModal || !scheduleModalBody) return;
-        scheduleModal.classList.remove("hidden");
-        scheduleModalBody.innerHTML = `
-            <div class="schedule-loading" style="text-align:center; padding:30px; color:var(--text-secondary);">
-                <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
-                <p style="margin-top:10px; font-size:0.9rem;">스케줄 정보를 불러오는 중...</p>
-            </div>
-        `;
-
-        try {
-            const res = await fetchWithRetry("/api/briefing/schedule");
-            if (res.ok) {
-                const json = await res.json();
-                renderScheduleModalContent(json.data);
-            } else {
-                scheduleModalBody.innerHTML = `<p style="color:#ef4444; padding:20px;">스케줄 정보를 불러오지 못했습니다. (${res.status})</p>`;
-            }
-        } catch (e) {
-            scheduleModalBody.innerHTML = `<p style="color:#ef4444; padding:20px;">스케줄 로딩 오류: ${e.message}</p>`;
-        }
-    }
-
-    function renderScheduleModalContent(data) {
-        if (!scheduleModalBody) return;
-        const schedules = data.schedules || [];
-        const todaySchedules = data.today_schedules || [];
-
-        let scheduleCardsHtml = schedules.map(s => `
-            <div class="schedule-card ${s.is_active ? 'active' : ''}">
-                <div class="schedule-card-top">
-                    <div class="schedule-card-title">
-                        ${s.id === 'morning' ? '🌅' : '🌇'} ${s.title}
-                        ${s.is_active ? '<span class="schedule-active-badge" style="font-size:0.7rem; padding:2px 7px;">현재 모드</span>' : ''}
-                    </div>
-                    <span class="schedule-card-time"><i class="fa-regular fa-clock"></i> ${s.scheduled_time}</span>
-                </div>
-                <div class="schedule-card-desc">
-                    <strong>자동 감지 구간:</strong> ${s.active_range}<br>
-                    ${s.summary}
-                </div>
-                <div class="schedule-card-action">
-                    <button class="btn-schedule-trigger" onclick="window.triggerScheduleBriefing('${s.command}')">
-                        <i class="fa-solid fa-play"></i> 지금 실행하기
-                    </button>
-                </div>
-            </div>
-        `).join("");
-
-        let todayScheduleHtml = "";
-        if (todaySchedules.length > 0) {
-            todayScheduleHtml = `
-                <div class="schedule-today-box" style="margin-top: 14px;">
-                    <div class="schedule-today-title"><i class="fa-solid fa-calendar-day"></i> 오늘 일일 로그 주요 일정 (${todaySchedules.length}건)</div>
-                    <ul class="schedule-today-list">
-                        ${todaySchedules.map(item => `<li class="schedule-today-item">${escapeHtml(item)}</li>`).join("")}
-                    </ul>
-                </div>
-            `;
-        } else {
-            todayScheduleHtml = `
-                <div class="schedule-today-box" style="margin-top: 14px;">
-                    <div class="schedule-today-title"><i class="fa-solid fa-calendar-day"></i> 오늘 일일 로그 주요 일정</div>
-                    <p style="font-size:0.82rem; color:var(--text-secondary); margin:0;">오늘 작성된 시간별 일정이 없습니다.</p>
-                </div>
-            `;
-        }
-
-        const tgPush = data.telegram_push || {};
-        let tgPushHtml = "";
-        if (tgPush.enabled) {
-            const recipientsStr = (tgPush.recipients || []).join(", ");
-            tgPushHtml = `
-                <div class="schedule-tg-box" style="margin-top: 14px; background: rgba(44, 165, 224, 0.08); border: 1px solid rgba(44, 165, 224, 0.25); border-radius: 10px; padding: 12px 14px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                        <div style="font-size: 0.88rem; font-weight: 600; color: #2ca5e0;">
-                            <i class="fa-brands fa-telegram"></i> 텔레그램 자동 푸시 알림 (08:30 / 20:00 KST)
-                        </div>
-                        <span style="font-size: 0.75rem; background: #2ca5e0; color: #fff; padding: 2px 8px; border-radius: 12px;">✅ 활성</span>
-                    </div>
-                    <div style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 6px; line-height: 1.4;">
-                        정기 시각에 왓슨이 텔레그램으로 브리핑을 자동 발송합니다. (수신 Chat ID: <code>${recipientsStr}</code>)
-                    </div>
-                    <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                        <button id="btn-trigger-push" class="btn-primary" style="font-size: 0.8rem; padding: 6px 12px; background: #2ca5e0; border-color: #2ca5e0;" onclick="window.triggerTelegramTestPush()">
-                            <i class="fa-solid fa-paper-plane"></i> 텔레그램으로 지금 즉시 발송
-                        </button>
-                        <span id="trigger-push-status" style="font-size: 0.8rem; color: var(--text-secondary);"></span>
-                    </div>
-                </div>
-            `;
-        }
-
-        scheduleModalBody.innerHTML = `
-            <div class="schedule-header-card">
-                <div class="schedule-header-time">
-                    <span class="schedule-current-time"><i class="fa-regular fa-clock"></i> ${data.current_time}</span>
-                    <span class="schedule-current-date">${data.current_date}</span>
-                </div>
-                <div class="schedule-active-badge">
-                    <i class="fa-solid fa-circle-check"></i> ${data.active_mode_label} 가동 중
-                </div>
-            </div>
-            <div class="schedule-cards-grid">
-                ${scheduleCardsHtml}
-            </div>
-            ${todayScheduleHtml}
-            ${tgPushHtml}
-        `;
-    }
-
-    window.triggerTelegramTestPush = async function() {
-        const statusEl = document.getElementById("trigger-push-status");
-        const btn = document.getElementById("btn-trigger-push");
-        if (btn) btn.disabled = true;
-        if (statusEl) {
-            statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 텔레그램 발송 중...';
-            statusEl.style.color = "var(--text-secondary)";
-        }
-        try {
-            const res = await fetch("/api/briefing/trigger-push", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ mode: "auto" })
-            });
-            const json = await res.json();
-            if (res.ok && json.status === "success") {
-                if (statusEl) {
-                    statusEl.innerHTML = `✅ 텔레그램 발송 완료! (${json.data.sent_count}명 수신)`;
-                    statusEl.style.color = "#10b981";
-                }
-            } else {
-                if (statusEl) {
-                    statusEl.innerHTML = `❌ 발송 실패: ${json.detail || "오류"}`;
-                    statusEl.style.color = "#ef4444";
-                }
-            }
-        } catch (e) {
-            if (statusEl) {
-                statusEl.innerHTML = `❌ 오류: ${e.message}`;
-                statusEl.style.color = "#ef4444";
-            }
-        } finally {
-            if (btn) btn.disabled = false;
-        }
-    };
-
-    window.triggerScheduleBriefing = function(cmd) {
-        if (scheduleModal) scheduleModal.classList.add("hidden");
-        if (chatInput) {
-            chatInput.value = cmd;
-            handleSendMessage();
-        }
-    };
-
-    if (btnScheduleView) {
-        btnScheduleView.addEventListener("click", openScheduleModal);
-    }
-    if (closeScheduleModalBtn) {
-        closeScheduleModalBtn.addEventListener("click", () => scheduleModal?.classList.add("hidden"));
-    }
-    if (closeScheduleBtn) {
-        closeScheduleBtn.addEventListener("click", () => scheduleModal?.classList.add("hidden"));
-    }
-
-    // ==============================================================================
-    // Commute & Weather Briefing Settings Modal Handlers (ADR-030)
-    // ==============================================================================
-    const commuteSettingsBadge = document.getElementById("commute-settings-badge");
-    const changeCommuteBtn = document.getElementById("change-commute-btn");
-    const btnCommuteView = document.getElementById("btn-commute-view");
-    const commuteModal = document.getElementById("commute-modal");
-    const closeCommuteModalBtn = document.getElementById("close-commute-modal-btn");
-    const cancelCommuteBtn = document.getElementById("cancel-commute-btn");
-    const saveCommuteBtn = document.getElementById("save-commute-btn");
-    const btnCommutePreview = document.getElementById("btn-commute-preview");
-    const commuteStatusText = document.getElementById("commute-status-text");
-
-    const commuteLocationInput = document.getElementById("commute-location-input");
-    const commuteStationInput = document.getElementById("commute-station-input");
-    const commuteGridX = document.getElementById("commute-grid-x");
-    const commuteGridY = document.getElementById("commute-grid-y");
-    const commuteStopName = document.getElementById("commute-stop-name");
-    const commuteStopId = document.getElementById("commute-stop-id");
-    const commuteRouteName = document.getElementById("commute-route-name");
-    const commuteCityCode = document.getElementById("commute-city-code");
-    const commuteSendTime = document.getElementById("commute-send-time");
-    const commuteEnabled = document.getElementById("commute-enabled");
-    const commuteWeekdaysOnly = document.getElementById("commute-weekdays-only");
-    const commuteApiKey = document.getElementById("commute-api-key");
-    const commuteMockFallback = document.getElementById("commute-mock-fallback");
-
-    const commutePreviewSection = document.getElementById("commute-preview-section");
-    const commutePreviewContent = document.getElementById("commute-preview-content");
-
-    async function loadCommuteSettings() {
-        try {
-            const res = await fetchWithRetry("/api/settings/commute");
-            if (res.ok) {
-                const json = await res.json();
-                const cfg = json.data || {};
-
-                if (commuteLocationInput) commuteLocationInput.value = cfg.location_name || "";
-                if (commuteStationInput) commuteStationInput.value = cfg.air_station_name || "";
-                if (commuteGridX) commuteGridX.value = cfg.grid_x || 61;
-                if (commuteGridY) commuteGridY.value = cfg.grid_y || 125;
-                if (commuteStopName) commuteStopName.value = cfg.bus_stop_name || "";
-                if (commuteStopId) commuteStopId.value = cfg.bus_stop_id || "";
-                if (commuteRouteName) commuteRouteName.value = cfg.bus_route_name || "";
-                if (commuteCityCode) commuteCityCode.value = cfg.city_code || "11";
-                if (commuteSendTime) commuteSendTime.value = cfg.send_time || "07:30";
-                if (commuteEnabled) commuteEnabled.checked = cfg.enabled !== false;
-                if (commuteWeekdaysOnly) commuteWeekdaysOnly.checked = cfg.weekdays_only !== false;
-                if (commuteApiKey) commuteApiKey.value = cfg.public_data_api_key || "";
-                if (commuteMockFallback) commuteMockFallback.checked = cfg.use_mock_fallback !== false;
-
-                if (commuteStatusText) {
-                    const statusStr = cfg.enabled ? `출근: ${cfg.send_time || '07:30'}` : '출근 브리핑: 꺼짐';
-                    commuteStatusText.textContent = statusStr;
-                }
-            }
-        } catch (e) {
-            console.debug("Failed to load commute settings:", e);
-        }
-    }
-
-    function openCommuteModal() {
-        if (!commuteModal) return;
-        commuteModal.classList.remove("hidden");
-        loadCommuteSettings();
-    }
-
-    function closeCommuteModal() {
-        if (!commuteModal) return;
-        commuteModal.classList.add("hidden");
-        if (commutePreviewSection) commutePreviewSection.classList.add("hidden");
-    }
-
-    commuteSettingsBadge?.addEventListener("click", openCommuteModal);
-    changeCommuteBtn?.addEventListener("click", (e) => {
-        e.stopPropagation();
-        openCommuteModal();
-    });
-    btnCommuteView?.addEventListener("click", openCommuteModal);
-    closeCommuteModalBtn?.addEventListener("click", closeCommuteModal);
-    cancelCommuteBtn?.addEventListener("click", closeCommuteModal);
-
-    const btnResolveLocation = document.getElementById("btn-resolve-location");
-
-    async function handleAutoResolveLocation() {
-        const query = commuteLocationInput?.value.trim();
-        if (!query) {
-            alert("동네/지역 명칭을 입력해 주세요 (예: 서울 성동구 금호동, 판교동, 상암동)");
-            return;
-        }
-
-        if (btnResolveLocation) {
-            btnResolveLocation.disabled = true;
-            btnResolveLocation.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-        }
-
-        try {
-            const res = await fetch("/api/settings/commute/resolve-location", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ query })
-            });
-            const data = await res.json();
-            if (res.ok && data.success && data.data) {
-                const r = data.data;
-                if (commuteLocationInput) commuteLocationInput.value = r.location_name;
-                if (commuteGridX) commuteGridX.value = r.grid_x;
-                if (commuteGridY) commuteGridY.value = r.grid_y;
-                if (commuteStationInput) commuteStationInput.value = r.air_station_name;
-                if (commuteCityCode && r.city_code) commuteCityCode.value = r.city_code;
-                console.log(`[GeoService] Resolved: ${r.location_name} (X:${r.grid_x}, Y:${r.grid_y})`);
-            }
-        } catch (err) {
-            console.error("Failed to auto-resolve location:", err);
-        } finally {
-            if (btnResolveLocation) {
-                btnResolveLocation.disabled = false;
-                btnResolveLocation.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> 자동 찾기';
-            }
-        }
-    }
-
-    btnResolveLocation?.addEventListener("click", handleAutoResolveLocation);
-
-    const btnResolveBusStop = document.getElementById("btn-resolve-bus-stop");
-    const commuteStopHint = document.getElementById("commute-stop-hint");
-
-    async function handleAutoResolveBusStop() {
-        const stopId = commuteStopId?.value.trim();
-        if (!stopId) {
-            alert("정류소 번호(ARS-ID)를 입력해 주세요 (예: 04158, 23284)");
-            return;
-        }
-
-        if (btnResolveBusStop) {
-            btnResolveBusStop.disabled = true;
-            btnResolveBusStop.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 조회 중';
-        }
-
-        try {
-            const res = await fetch("/api/settings/commute/resolve-bus-stop", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    bus_stop_id: stopId,
-                    city_code: commuteCityCode?.value || "11"
-                })
-            });
-            const data = await res.json();
-            if (res.ok && data.success && data.data) {
-                const r = data.data;
-                if (commuteStopName && r.stop_name && !r.stop_name.startsWith("정류소(")) {
-                    commuteStopName.value = r.stop_name;
-                    if (commuteStopHint) {
-                        const extra = r.direction ? ` (${r.direction})` : "";
-                        commuteStopHint.innerHTML = `✅ <strong>${r.stop_name}</strong>${extra} 매핑 완료`;
-                    }
-                }
-            }
-        } catch (err) {
-            console.error("Failed to auto-resolve bus stop:", err);
-        } finally {
-            if (btnResolveBusStop) {
-                btnResolveBusStop.disabled = false;
-                btnResolveBusStop.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> 정류소 조회';
-            }
-        }
-    }
-
-    btnResolveBusStop?.addEventListener("click", handleAutoResolveBusStop);
-    commuteStopId?.addEventListener("change", () => {
-        if (commuteStopId.value.trim().length >= 4) handleAutoResolveBusStop();
-    });
-    commuteStopId?.addEventListener("blur", () => {
-        if (commuteStopId.value.trim().length >= 4 && (!commuteStopName.value.trim() || commuteStopName.value.trim() === "역삼역")) {
-            handleAutoResolveBusStop();
-        }
-    });
-
-    commuteModal?.addEventListener("click", (e) => {
-        if (e.target === commuteModal) closeCommuteModal();
-    });
-
-    saveCommuteBtn?.addEventListener("click", async () => {
-        let stopNameVal = commuteStopName?.value.trim() || "";
-        const stopIdVal = commuteStopId?.value.trim() || "";
-        if (stopIdVal && (!stopNameVal || stopNameVal === "역삼역")) {
-            stopNameVal = ""; // 백엔드에서 정류소 번호 기반으로 정류소명을 자동 조회하도록 위임
-        }
-
-        const payload = {
-            location_name: commuteLocationInput?.value.trim() || "우리 동네",
-            air_station_name: commuteStationInput?.value.trim() || "",
-            grid_x: parseInt(commuteGridX?.value, 10) || 61,
-            grid_y: parseInt(commuteGridY?.value, 10) || 125,
-            bus_stop_name: stopNameVal,
-            bus_stop_id: stopIdVal,
-            bus_route_name: commuteRouteName?.value.trim() || "",
-            city_code: commuteCityCode?.value || "11",
-            send_time: commuteSendTime?.value || "07:30",
-            enabled: commuteEnabled?.checked ?? true,
-            weekdays_only: commuteWeekdaysOnly?.checked ?? true,
-            public_data_api_key: commuteApiKey?.value.trim() || "",
-            use_mock_fallback: commuteMockFallback?.checked ?? true,
-        };
-
-        saveCommuteBtn.disabled = true;
-        saveCommuteBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 저장 중...';
-
-        try {
-            const res = await fetch("/api/settings/commute", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-            const result = await res.json();
-            if (res.ok) {
-                const busLabel = payload.bus_route_name ? `${payload.bus_route_name}번` : '전체 노선';
-                const stopLabel = payload.bus_stop_name || (payload.bus_stop_id ? `정류소(${payload.bus_stop_id})` : '정류소');
-                alert("✅ 출근길 맞춤형 브리핑 설정이 안전하게 저장되었습니다!\n\n" +
-                      `📍 지역: ${payload.location_name}\n` +
-                      `🚌 탑승: ${stopLabel} (${busLabel})\n` +
-                      `⏰ 알림: ${payload.send_time} (${payload.weekdays_only ? '평일' : '매일'})`);
-                await loadCommuteSettings();
-                closeCommuteModal();
-            } else {
-                alert(`⚠️ 저장 실패: ${result.detail || "설정 값을 확인해 주세요."}`);
-            }
-        } catch (e) {
-            console.error(e);
-            alert("⚠️ 서버 통신 중 오류가 발생했습니다.");
-        } finally {
-            saveCommuteBtn.disabled = false;
-            saveCommuteBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 설정 저장';
-        }
-    });
-
-    btnCommutePreview?.addEventListener("click", async () => {
-        if (!commutePreviewSection || !commutePreviewContent) return;
-
-        btnCommutePreview.disabled = true;
-        btnCommutePreview.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 생성 중...';
-
-        const customPayload = {
-            location_name: commuteLocationInput?.value.trim() || "우리 동네",
-            air_station_name: commuteStationInput?.value.trim() || "",
-            grid_x: parseInt(commuteGridX?.value, 10) || 61,
-            grid_y: parseInt(commuteGridY?.value, 10) || 125,
-            bus_stop_name: commuteStopName?.value.trim() || "",
-            bus_stop_id: commuteStopId?.value.trim() || "",
-            bus_route_name: commuteRouteName?.value.trim() || "",
-            city_code: commuteCityCode?.value || "11",
-            send_time: commuteSendTime?.value || "07:30",
-            enabled: commuteEnabled?.checked ?? true,
-            weekdays_only: commuteWeekdaysOnly?.checked ?? true,
-            public_data_api_key: commuteApiKey?.value.trim() || "",
-            use_mock_fallback: commuteMockFallback?.checked ?? true,
-        };
-
-        try {
-            const res = await fetch("/api/settings/commute/preview", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ config: customPayload })
-            });
-            if (res.ok) {
-                const data = await res.json();
-                commutePreviewContent.textContent = data.markdown || "미리보기 생성 실패";
-                commutePreviewSection.classList.remove("hidden");
-            } else {
-                commutePreviewContent.textContent = "미리보기 요청 실패 (" + res.status + ")";
-                commutePreviewSection.classList.remove("hidden");
-            }
-        } catch (e) {
-            commutePreviewContent.textContent = "통신 오류: " + e.message;
-            commutePreviewSection.classList.remove("hidden");
-        } finally {
-            btnCommutePreview.disabled = false;
-            btnCommutePreview.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> 실시간 미리보기';
-        }
-    });
-
-    // =========================================================================
-    // 텔레그램 봇 메뉴 명령어 관리 모달 및 실시간 미리보기 (ADR-041)
-    // =========================================================================
-    const telegramMenuModal = document.getElementById("telegram-menu-modal");
-    const telegramMenuBadge = document.getElementById("telegram-menu-badge");
-    const telegramMenuText = document.getElementById("telegram-menu-text");
-    const openTelegramMenuBtn = document.getElementById("open-telegram-menu-btn");
-    const btnTelegramMenuView = document.getElementById("btn-telegram-menu-view");
-    const closeTelegramMenuModalBtn = document.getElementById("close-telegram-menu-modal-btn");
-    const cancelTelegramMenuBtn = document.getElementById("cancel-telegram-menu-btn");
-    const saveTelegramMenuBtn = document.getElementById("save-telegram-menu-btn");
-    const btnResetTelegramCommands = document.getElementById("btn-reset-telegram-commands");
-    const btnAddCommand = document.getElementById("btn-add-command");
-    const newCmdName = document.getElementById("new-cmd-name");
-    const newCmdDesc = document.getElementById("new-cmd-desc");
-    const telegramCommandsList = document.getElementById("telegram-commands-list");
-    const mockTgMenuPopup = document.getElementById("mock-tg-menu-popup");
-    const tgActiveCountBadge = document.getElementById("tg-active-count-badge");
-    const tgTotalCountBadge = document.getElementById("tg-total-count-badge");
-    const tgStatusConfigured = document.getElementById("tg-status-configured");
-    const tgChatIdBadge = document.getElementById("tg-chat-id-badge");
-    const commandsListCount = document.getElementById("commands-list-count");
-
-    let telegramCommandsState = [];
-
-    async function loadTelegramCommands() {
-        try {
-            const [cmdsRes, statusRes] = await Promise.all([
-                fetchWithRetry("/api/telegram/commands"),
-                fetchWithRetry("/api/telegram/status")
-            ]);
-
-            if (statusRes.ok) {
-                const sData = await statusRes.json();
-                if (tgStatusConfigured) {
-                    tgStatusConfigured.textContent = sData.configured ? "정상 연동" : "토큰 미설정";
-                    tgStatusConfigured.className = sData.configured ? "text-success" : "text-muted";
-                }
-                if (tgChatIdBadge) {
-                    const ids = sData.allowed_chat_ids || [];
-                    tgChatIdBadge.textContent = ids.length > 0 ? ids.join(", ") : "전체 허용";
-                }
-            }
-
-            if (cmdsRes.ok) {
-                const data = await cmdsRes.json();
-                telegramCommandsState = (data.commands || []).map(cmd => ({
-                    command: (cmd.command || "").toLowerCase().replace(/^\//, ""),
-                    description: cmd.description || "",
-                    enabled: cmd.enabled !== false
-                }));
-
-                renderTelegramCommands();
-                updateTelegramBadge();
-            }
-        } catch (e) {
-            console.error("[Telegram] Failed to load telegram commands:", e);
-        }
-    }
-
-    function updateTelegramBadge() {
-        const activeCount = telegramCommandsState.filter(c => c.enabled).length;
-        if (telegramMenuText) {
-            telegramMenuText.textContent = `메뉴: ${activeCount}개`;
-        }
-        if (tgActiveCountBadge) {
-            tgActiveCountBadge.textContent = activeCount;
-        }
-        if (tgTotalCountBadge) {
-            tgTotalCountBadge.textContent = telegramCommandsState.length;
-        }
-        if (commandsListCount) {
-            commandsListCount.textContent = telegramCommandsState.length;
-        }
-    }
-
-    function updateTelegramPreview() {
-        if (!mockTgMenuPopup) return;
-        const activeList = telegramCommandsState.filter(c => c.enabled);
-        if (activeList.length === 0) {
-            mockTgMenuPopup.innerHTML = '<div style="padding: 16px; text-align: center; color: #7f91a4; font-size: 0.75rem;">활성화된 명령어가 없습니다.</div>';
-            return;
-        }
-
-        mockTgMenuPopup.innerHTML = activeList.map(item => `
-            <div class="mock-tg-item" data-cmd="${escapeHtml(item.command)}">
-                <span class="mock-tg-cmd">/${escapeHtml(item.command)}</span>
-                <span class="mock-tg-desc">${escapeHtml(item.description)}</span>
-            </div>
-        `).join("");
-    }
-
-    function renderTelegramCommands() {
-        if (!telegramCommandsList) return;
-        telegramCommandsList.innerHTML = "";
-
-        telegramCommandsState.forEach((item, index) => {
-            const row = document.createElement("div");
-            row.className = `cmd-row-item ${item.enabled ? "" : "disabled"}`;
-            row.dataset.index = index;
-
-            row.innerHTML = `
-                <label class="cmd-toggle-label" title="${item.enabled ? '메뉴에서 제외하기' : '메뉴에 포함하기'}">
-                    <input type="checkbox" class="cmd-toggle-chk" ${item.enabled ? "checked" : ""}>
-                </label>
-                <div class="cmd-name-input-group">
-                    <span class="prefix">/</span>
-                    <input type="text" class="cmd-name-input" value="${escapeHtml(item.command)}" maxlength="32" placeholder="명령어">
-                </div>
-                <input type="text" class="cmd-desc-input" value="${escapeHtml(item.description)}" maxlength="256" placeholder="설명">
-                <button type="button" class="cmd-delete-btn" title="명령어 삭제"><i class="fa-solid fa-trash-can"></i></button>
-            `;
-
-            const chk = row.querySelector(".cmd-toggle-chk");
-            const nameInput = row.querySelector(".cmd-name-input");
-            const descInput = row.querySelector(".cmd-desc-input");
-            const delBtn = row.querySelector(".cmd-delete-btn");
-
-            chk.addEventListener("change", () => {
-                telegramCommandsState[index].enabled = chk.checked;
-                row.classList.toggle("disabled", !chk.checked);
-                updateTelegramBadge();
-                updateTelegramPreview();
-            });
-
-            nameInput.addEventListener("input", () => {
-                const cleaned = nameInput.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 32);
-                telegramCommandsState[index].command = cleaned;
-                updateTelegramPreview();
-            });
-
-            descInput.addEventListener("input", () => {
-                telegramCommandsState[index].description = descInput.value.trim();
-                updateTelegramPreview();
-            });
-
-            delBtn.addEventListener("click", () => {
-                if (confirm(`'/${item.command}' 명령어를 목록에서 삭제하시겠습니까?`)) {
-                    telegramCommandsState.splice(index, 1);
-                    renderTelegramCommands();
-                    updateTelegramBadge();
-                    updateTelegramPreview();
-                }
-            });
-
-            telegramCommandsList.appendChild(row);
-        });
-
-        updateTelegramBadge();
-        updateTelegramPreview();
-    }
-
-    function openTelegramMenuModal() {
-        telegramMenuModal?.classList.remove("hidden");
-        loadTelegramCommands();
-    }
-
-    function closeTelegramMenuModal() {
-        telegramMenuModal?.classList.add("hidden");
-    }
-
-    function addNewCommand() {
-        if (!newCmdName || !newCmdDesc) return;
-        const rawCmd = newCmdName.value.trim().toLowerCase().replace(/^\//, "");
-        const cleanCmd = rawCmd.replace(/[^a-z0-9_]/g, "").slice(0, 32);
-        const desc = newCmdDesc.value.trim().slice(0, 256);
-
-        if (!cleanCmd) {
-            alert("명령어 이름을 영문 소문자/숫자/언더스코어로 입력해 주세요. (1~32자)");
-            newCmdName.focus();
-            return;
-        }
-
-        if (telegramCommandsState.some(c => c.command === cleanCmd)) {
-            alert(`이미 등록된 명령어 '/${cleanCmd}' 입니다.`);
-            newCmdName.focus();
-            return;
-        }
-
-        telegramCommandsState.push({
-            command: cleanCmd,
-            description: desc || cleanCmd,
-            enabled: true
-        });
-
-        newCmdName.value = "";
-        newCmdDesc.value = "";
-
-        renderTelegramCommands();
-        updateTelegramBadge();
-        updateTelegramPreview();
-
-        if (telegramCommandsList) {
-            telegramCommandsList.scrollTop = telegramCommandsList.scrollHeight;
-        }
-    }
-
-    async function saveTelegramCommands() {
-        if (!saveTelegramMenuBtn) return;
-        saveTelegramMenuBtn.disabled = true;
-        saveTelegramMenuBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 텔레그램 동기화 중...';
-
-        try {
-            const payload = {
-                commands: telegramCommandsState,
-                sync_to_telegram: true
-            };
-
-            const res = await fetchWithRetry("/api/telegram/commands", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                const activeCount = data.active_count || 0;
-                alert(`✅ 텔레그램 봇 메뉴 설정이 성공적으로 저장되었습니다!\n\n• 총 명령어: ${data.saved_count}개\n• 텔레그램 활성 메뉴: ${activeCount}개\n• 텔레그램 API 동기화: ${data.synced ? "성공 (반영 완료)" : "토큰 미설정 또는 미반영"}`);
-                closeTelegramMenuModal();
-                loadTelegramCommands();
-            } else {
-                const err = await res.json();
-                alert(`⚠️ 저장 실패: ${err.detail || "알 수 없는 오류"}`);
-            }
-        } catch (e) {
-            alert(`⚠️ 서버 통신 오류: ${e.message}`);
-        } finally {
-            saveTelegramMenuBtn.disabled = false;
-            saveTelegramMenuBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> 텔레그램에 즉시 반영';
-        }
-    }
-
-    async function resetTelegramCommands() {
-        if (!confirm("텔레그램 봇 메뉴를 기본 14종 표준 명령어로 복원하시겠습니까?")) {
-            return;
-        }
-
-        if (!btnResetTelegramCommands) return;
-        btnResetTelegramCommands.disabled = true;
-
-        try {
-            const res = await fetchWithRetry("/api/telegram/commands/reset", {
-                method: "POST"
-            });
-
-            if (res.ok) {
-                alert(`✅ 기본 14종 명령어로 초기화 및 텔레그램 동기화가 완료되었습니다!`);
-                await loadTelegramCommands();
-            } else {
-                alert("⚠️ 기본값 복원 실패");
-            }
-        } catch (e) {
-            alert(`⚠️ 통신 오류: ${e.message}`);
-        } finally {
-            btnResetTelegramCommands.disabled = false;
-        }
-    }
-
-    telegramMenuBadge?.addEventListener("click", openTelegramMenuModal);
-    openTelegramMenuBtn?.addEventListener("click", (e) => {
-        e.stopPropagation();
-        openTelegramMenuModal();
-    });
-    btnTelegramMenuView?.addEventListener("click", openTelegramMenuModal);
-    closeTelegramMenuModalBtn?.addEventListener("click", closeTelegramMenuModal);
-    cancelTelegramMenuBtn?.addEventListener("click", closeTelegramMenuModal);
-    saveTelegramMenuBtn?.addEventListener("click", saveTelegramCommands);
-    btnResetTelegramCommands?.addEventListener("click", resetTelegramCommands);
-    btnAddCommand?.addEventListener("click", addNewCommand);
-    newCmdName?.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            addNewCommand();
-        }
-    });
-    newCmdDesc?.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            addNewCommand();
-        }
-    });
-
-    // ==========================================================================
-    // Lifelog Contribution Heatmap & In-Place Markdown Editor (ADR-045)
-    // ==========================================================================
-    const heatmapBadge = document.getElementById("heatmap-badge");
-    const heatmapStreakText = document.getElementById("heatmap-streak-text");
-    const openEditorHeaderBtn = document.getElementById("open-editor-header-btn");
-    const btnOpenEditor = document.getElementById("btn-open-editor");
-    const editorModal = document.getElementById("lifelog-editor-modal");
-    const closeEditorModalBtn = document.getElementById("close-editor-modal-btn");
-    const btnCloseEditor = document.getElementById("btn-close-editor");
-
-    const statStreak = document.getElementById("stat-streak");
-    const statTotalDays = document.getElementById("stat-total-days");
-    const statTotalTasks = document.getElementById("stat-total-tasks");
-    const statRate = document.getElementById("stat-rate");
-
-    const heatmapGrid = document.getElementById("heatmap-grid");
-    const heatmapTooltip = document.getElementById("heatmap-tooltip");
-
-    const btnEditorPrevDay = document.getElementById("btn-editor-prev-day");
-    const btnEditorNextDay = document.getElementById("btn-editor-next-day");
-    const btnEditorToday = document.getElementById("btn-editor-today");
-    const editorDatePicker = document.getElementById("editor-date-picker");
-    const editorFileStatus = document.getElementById("editor-file-status");
-    const editorFilePath = document.getElementById("editor-file-path");
-
-    const tabEditorWrite = document.getElementById("tab-editor-write");
-    const tabEditorPreview = document.getElementById("tab-editor-preview");
-    const editorWorkspace = document.getElementById("editor-workspace");
-
-    const editorTextarea = document.getElementById("editor-textarea");
-    const editorPreviewContent = document.getElementById("editor-preview-content");
-    const editorCommitMsg = document.getElementById("editor-commit-msg");
-    const editorAutoPushChk = document.getElementById("editor-auto-push-chk");
-    const btnSaveEditor = document.getElementById("btn-save-editor");
-
-    let currentEditorDate = "";
-    let cachedHeatmapData = null;
-
-    function renderMarkdownToHtml(markdown) {
-        if (!markdown) return "<p><em>(작성된 내용이 없습니다)</em></p>";
-        let html = markdown
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
-
-        // Code blocks
-        html = html.replace(/```([\w-]*)\n([\s\S]*?)```/g, (match, lang, code) => {
-            return `<pre><code class="language-${lang}">${code}</code></pre>`;
-        });
-
-        // Inline code
-        html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
-
-        // Headers
-        html = html.replace(/^#### (.*$)/gim, "<h4>$1</h4>");
-        html = html.replace(/^### (.*$)/gim, "<h3>$1</h3>");
-        html = html.replace(/^## (.*$)/gim, "<h2>$1</h2>");
-        html = html.replace(/^# (.*$)/gim, "<h1>$1</h1>");
-
-        // Blockquotes
-        html = html.replace(/^> (.*$)/gim, "<blockquote>$1</blockquote>");
-
-        // Checkboxes
-        html = html.replace(/^[ \t]*-[ \t]+\[[xX]\][ \t]+(.*$)/gim, '<li style="list-style:none;"><input type="checkbox" checked disabled /> $1</li>');
-        html = html.replace(/^[ \t]*-[ \t]+\[ \][ \t]+(.*$)/gim, '<li style="list-style:none;"><input type="checkbox" disabled /> $1</li>');
-
-        // Unordered lists
-        html = html.replace(/^[ \t]*[\*\-][ \t]+(.*$)/gim, "<li>$1</li>");
-
-        // Bold and Italic
-        html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-        html = html.replace(/\*([^*]+)\*/g, "<em>$1</em>");
-
-        // Links
-        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-
-        // Horizontal rules
-        html = html.replace(/^---$/gim, "<hr />");
-
-        // Paragraphs and breaks
-        html = html.replace(/\n\n/g, "</p><p>");
-        html = html.replace(/\n/g, "<br />");
-
-        return `<p>${html}</p>`;
-    }
-
-    async function loadHeatmapData() {
-        try {
-            const res = await fetchWithRetry("/api/lifelog/heatmap?days=365");
-            if (!res.ok) return;
-            const resJson = await res.json();
-            if (resJson.status !== "success" || !resJson.data) return;
-
-            cachedHeatmapData = resJson.data;
-            const summary = cachedHeatmapData.summary;
-
-            // Update Header Streak Badge
-            if (heatmapStreakText) {
-                heatmapStreakText.innerText = `연속: ${summary.current_streak}일`;
-            }
-
-            // Update Modal Stats Bar
-            if (statStreak) statStreak.innerText = summary.current_streak;
-            if (statTotalDays) statTotalDays.innerText = summary.total_days_logged;
-            if (statTotalTasks) statTotalTasks.innerText = summary.total_completed_tasks;
-            if (statRate) statRate.innerText = summary.completion_rate;
-
-            // Render Heatmap Grid
-            renderHeatmapGrid(cachedHeatmapData.days);
-        } catch (err) {
-            console.error("Failed to load heatmap data:", err);
-        }
-    }
-
-    function renderHeatmapGrid(days) {
-        if (!heatmapGrid) return;
-        heatmapGrid.innerHTML = "";
-
-        days.forEach(day => {
-            const cell = document.createElement("div");
-            cell.className = `heatmap-cell level-${day.level}`;
-            cell.dataset.date = day.date;
-            cell.dataset.level = day.level;
-            cell.dataset.charCount = day.char_count;
-            cell.dataset.completed = day.completed_tasks;
-
-            if (day.date === currentEditorDate) {
-                cell.classList.add("selected");
-            }
-
-            // Hover tooltip
-            cell.addEventListener("mouseenter", (e) => {
-                if (!heatmapTooltip) return;
-                const date = e.target.dataset.date;
-                const chars = Number(e.target.dataset.charCount || 0);
-                const completed = Number(e.target.dataset.completed || 0);
-                const text = chars > 0
-                    ? `📅 ${date}: ${chars.toLocaleString()}자, 완료 ${completed}개`
-                    : `📅 ${date}: 기록 없음`;
-                heatmapTooltip.innerText = text;
-                heatmapTooltip.classList.remove("hidden");
-
-                // Position tooltip
-                const rect = e.target.getBoundingClientRect();
-                const parentRect = heatmapGrid.getBoundingClientRect();
-                heatmapTooltip.style.left = `${rect.left - parentRect.left + (rect.width / 2)}px`;
-            });
-
-            cell.addEventListener("mouseleave", () => {
-                heatmapTooltip?.classList.add("hidden");
-            });
-
-            // Click cell to open this date in editor
-            cell.addEventListener("click", (e) => {
-                const date = e.target.dataset.date;
-                if (date) {
-                    loadLifelogFile(date);
-                }
-            });
-
-            heatmapGrid.appendChild(cell);
-        });
-
-        // Scroll to end (today)
-        const scrollContainer = document.getElementById("heatmap-scroll");
-        if (scrollContainer) {
-            scrollContainer.scrollLeft = scrollContainer.scrollWidth;
-        }
-    }
-
-    async function loadLifelogFile(dateStr) {
-        if (!dateStr) return;
-        currentEditorDate = dateStr;
-
-        // Highlight selected cell in heatmap
-        document.querySelectorAll(".heatmap-cell").forEach(c => {
-            if (c.dataset.date === dateStr) {
-                c.classList.add("selected");
-            } else {
-                c.classList.remove("selected");
-            }
-        });
-
-        if (editorDatePicker) editorDatePicker.value = dateStr;
-        if (editorFileStatus) {
-            editorFileStatus.innerText = "불러오는 중...";
-            editorFileStatus.className = "file-status-badge";
-        }
-
-        try {
-            const res = await fetchWithRetry(`/api/lifelog/file?date=${encodeURIComponent(dateStr)}`);
-            if (!res.ok) {
-                alert("일일 로그 파일을 불러오지 못했습니다.");
-                return;
-            }
-            const resJson = await res.json();
-            if (resJson.status === "success" && resJson.data) {
-                const fileData = resJson.data;
-                if (editorFilePath) editorFilePath.innerText = fileData.filepath;
-                if (editorFileStatus) {
-                    if (fileData.exists) {
-                        editorFileStatus.innerText = `작성됨 (${fileData.char_count.toLocaleString()}자)`;
-                        editorFileStatus.className = "file-status-badge exists";
-                    } else {
-                        editorFileStatus.innerText = "새 작성 (초안)";
-                        editorFileStatus.className = "file-status-badge new";
-                    }
-                }
-                if (editorTextarea) {
-                    editorTextarea.value = fileData.content;
-                }
-                if (editorPreviewContent) {
-                    editorPreviewContent.innerHTML = renderMarkdownToHtml(fileData.content);
-                }
-                if (editorCommitMsg) {
-                    editorCommitMsg.value = `docs(log): ${dateStr} 일일 로그 수정 및 갱신`;
-                }
-            }
-        } catch (err) {
-            console.error("Failed to load lifelog content:", err);
-            if (editorFileStatus) editorFileStatus.innerText = "로딩 실패";
-        }
-    }
-
-    async function saveLifelogFile() {
-        if (!currentEditorDate) return;
-        const content = editorTextarea?.value || "";
-        const commitMsg = editorCommitMsg?.value.trim() || `docs(log): ${currentEditorDate} 일일 로그 갱신`;
-        const autoPush = editorAutoPushChk ? editorAutoPushChk.checked : true;
-
-        if (btnSaveEditor) {
-            btnSaveEditor.disabled = true;
-            btnSaveEditor.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 저장 및 반영 중...';
-        }
-
-        try {
-            const res = await fetchWithRetry("/api/lifelog/save", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    date: currentEditorDate,
-                    content: content,
-                    commit_msg: commitMsg,
-                    auto_push: autoPush,
-                })
-            });
-
-            if (res.ok) {
-                const resJson = await res.json();
-                if (resJson.status === "success") {
-                    if (editorFileStatus) {
-                        editorFileStatus.innerText = "저장 및 Git 반영 완료 ✅";
-                        editorFileStatus.className = "file-status-badge exists";
-                    }
-                    // Refresh heatmap data
-                    await loadHeatmapData();
-                    alert(`✅ ${currentEditorDate} 일일 로그가 저장되었습니다!\nGit 커밋: ${commitMsg}${autoPush ? ' (원격 푸시 완료)' : ''}`);
-                } else {
-                    alert(`저장 실패: ${resJson.detail || "알 수 없는 오류"}`);
-                }
-            } else {
-                const errData = await res.json().catch(() => ({}));
-                alert(`저장 실패: ${errData.detail || "서버 오류"}`);
-            }
-        } catch (err) {
-            console.error("Failed to save lifelog:", err);
-            alert("저장 중 서버 연결 오류가 발생했습니다.");
-        } finally {
-            if (btnSaveEditor) {
-                btnSaveEditor.disabled = false;
-                btnSaveEditor.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 저장 및 Git 반영';
-            }
-        }
-    }
-
-    function openEditorModal(targetDate = null) {
-        let dateToOpen = targetDate;
-        if (!dateToOpen) {
-            dateToOpen = getKSTDateString();
-        }
-
-        editorModal?.classList.remove("hidden");
-        loadHeatmapData();
-        loadLifelogFile(dateToOpen);
-        setTimeout(() => editorTextarea?.focus(), 150);
-    }
-
-    function closeEditorModal() {
-        editorModal?.classList.add("hidden");
-    }
-
-    function changeDateByOffset(offsetDays) {
-        if (!currentEditorDate) return;
-        const [y, m, d] = currentEditorDate.split("-").map(Number);
-        const dt = new Date(y, m - 1, d);
-        dt.setDate(dt.getDate() + offsetDays);
-
-        const year = dt.getFullYear();
-        const month = String(dt.getMonth() + 1).padStart(2, "0");
-        const day = String(dt.getDate()).padStart(2, "0");
-        const nextDateStr = `${year}-${month}-${day}`;
-        loadLifelogFile(nextDateStr);
-    }
-
-    // Event Listeners for Editor & Heatmap
-    heatmapBadge?.addEventListener("click", () => openEditorModal());
-    openEditorHeaderBtn?.addEventListener("click", (e) => {
-        e.stopPropagation();
-        openEditorModal();
-    });
-    btnOpenEditor?.addEventListener("click", () => openEditorModal());
-    closeEditorModalBtn?.addEventListener("click", closeEditorModal);
-    btnCloseEditor?.addEventListener("click", closeEditorModal);
-
-    btnEditorPrevDay?.addEventListener("click", () => changeDateByOffset(-1));
-    btnEditorNextDay?.addEventListener("click", () => changeDateByOffset(1));
-    btnEditorToday?.addEventListener("click", () => openEditorModal());
-
-    editorDatePicker?.addEventListener("change", (e) => {
-        const val = e.target.value;
-        if (val) loadLifelogFile(val);
-    });
-
-    // Real-time Live Preview
-    editorTextarea?.addEventListener("input", () => {
-        if (editorPreviewContent && editorTextarea) {
-            editorPreviewContent.innerHTML = renderMarkdownToHtml(editorTextarea.value);
-        }
-        if (editorFileStatus) {
-            const chars = editorTextarea?.value.length || 0;
-            editorFileStatus.innerText = `수정 중... (${chars.toLocaleString()}자)`;
-        }
-    });
-
-    // Mobile View Tabs
-    tabEditorWrite?.addEventListener("click", () => {
-        tabEditorWrite.classList.add("active");
-        tabEditorPreview?.classList.remove("active");
-        if (editorWorkspace) editorWorkspace.className = "editor-workspace view-write";
-    });
-
-    tabEditorPreview?.addEventListener("click", () => {
-        tabEditorPreview.classList.add("active");
-        tabEditorWrite?.classList.remove("active");
-        if (editorWorkspace) editorWorkspace.className = "editor-workspace view-preview";
-    });
-
-    btnSaveEditor?.addEventListener("click", saveLifelogFile);
-
-    // Check URL Query parameter for auto opening editor (?edit=YYYY-MM-DD)
+    // URL parameter auto opener (?edit=YYYY-MM-DD)
     function checkUrlEditParam() {
         const params = new URLSearchParams(window.location.search);
         const editDate = params.get("edit");
-        if (editDate) {
+        if (editDate && window.WatsonEditor?.openEditorModal) {
             const cleanDate = (editDate === "today" || !editDate.match(/^\d{4}-\d{2}-\d{2}$/)) ? null : editDate;
-            openEditorModal(cleanDate);
+            window.WatsonEditor.openEditorModal(cleanDate);
         }
     }
 
@@ -1947,15 +622,14 @@ document.addEventListener("DOMContentLoaded", () => {
     document.addEventListener("visibilitychange", async () => {
         if (!document.hidden) {
             console.log("[Connection] Tab became visible. Checking health & syncing history...");
-            checkHealth();
-            await syncActiveSessionHistory();
+            checkHealth(syncActiveSessionHistory);
         }
     });
 
     window.addEventListener("online", () => {
         console.log("[Connection] Browser reported online.");
         updateConnectionUI("warning", "네트워크 복구 감지됨. 연결 확인 중...");
-        checkHealth();
+        checkHealth(syncActiveSessionHistory);
     });
 
     window.addEventListener("offline", () => {
@@ -1965,19 +639,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
     reconnectBtn?.addEventListener("click", () => {
         updateConnectionUI("warning", "수동 재연결 시도 중...");
-        checkHealth();
+        checkHealth(syncActiveSessionHistory);
     });
 
-    // Initial Load & Heartbeat (every 25 seconds)
-    loadSessions(true);
-    loadGTDStatus();
-    loadCommuteSettings();
-    loadTelegramCommands();
-    loadHeatmapData();
-    checkUrlEditParam();
-    updateLiveClock();
-    setInterval(updateLiveClock, 1000);
-    checkHealth();
-    setInterval(checkHealth, 25000);
-});
+    // Initialize all modular controllers
+    window.WatsonGTD?.initGTDModal();
+    window.WatsonSchedule?.initScheduleModal({
+        onTriggerCommand: (cmd) => sendTextMessage(cmd)
+    });
+    window.WatsonCommute?.initCommuteModal();
+    window.WatsonTelegram?.initTelegramModal();
+    window.WatsonEditor?.initEditorModal();
 
+    // Initial Load & Heartbeat
+    loadSessions(true);
+    checkUrlEditParam();
+    window.WatsonDate?.updateLiveClock();
+    setInterval(() => window.WatsonDate?.updateLiveClock(), 1000);
+    checkHealth();
+    setInterval(() => checkHealth(syncActiveSessionHistory), 25000);
+});

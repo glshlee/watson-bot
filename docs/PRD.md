@@ -460,6 +460,15 @@
 * **`style.css` 마스터 번들 오케스트레이터 전환**:
   * `style.css`를 3,423라인에서 13라인의 `@import url(...)` 선언문으로 전면 교체하여 기존 HTML 템플릿과의 100% 하위 호환성을 유지하고, HTTP/2 병렬 전송 효율 및 유지보수성을 극대화.
 
+### 3.47. 📦 프론트엔드 자바스크립트(JS) 모듈화 및 모달 컨트롤러 분리 (Frontend JS Modularization - ADR-050)
+* **공통 유틸리티 및 5대 도메인 모달 컨트롤러 분리 (`app/static/js/`)**:
+  * `utils/` (`api.js`, `date.js`, `modal.js`): 재시도 통신(`fetchWithRetry`), 헬스체크 및 연결 상태 배너, KST 시간/시계 배지, 공통 모달 닫기/이스케이프 유틸리티 분리.
+  * `modules/` (`gtd_modal.js`, `schedule_modal.js`, `commute_modal.js`, `telegram_modal.js`, `editor_modal.js`): 5개 도메인별 팝업 모달 이벤트 및 REST 통신을 독립 캡슐화.
+* **메인 컨트롤러 슬림화 및 DevBot 코드 중복 제거**:
+  * `main.js`를 1,984라인에서 662라인(66.6% 감축)으로 축소하여 순수 세션 관리와 실시간 채팅 엔진에만 집중.
+  * `dev.js`에서 중복 작성된 API 재시도 및 시계 갱신 코드를 제거하고 공통 유틸리티를 재사용하여 DRY(Don't Repeat Yourself) 원칙 확립.
+  * 빌드 도구 없이 브라우저 네이티브(`window.Watson*`) 네임스페이스로 100% 하위 호환 구동 보장.
+
 ---
 
 

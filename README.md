@@ -239,6 +239,11 @@
   - **7대 도메인별 CSS 모듈 분할**: 3,423라인 단일 모놀리식 `style.css`를 7개 전용 모듈(`variables.css`, `layout.css`, `chat.css`, `modals.css`, `portal.css`, `dev.css`, `responsive.css`)로 완전 분할하여 스타일 관심사를 엄격히 격리했습니다.
   - **`style.css` 마스터 오케스트레이터 전환 (3,423라인 ➔ 13라인, 99.6% 경량화)**: `@import url(...)` 선언문 번들 구조를 채택하여 기존 HTML 템플릿(`<link>` 태그)과의 100% 하위 호환성을 유지하면서, HTTP/2 병렬 멀티플렉싱 전송의 이점을 극대화했습니다.
 
+- 📦 **프론트엔드 자바스크립트(JS) 모듈화 및 모달 컨트롤러 분리 (Modular JavaScript Architecture - ADR-050)**
+  - **공통 유틸리티 3종 분리 (`static/js/utils/`)**: 지수 백오프 네트워크 재시도(`api.js`), KST 날짜/시계 연산(`date.js`), 모달 ESC/백드롭 공통 이벤트(`modal.js`)를 브라우저 네이티브 네임스페이스(`window.Watson*`)로 분리 격리했습니다.
+  - **5대 도메인 전용 모달 컨트롤러 분리 (`static/js/modules/`)**: GTD 설정(`gtd_modal.js`), 브리핑 스케줄(`schedule_modal.js`), 출근길 설정(`commute_modal.js`), 텔레그램 메뉴 관리(`telegram_modal.js`), 연간 잔디 에디터(`editor_modal.js`)를 완전 캡슐화했습니다.
+  - **메인 컨트롤러 경량화 (1,984라인 ➔ 662라인, 66.6% 감축)**: `main.js`를 순수 세션 관리와 실시간 채팅 엔진 코어로 슬림화하고, `dev.js`의 중복 코드를 제거하여 번들러 없이도 뛰어난 모듈성과 100% 하위 호환성을 달성했습니다.
+
 
 
 

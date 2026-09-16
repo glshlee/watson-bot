@@ -29,6 +29,10 @@ document.addEventListener("DOMContentLoaded", () => {
     let currentConnectionState = "online";
     let isReconnecting = false;
 
+    // Shared Utilities (ADR-050 / Phase 2)
+    const fetchWithRetry = window.WatsonAPI?.fetchWithRetry || window.fetchWithRetry || fetch;
+    const updateLiveClock = window.WatsonDate?.updateLiveClock || window.updateLiveClock || (() => {});
+
     function updateConnectionUI(state, message = "") {
         currentConnectionState = state;
         if (statusIndicator) {
@@ -57,33 +61,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 connectionBanner.className = "connection-banner offline";
                 if (connectionBannerText) connectionBannerText.innerText = "네트워크 연결이 끊겼습니다. 인터넷 연결을 확인해 주세요.";
                 connectionBanner.classList.remove("hidden");
-            }
-        }
-    }
-
-    async function fetchWithRetry(url, options = {}, retries = 2, delay = 1200) {
-        for (let attempt = 0; attempt <= retries; attempt++) {
-            try {
-                let signal = options.signal;
-                if (!signal && typeof AbortSignal !== "undefined" && AbortSignal.timeout) {
-                    signal = AbortSignal.timeout(65000);
-                }
-                const res = await fetch(url, { ...options, signal });
-                if ([502, 503, 504].includes(res.status) && attempt < retries) {
-                    console.warn(`[Dev Connection] Transient HTTP ${res.status} on ${url}. Retrying (${attempt + 1}/${retries})...`);
-                    updateConnectionUI("warning", "서버 응답 지연 중... 재연결 시도 중");
-                    await new Promise(r => setTimeout(r, delay * (attempt + 1)));
-                    continue;
-                }
-                return res;
-            } catch (err) {
-                if (attempt < retries) {
-                    console.warn(`[Dev Connection] Network drop on ${url}. Retrying (${attempt + 1}/${retries})...`, err);
-                    updateConnectionUI("warning", "일시적 연결 끊김. 자동 재연결 중...");
-                    await new Promise(r => setTimeout(r, delay * (attempt + 1)));
-                } else {
-                    throw err;
-                }
             }
         }
     }
@@ -151,26 +128,6 @@ document.addEventListener("DOMContentLoaded", () => {
     mobileMenuBtn?.addEventListener("click", openSidebar);
     closeSidebarBtn?.addEventListener("click", closeSidebar);
     sidebarBackdrop?.addEventListener("click", closeSidebar);
-
-    // Live KST Header Clock
-    function updateLiveClock() {
-        const clockEl = document.getElementById("header-live-clock");
-        if (!clockEl) return;
-        try {
-            const now = new Date();
-            const timePart = new Intl.DateTimeFormat("ko-KR", {
-                timeZone: "Asia/Seoul",
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-                hour12: false
-            }).format(now);
-            clockEl.textContent = `${timePart} KST`;
-        } catch {
-            const now = new Date();
-            clockEl.textContent = `${now.toLocaleTimeString()} KST`;
-        }
-    }
 
     // Simple Markdown Formatter
     function formatMarkdown(text) {

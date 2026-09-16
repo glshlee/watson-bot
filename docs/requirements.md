@@ -288,6 +288,12 @@
 - **FR-48.2**: 메인 `app/static/css/style.css`를 13라인의 `@import url(...)` 마스터 오케스트레이터 번들로 전환하여 기존 HTML 템플릿의 `<link>` 태그 호환성을 100% 보장해야 한다.
 - **FR-48.3**: 분할된 모든 7개 CSS 모듈의 HTTP 200 서빙과 모바일/데스크톱 반응형 렌더링 무결성을 유지해야 한다.
 
+### FR-49: 프론트엔드 자바스크립트(JS) 모듈화 및 모달 컨트롤러 분리 (ADR-050)
+- **FR-49.1**: 1,984라인 단일 모놀리식 `main.js`를 공통 유틸리티(`utils/api.js`, `utils/date.js`, `utils/modal.js`) 및 5개 전용 모달 컨트롤러(`modules/gtd_modal.js`, `modules/schedule_modal.js`, `modules/commute_modal.js`, `modules/telegram_modal.js`, `modules/editor_modal.js`)로 분할 모듈화해야 한다.
+- **FR-49.2**: 메인 `main.js`를 662라인으로 경량화하여 세션 목록/검색/필터/CRUD 관리 및 실시간 채팅 엔진 코어에만 집중하도록 단일 책임 원칙을 적용해야 한다.
+- **FR-49.3**: `dev.js` 내 중복 구현된 API 재시도 및 실시간 시계 로직을 공통 `WatsonAPI`, `WatsonDate` 유틸리티로 대체하여 코드 중복을 제거해야 한다.
+- **FR-49.4**: 브라우저 네이티브(`window.Watson*`) 네임스페이스 및 `index.html`/`dev.html` 스크립트 종속 순서 배치를 통해 별도 번들러 빌드 없이 100% 하위 호환 구동을 보장해야 한다.
+
 ---
 
 
@@ -359,10 +365,5 @@
 | **FR-46** | `app/models/session.py`, `app/services/session_service.py`, `app/main.py`, `app/services/briefing_scheduler.py`, `app/templates/index.html`, `app/templates/dev.html`, `app/static/js/main.js`, `app/static/js/dev.js` | Pytest 단위 테스트(`test_session_service.py`, `test_briefing_scheduler.py`) & cURL 스모크 검증(0-1, 2) |
 | **FR-47** | `tests/conftest.py`, `app/templates/modals/*.html`, `app/templates/index.html` | Pytest 단위 테스트 & cURL 스모크 검증(0-1, 0-2) |
 | **FR-48** | `app/static/css/*.css`, `app/static/css/style.css` | cURL 정적 파일 검증 및 스모크 테스트 |
-
-
-
-
-
-
+| **FR-49** | `app/static/js/utils/*.js`, `app/static/js/modules/*.js`, `app/static/js/main.js`, `app/static/js/dev.js` | cURL 정적 파일 검증 및 스모크 테스트 |
 
