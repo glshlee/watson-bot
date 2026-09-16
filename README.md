@@ -244,6 +244,10 @@
   - **5대 도메인 전용 모달 컨트롤러 분리 (`static/js/modules/`)**: GTD 설정(`gtd_modal.js`), 브리핑 스케줄(`schedule_modal.js`), 출근길 설정(`commute_modal.js`), 텔레그램 메뉴 관리(`telegram_modal.js`), 연간 잔디 에디터(`editor_modal.js`)를 완전 캡슐화했습니다.
   - **메인 컨트롤러 경량화 (1,984라인 ➔ 662라인, 66.6% 감축)**: `main.js`를 순수 세션 관리와 실시간 채팅 엔진 코어로 슬림화하고, `dev.js`의 중복 코드를 제거하여 번들러 없이도 뛰어난 모듈성과 100% 하위 호환성을 달성했습니다.
 
+- 🧩 **백엔드 라우터 계층 모듈화 리팩터링 (Backend Routers Modularization - ADR-051)**
+  - **4대 도메인 서브 라우터 분할 (`app/routers/`)**: 대화(`chat_router.py`), 세션(`session_router.py`), 브리핑(`briefing_router.py`), 라이프로그/검색/비전(`lifelog_router.py`)으로 분할하여 엔드포인트 단일 책임을 확립했습니다.
+  - **`web_router.py` 뷰 오케스트레이터 슬림화 (515라인 ➔ 95라인, 81.6% 감축)**: HTML 뷰 렌더링(`/`, `/watson`, `/dev`) 및 허브 상태 요약에만 집중하며, 4대 서브 라우터를 `include_router`로 통합 마운트하여 100% 하위 호환성을 유지합니다.
+
 
 
 

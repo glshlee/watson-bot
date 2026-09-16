@@ -469,6 +469,16 @@
   * `dev.js`에서 중복 작성된 API 재시도 및 시계 갱신 코드를 제거하고 공통 유틸리티를 재사용하여 DRY(Don't Repeat Yourself) 원칙 확립.
   * 빌드 도구 없이 브라우저 네이티브(`window.Watson*`) 네임스페이스로 100% 하위 호환 구동 보장.
 
+### 3.48. 🧩 백엔드 라우터 계층 모듈화 리팩터링 (Backend Routers Modularization - ADR-051)
+* **4대 도메인 서브 라우터 분할 (`app/routers/`)**:
+  * `chat_router.py`: Watson 및 DevBot 대화 엔드포인트(`POST /api/chat`, `POST /api/dev/chat`) 전담.
+  * `session_router.py`: 세션 목록, 히스토리, 변경, 삭제, 비우기 CRUD 엔드포인트(`GET/PATCH/DELETE/POST /api/sessions/*`, `/api/dev/sessions`) 전담.
+  * `briefing_router.py`: 맞춤 브리핑, 스케줄 조회, 텔레그램 능동 푸시 엔드포인트(`GET/POST /api/briefing/*`) 전담.
+  * `lifelog_router.py`: 검색, 주간결산, 비전 멀티모달, 연간 잔디/에디터, 셋업 진단 엔드포인트(`GET/POST /api/search`, `/api/weekly/*`, `/api/vision/*`, `/api/lifelog/*`, `/api/system/*`) 전담.
+* **`web_router.py` 뷰 오케스트레이터 슬림화**:
+  * 515라인 단일 모놀리식 라우터에서 95라인(81.6% 감축)으로 슬림화하고, HTML 뷰 렌더링(`/`, `/watson`, `/dev`) 및 워크스페이스 상태 요약 전담.
+  * 4개 서브 라우터를 `router.include_router(...)`로 안전하게 마운트하여 기존 모든 클라이언트 요청 및 단위/스모크 테스트와 100% 하위 호환성 유지.
+
 ---
 
 

@@ -552,7 +552,19 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
   - `index.html` 및 `dev.html` 스크립트 종속 순서 배치로 번들러 없이 100% 브라우저 네이티브 구동 보장
 - [x] 단위 테스트, 정적 타입/린트 검사(`mypy`, `ruff`) 및 `./scripts/smoke_test.sh` 라이브 검증 완료
 
-### Phase 50: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
+### Phase 50: 백엔드 라우터 계층 모듈화 리팩터링 (ADR-051) - ✅ 완료
+- [x] 4대 도메인 서브 라우터 분할 (`app/routers/`):
+  - `chat_router.py` (44라인): 왓슨 대화 및 DevBot 대화 엔드포인트(`POST /api/chat`, `POST /api/dev/chat`)
+  - `session_router.py` (72라인): 세션 목록, 히스토리, 변경, 삭제, 비우기 CRUD 엔드포인트
+  - `briefing_router.py` (56라인): 맞춤 브리핑, 스케줄 조회, 백그라운드 스케줄러 상태 및 능동 푸시 트리거
+  - `lifelog_router.py` (248라인): 마크다운 검색, 주간결산, 사진 비전 분석, 잔디/에디터 파일 입출력, 셋업 상태 진단
+- [x] 메인 `web_router.py` 뷰 오케스트레이터 슬림화:
+  - 515라인 ➔ 95라인 (81.6% 대폭 감축)
+  - HTML 페이지 뷰(`/`, `/watson`, `/dev`) 및 허브/데브 워크스페이스 상태 요약 전담
+  - 4개 서브 라우터를 `include_router`로 통합 마운트하여 100% 하위 호환성 유지
+- [x] 단위 테스트(`tests/test_web_router.py`), 정적 타입/린트 검사(`mypy`, `ruff`) 및 `./scripts/smoke_test.sh` 40+개 전수 검증 완료
+
+### Phase 51: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
 - [ ] `User` 모델 및 테넌트별 저장소/컨텍스트 격리 (`/data/tenants/{user_id}/`)
 - [ ] 단일 텔레그램 봇 기반 다중 사용자 라우팅 및 계정 바인딩 (`/start [연동코드]`)
 - [ ] 사용자 GitHub PAT 및 외부 API 키 AES-256 (Fernet) 암호화 보관

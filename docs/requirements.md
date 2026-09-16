@@ -294,6 +294,11 @@
 - **FR-49.3**: `dev.js` 내 중복 구현된 API 재시도 및 실시간 시계 로직을 공통 `WatsonAPI`, `WatsonDate` 유틸리티로 대체하여 코드 중복을 제거해야 한다.
 - **FR-49.4**: 브라우저 네이티브(`window.Watson*`) 네임스페이스 및 `index.html`/`dev.html` 스크립트 종속 순서 배치를 통해 별도 번들러 빌드 없이 100% 하위 호환 구동을 보장해야 한다.
 
+### FR-50: 백엔드 라우터 계층 모듈화 리팩터링 (ADR-051)
+- **FR-50.1**: 515라인 단일 모놀리식 `web_router.py`를 4개 도메인 서브 라우터(`chat_router.py`, `session_router.py`, `briefing_router.py`, `lifelog_router.py`)로 분할 모듈화해야 한다.
+- **FR-50.2**: 메인 `web_router.py`를 95라인으로 슬림화하여 HTML 뷰 렌더링(`/`, `/watson`, `/dev`) 및 허브/데브 워크스페이스 상태 요약 전담 컨트롤러로 개편해야 한다.
+- **FR-50.3**: `web_router.py`에서 4대 서브 라우터를 `include_router`로 통합 마운트하여 기존 모든 클라이언트 통신 및 단위/스모크 테스트와 100% 하위 호환성을 유지해야 한다.
+
 ---
 
 
@@ -366,4 +371,5 @@
 | **FR-47** | `tests/conftest.py`, `app/templates/modals/*.html`, `app/templates/index.html` | Pytest 단위 테스트 & cURL 스모크 검증(0-1, 0-2) |
 | **FR-48** | `app/static/css/*.css`, `app/static/css/style.css` | cURL 정적 파일 검증 및 스모크 테스트 |
 | **FR-49** | `app/static/js/utils/*.js`, `app/static/js/modules/*.js`, `app/static/js/main.js`, `app/static/js/dev.js` | cURL 정적 파일 검증 및 스모크 테스트 |
+| **FR-50** | `app/routers/chat_router.py`, `app/routers/session_router.py`, `app/routers/briefing_router.py`, `app/routers/lifelog_router.py`, `app/routers/web_router.py` | Pytest 단위 테스트(`test_web_router.py`) & cURL 스모크 테스트 |
 
