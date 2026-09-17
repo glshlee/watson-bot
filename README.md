@@ -252,6 +252,10 @@
   - **4대 도메인 서브모듈 분리 (`app/services/llm/`)**: CLI 프로세스 호출(`agy_client.py`), 프롬프트 빌더/폴백(`prompt_builder.py`), 카테고리/태스크 추출(`category_extractor.py`), 20여 종 인텐트 분석(`intent_analyzer.py`)으로 SRP를 확립했습니다.
   - **`LLMProvider` 파사드 경량화 (1,188라인 ➔ 79라인, 93.3% 감축)**: 모든 기존 메서드 및 테스트 모킹 픽스처 호환성을 100% 보존하면서 코드베이스 가독성과 유지보수성을 극대화했습니다.
 
+- 📦 **AgentService 라이프로그 및 GTD 오케스트레이션 분리 (Modular Lifelog & GTD Architecture - ADR-053)**
+  - **2대 전용 서브 서비스 분리 (`app/services/`)**: 일일 마크다운 일기 및 수술적 이관(Surgical Transfer) 수신을 전담하는 `lifelog_service.py`(260라인)와 GTD 인박스/Next Actions, 결정론적 태스크 완료 및 삭제를 전담하는 `gtd_service.py`(420라인)로 책임을 명확히 분리했습니다.
+  - **`AgentService` 오케스트레이터 파사드 슬림화 (853라인 ➔ 105라인, 87.7% 감축)**: 두 서비스를 상호 바인딩하여 순환 참조 없이 완벽 협업을 달성하며, 모든 기존 메서드 시그니처와 100% 하위 호환성을 보장합니다.
+
 
 
 

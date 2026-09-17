@@ -489,6 +489,14 @@
   * 1,188라인 거대 모놀리식 파일에서 **79라인(93.3% 감축)**으로 슬림화.
   * 기존 모든 내부/외부 메서드 및 테스트 모킹(`patch.object(LLMProvider, "_find_agy_path")`)과 100% 하위 호환성을 유지하여 코드베이스 안정성 극대화.
 
+### 3.50. 📦 AgentService 라이프로그 및 GTD 오케스트레이션 분리 (Modular Lifelog & GTD Architecture - ADR-053)
+* **도메인별 2대 전용 서비스 분리 (`app/services/`)**:
+  * `lifelog_service.py`: 일일 마크다운 로그(`YYYY-MM-DD.md`) 입출력, KST 타임존 정규화, `[HH:MM]` 타임스탬프 엔트리 서식화, 30자 프리픽스 중복 방지, 당일 로그 마크다운 실시간 읽기 및 GTD 수술적 이관(Surgical Transfer) 수신 전담.
+  * `gtd_service.py`: GTD 수집함(`inbox.md`), 다음 행동(`next_actions.md`), 문맥 맞춤형 섹션 라우팅, 키워드/자연어 태스크 물리적 삭제(`remove_gtd_tasks`, `find_and_remove_matching_tasks`), 결정론적 체크박스 완료(`complete_top_task`, `complete_matching_tasks`), GTD 잘라내기(Cut) 및 데일리 로그 이관(Paste) 오케스트레이션, D-Day 마감일 종합 브리핑 전담.
+* **`AgentService` 오케스트레이터 파사드(Facade) 경량화**:
+  * 853라인 모놀리식 클래스에서 **105라인(87.7% 감축)**으로 대폭 슬림화.
+  * `LifelogService`와 `GTDService`를 인스턴스화하고 상호 바인딩하여 순환 참조 없이 완벽 협업을 달성하며, 모든 기존 메서드 시그니처 100% 하위 호환성 유지.
+
 ---
 
 

@@ -304,6 +304,11 @@
 - **FR-51.2**: `LLMProvider`를 79라인의 경량 파사드(Facade)로 슬림화하고, 기존 모든 공개/내부 메서드(`_find_agy_path`, `_detect_category`, `analyze_and_respond` 등)를 그대로 보존해야 한다.
 - **FR-51.3**: 단위 테스트 모킹 픽스처(`patch.object(LLMProvider, "_find_agy_path")`)와의 100% 하위 호환성을 유지하고, `test_llm_provider.py` 13건의 단위 테스트를 1초 이내 초고속 검증해야 한다.
 
+### FR-52: AgentService 라이프로그 및 GTD 오케스트레이션 분리 (ADR-053)
+- **FR-52.1**: 853라인 단일 모놀리식 `agent_service.py`를 일일 라이프로그 전담(`lifelog_service.py`)과 GTD 수집/태스크 전담(`gtd_service.py`) 2대 서브 서비스로 분할 모듈화해야 한다.
+- **FR-52.2**: `AgentService`를 105라인의 경량 오케스트레이터 파사드(Facade)로 슬림화하고, 두 서브 서비스를 상호 바인딩하여 순환 참조 없이 완벽 협업을 보장해야 한다.
+- **FR-52.3**: `_normalize_datetime`, `read_gtd_and_daily_log` 등 기존 모든 공개/내부 메서드 시그니처와 테스트 픽스처 호환성을 100% 유지해야 한다.
+
 ---
 
 
@@ -378,4 +383,5 @@
 | **FR-49** | `app/static/js/utils/*.js`, `app/static/js/modules/*.js`, `app/static/js/main.js`, `app/static/js/dev.js` | cURL 정적 파일 검증 및 스모크 테스트 |
 | **FR-50** | `app/routers/chat_router.py`, `app/routers/session_router.py`, `app/routers/briefing_router.py`, `app/routers/lifelog_router.py`, `app/routers/web_router.py` | Pytest 단위 테스트(`test_web_router.py`) & cURL 스모크 테스트 |
 | **FR-51** | `app/services/llm/agy_client.py`, `app/services/llm/prompt_builder.py`, `app/services/llm/category_extractor.py`, `app/services/llm/intent_analyzer.py`, `app/services/llm_provider.py` | Pytest 단위 테스트(`test_llm_provider.py`) & cURL 스모크 테스트 |
+| **FR-52** | `app/services/lifelog_service.py`, `app/services/gtd_service.py`, `app/services/agent_service.py` | Pytest 단위 테스트(`test_agent_service.py`) & cURL 스모크 테스트 |
 

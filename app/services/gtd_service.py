@@ -1,0 +1,581 @@
+from __future__ import annotations
+
+import logging
+import os
+import re
+from datetime import datetime
+from typing import TYPE_CHECKING, Any
+
+from app.config import get_now
+
+if TYPE_CHECKING:
+    from app.services.lifelog_service import LifelogService
+
+logger = logging.getLogger("watson.gtd")
+
+
+class GTDService:
+    """
+    GTD 수집함 및 태스크 오케스트레이션 전담 서비스 (ADR-007, ADR-008, ADR-014, ADR-020, ADR-027, ADR-031, ADR-032, ADR-053).
+    - inbox.md 및 next_actions.md 관리 및 스마트 섹션 라우팅
+    - 태스크 결정론적 완료(- [x]) 및 데일리 로그로의 수술적 이관(Surgical Transfer)
+    - 태스크 물리적 삭제(remove_gtd_tasks, find_and_remove_matching_tasks)
+    - GTD 상태 및 마감일(D-Day) 현황 실시간 브리핑
+    """
+
+    def __init__(self, base_dir: str = ".", lifelog_service: LifelogService | None = None):
+        self.base_dir = os.path.abspath(os.path.expanduser(base_dir))
+        self.lifelog_service = lifelog_service
+
+    def set_lifelog_service(self, lifelog_service: LifelogService) -> None:
+        """순환 참조 방지를 위한 라이프로그 서비스 바인딩."""
+        self.lifelog_service = lifelog_service
+
+    def has_gtd_inbox(self) -> bool:
+        """GTD 수집함(inbox.md) 파일 존재 여부 확인"""
+        return os.path.exists(os.path.join(self.base_dir, "gtd", "inbox.md")) or os.path.exists(
+            os.path.join(self.base_dir, "inbox.md")
+        )
+
+    def get_gtd_inbox_filepath(self) -> str:
+        """GTD inbox 파일 경로 반환 (우선순위: gtd/inbox.md -> inbox.md)"""
+        gtd_path = os.path.join(self.base_dir, "gtd", "inbox.md")
+        if os.path.exists(gtd_path):
+            return gtd_path
+        root_inbox = os.path.join(self.base_dir, "inbox.md")
+        if os.path.exists(root_inbox):
+            return root_inbox
+        # Default target if none exists yet but requested
+        os.makedirs(os.path.join(self.base_dir, "gtd"), exist_ok=True)
+        return gtd_path
+
+    def append_to_gtd_inbox(self, content: str) -> str:
+        """
+        GTD Inbox(수집함)의 문맥에 맞는 섹션 또는 빠른 메모 섹션에 할 일/메모를 추가합니다.
+        """
+        filepath = self.get_gtd_inbox_filepath()
+        if not os.path.exists(filepath):
+            initial_content = """# 📥 GTD Inbox (수집함)
+
+## 💬 빠른 메모 / 캡처 (Watson & Quick Capture)
+
+## 💡 아이디어 / 검토 대기
+"""
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(initial_content)
+
+        with open(filepath, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+
+        content_lower = content.lower()
+        target_idx = -1
+
+        # 1. 문맥 맞춤형 섹션 우선 탐색 (ADR-014)
+        # (1-1) 개인 생활 / 건강 / 여행 / 맛집 / 구매
+        if any(k in content_lower for k in ["여행", "맛집", "어죽", "게국지", "와이프", "가족", "개인", "생활", "건강", "병원", "초음파", "구매", "장보기", "휴지", "원두", "모래", "독서", "은퇴", "교육", "personal"]):
+            for i, line in enumerate(lines):
+                if re.search(r"^##\s*.*?(개인|생활|건강|personal)", line, re.IGNORECASE):
+                    target_idx = i
+                    break
+
+        # (1-2) 회사 업무 / 프로젝트 / 회의
+        if target_idx == -1 and any(k in content_lower for k in ["회사", "업무", "회의", "보고", "아젠다", "가이드라인", "배포", "기획", "개발", "work"]):
+            for i, line in enumerate(lines):
+                if re.search(r"^##\s*.*?(회사|업무|work)", line, re.IGNORECASE):
+                    target_idx = i
+                    break
+
+        # (1-3) 인프라 및 시스템
+        if target_idx == -1 and any(k in content_lower for k in ["인프라", "토큰", "oauth", "서버", "infra"]):
+            for i, line in enumerate(lines):
+                if re.search(r"^##\s*.*?(인프라|infra|시스템)", line, re.IGNORECASE):
+                    target_idx = i
+                    break
+
+        # (1-4) 사이드 프로젝트
+        if target_idx == -1 and any(k in content_lower for k in ["사이드", "브이로그", "숏폼", "펭귄", "캐릭터", "side"]):
+            for i, line in enumerate(lines):
+                if re.search(r"^##\s*.*?(사이드|side)", line, re.IGNORECASE):
+                    target_idx = i
+                    break
+
+        # 2. 일반 빠른 메모 / Inbox 섹션 폴백
+        if target_idx == -1:
+            target_headers = [
+                "## 💬 빠른 메모 / 캡처",
+                "## 📥 GTD Inbox",
+                "## 빠른 메모",
+                "## Inbox",
+                "## 수집함",
+            ]
+            for i, line in enumerate(lines):
+                for th in target_headers:
+                    if th.lower() in line.lower():
+                        target_idx = i
+                        break
+                if target_idx != -1:
+                    break
+
+        # 태스크 포맷팅 정제
+        task_item = content.strip()
+        if not task_item.startswith("- ["):
+            task_item = f"- [ ] {task_item}"
+
+        # 캡처 뱃지 부여 (순수 텍스트 캡처 시 *(Watson 캡처)* 부여, 이미 이모지/포맷팅 포함 시 유지)
+        if not any(marker in task_item for marker in ["*(Watson 캡처)*", "🚗", "🍲", "✈️", "🛒", "💊", "🏥", "🏢", "💻", "🚨"]):
+            task_item = f"{task_item} *(Watson 캡처)*"
+
+        task_item = f"{task_item.strip()}\n"
+
+        if target_idx != -1:
+            lines.insert(target_idx + 1, task_item)
+        else:
+            lines.append(f"\n## 💬 빠른 메모 / 캡처 (Watson & Quick Capture)\n{task_item}")
+
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.writelines(lines)
+
+        logger.info(f"Appended task to GTD inbox: {filepath}")
+        return filepath
+
+    def get_gtd_summary(self, date_obj: datetime | None = None) -> str:
+        """
+        연결된 GTD 저장소에서 오늘의 일정, Next Actions, Inbox 항목을 종합 추출하여
+        비서 브리핑 메시지를 생성합니다 (ADR-008, ADR-013).
+        """
+        date_obj = self.lifelog_service.normalize_datetime(date_obj) if self.lifelog_service else (date_obj or get_now())
+        date_str = date_obj.strftime("%Y-%m-%d")
+
+        schedule_items: list[str] = []
+        next_actions: list[str] = []
+        inbox_items: list[str] = []
+
+        # 1. 데일리 로그의 오늘 일정 (Schedule) 추출
+        daily_path = self.lifelog_service.get_lifelog_filepath(date_obj) if self.lifelog_service else os.path.join(self.base_dir, "logs", "daily", f"{date_str}.md")
+        if not os.path.exists(daily_path) and os.path.exists(os.path.join(self.base_dir, "logs", "daily")):
+            daily_dir = os.path.join(self.base_dir, "logs", "daily")
+            files = sorted([f for f in os.listdir(daily_dir) if f.endswith(".md")], reverse=True)
+            if files:
+                daily_path = os.path.join(daily_dir, files[0])
+
+        if os.path.exists(daily_path):
+            try:
+                with open(daily_path, "r", encoding="utf-8") as f:
+                    in_schedule = False
+                    for line in f:
+                        line_s = line.strip()
+                        if "주요 일정" in line_s or "Schedule" in line_s:
+                            in_schedule = True
+                            continue
+                        if in_schedule and line_s.startswith("## "):
+                            in_schedule = False
+                        if in_schedule and line_s.startswith(("- [", "- ")):
+                            item = re.sub(r"^-\s*(\[[ xX]\]\s*)?", "", line_s).strip()
+                            if item and not item.startswith("("):
+                                schedule_items.append(item)
+            except OSError as e:
+                logger.warning(f"Failed to read daily log: {e}")
+
+        # 2. Next Actions (다음 행동) 추출
+        next_actions_path = os.path.join(self.base_dir, "gtd", "next_actions.md")
+        if os.path.exists(next_actions_path):
+            try:
+                with open(next_actions_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line_s = line.strip()
+                        if line_s.startswith("- [ ]"):
+                            item = line_s[5:].strip()
+                            if item:
+                                next_actions.append(item)
+            except OSError as e:
+                logger.warning(f"Failed to read next_actions.md: {e}")
+
+        # 3. GTD Inbox (수집함 미처리 항목) 추출
+        inbox_path = self.get_gtd_inbox_filepath()
+        if os.path.exists(inbox_path):
+            try:
+                with open(inbox_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line_s = line.strip()
+                        if line_s.startswith("- [ ]"):
+                            item = line_s[5:].strip()
+                            if item and not item.startswith("("):
+                                inbox_items.append(item)
+            except OSError as e:
+                logger.warning(f"Failed to read inbox.md: {e}")
+
+        # 포맷팅 브리핑 메시지 구성
+        sections = [f"📋 **오늘의 일정 및 GTD 할 일 브리핑 ({date_str})** ☀️\n"]
+
+        if schedule_items:
+            sections.append("📅 **오늘의 주요 일정:**")
+            for item in schedule_items[:5]:
+                sections.append(f"• {item}")
+            sections.append("")
+
+        if next_actions:
+            sections.append("⚡ **실행 대기 주요 작업 (Next Actions):**")
+            urgent = [a for a in next_actions if "🚨" in a or "오늘" in a or "마감" in a]
+            normal = [a for a in next_actions if a not in urgent]
+            ordered = urgent + normal
+            for item in ordered[:6]:
+                sections.append(f"• {item}")
+            sections.append("")
+
+        if inbox_items:
+            sections.append("📥 **수집함 미처리 메모 (Inbox):**")
+            for item in inbox_items[:3]:
+                sections.append(f"• {item}")
+            sections.append("")
+
+        if not schedule_items and not next_actions and not inbox_items:
+            sections.append("현재 등록된 미완료 할 일이나 일정이 없습니다. 가벼운 마음으로 오늘 하루를 시작해 보세요! ☕")
+        else:
+            sections.append("오늘도 보람찬 하루 되실 수 있도록 왓슨이 든든히 서포트하겠습니다! 무엇부터 함께 해볼까요? 💪✨")
+
+        return "\n".join(sections)
+
+    def remove_gtd_tasks(self, keywords: list[str]) -> list[str]:
+        """
+        gtd/inbox.md 및 gtd/next_actions.md에서 주어진 키워드들을 포함하는 태스크 라인을 제거합니다.
+        제거된 태스크 명칭 목록을 반환합니다.
+        """
+        removed_tasks: list[str] = []
+        if not keywords:
+            return removed_tasks
+
+        gtd_files = [
+            self.get_gtd_inbox_filepath(),
+            os.path.join(self.base_dir, "gtd", "next_actions.md"),
+        ]
+
+        # 2글자 이상의 의미 있는 키워드 정규화
+        clean_keywords = [
+            k.strip().lower()
+            for k in keywords
+            if len(k.strip()) >= 2 and k.strip().lower() not in ["제거", "삭제", "완료", "할일", "작업", "태스크"]
+        ]
+
+        if not clean_keywords:
+            return removed_tasks
+
+        for filepath in gtd_files:
+            if not os.path.exists(filepath):
+                continue
+
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+            except OSError as e:
+                logger.warning(f"Failed to read {filepath}: {e}")
+                continue
+
+            new_lines = []
+            file_modified = False
+
+            for line in lines:
+                line_s = line.strip()
+                if line_s.startswith(("- [ ]", "- [x]")):
+                    line_lower = line_s.lower()
+                    matched = False
+                    for kw in clean_keywords:
+                        kw_nospace = kw.replace(" ", "")
+                        line_nospace = line_lower.replace(" ", "")
+                        if kw in line_lower or kw_nospace in line_nospace:
+                            matched = True
+                            task_name = re.sub(r"^-\s*\[[ x]\]\s*", "", line_s)
+                            task_name = re.sub(r"[\*`]", "", task_name).strip()
+
+                            if task_name and task_name not in removed_tasks:
+                                removed_tasks.append(task_name)
+                            file_modified = True
+                            break
+                    if not matched:
+                        new_lines.append(line)
+                else:
+                    new_lines.append(line)
+
+            if file_modified:
+                try:
+                    with open(filepath, "w", encoding="utf-8") as f:
+                        f.writelines(new_lines)
+                    logger.info(f"Removed tasks from {filepath}: {removed_tasks}")
+                except OSError as e:
+                    logger.error(f"Failed to write to {filepath}: {e}")
+
+        return removed_tasks
+
+    def find_and_remove_matching_tasks(self, user_message: str) -> list[str]:
+        """
+        사용자 메시지에서 삭제/제거 의도를 감지하여, 기존 GTD 저장소(inbox.md, next_actions.md)의
+        실제 등록된 태스크 목록과 대조하여 일치하는 태스크를 안전하게 제거합니다.
+        """
+        gtd_files = [
+            self.get_gtd_inbox_filepath(),
+            os.path.join(self.base_dir, "gtd", "next_actions.md"),
+        ]
+        active_tasks: list[str] = []
+        for filepath in gtd_files:
+            if os.path.exists(filepath):
+                try:
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        for line in f:
+                            line_s = line.strip()
+                            if line_s.startswith("- [ ]"):
+                                item = line_s[5:].strip()
+                                item_clean = re.sub(r"[\*`]", "", item).strip()
+
+                                if item_clean and item_clean not in active_tasks:
+                                    active_tasks.append(item_clean)
+                except OSError:
+                    pass
+
+        user_msg_lower = user_message.lower()
+        matched_keywords: list[str] = []
+
+        # (A) 구문별 분리 ("tiara_ad는 제거해", "주간보고 제거", ...)
+        clauses = re.split(r"[,.\n및]+", user_message)
+        for clause in clauses:
+            clause_clean = clause.strip()
+            if any(term in clause_clean for term in ["제거", "삭제", "빼", "지워", "제외", "완료", "해결"]):
+                kw = re.sub(r"(?:는|도|은|를|을|에\s*대해)?\s*(?:제거해|제거|삭제해|삭제|빼줘|빼|지워줘|지워|제외해|제외|완료해|완료).*$", "", clause_clean).strip()
+                if len(kw) >= 2:
+                    matched_keywords.append(kw)
+
+        # (B) 활성 태스크와의 직접 대조 (오타 '나내' -> '아내' 등 부분 일치 보정)
+        for task in active_tasks:
+            words = [w for w in re.split(r"[\s\(\)\[\]\-]+", task) if len(w) >= 2]
+            for w in words:
+                w_lower = w.lower()
+                if len(w) >= 3 and (w_lower in user_msg_lower or (w in ["건강회복", "임신케어", "주간보고"] and any(part in user_msg_lower for part in [w, w.replace(" ", "")]))):
+                    matched_keywords.append(w)
+            if "가족" in task and "가족" in user_msg_lower and any(t in user_msg_lower for t in ["제거", "삭제", "빼"]):
+                matched_keywords.append("가족")
+            if "건강" in task and ("건강" in user_msg_lower or "회복" in user_msg_lower) and any(t in user_msg_lower for t in ["제거", "삭제", "빼"]):
+                matched_keywords.append("건강")
+
+        matched_keywords = list(set(matched_keywords))
+        return self.remove_gtd_tasks(matched_keywords)
+
+    def complete_top_task(self) -> dict[str, Any]:
+        """
+        GTD 저장소(gtd/next_actions.md, 당일 일일 로그, gtd/inbox.md 순)에서
+        첫 번째 미완료 태스크('- [ ]')를 찾아 완료 처리하고, 스킬 규칙에 따라
+        GTD 파일에서 잘라내어 오늘 날짜 데일리 로그로 이관(Surgical Transfer)합니다 (ADR-027, ADR-032).
+        """
+        today_log = self.lifelog_service.get_lifelog_filepath() if self.lifelog_service else os.path.join(self.base_dir, "logs", "daily", f"{get_now().strftime('%Y-%m-%d')}.md")
+        target_files = [
+            os.path.join(self.base_dir, "gtd", "next_actions.md"),
+            today_log,
+            self.get_gtd_inbox_filepath(),
+        ]
+
+        for filepath in target_files:
+            if not os.path.exists(filepath):
+                continue
+
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+            except OSError as e:
+                logger.warning(f"Failed to read {filepath}: {e}")
+                continue
+
+            for i, line in enumerate(lines):
+                line_s = line.strip()
+                if line_s.startswith("- [ ]"):
+                    task_raw = line_s[5:].strip()
+                    task_clean = re.sub(r"[\*`]", "", task_raw).strip()
+
+                    is_gtd_file = (os.path.abspath(filepath) != os.path.abspath(today_log))
+                    if is_gtd_file:
+                        # GTD 파일에서는 잘라내어(Cut) 삭제
+                        lines.pop(i)
+                    else:
+                        # 일일 로그 파일인 경우 해당 파일 내에서 - [x] 로 교체
+                        indent = line[: line.find("- [ ]")]
+                        lines[i] = f"{indent}- [x] {task_raw}\n"
+
+                    try:
+                        with open(filepath, "w", encoding="utf-8") as f:
+                            f.writelines(lines)
+                        logger.info(f"Completed top task '{task_clean}' from {filepath}")
+                    except OSError as e:
+                        logger.error(f"Failed to update task in {filepath}: {e}")
+                        return {"success": False, "task": None, "reason": str(e)}
+
+                    # GTD 파일에서 잘라낸 경우 데일리 로그로 수술적 이관(Paste)
+                    if is_gtd_file and self.lifelog_service:
+                        self.lifelog_service.transfer_completed_task_to_daily_log(task_raw)
+
+                    return {
+                        "success": True,
+                        "task": task_clean,
+                        "file_path": filepath,
+                        "file_name": os.path.basename(filepath),
+                        "transferred_to_daily": is_gtd_file,
+                    }
+
+        return {
+            "success": False,
+            "task": None,
+            "reason": "no_pending_tasks",
+        }
+
+    def complete_matching_tasks(self, keywords: list[str]) -> list[str]:
+        """
+        키워드와 일치하는 미완료 태스크('- [ ]')들을 찾아 완료 처리합니다 (ADR-027, ADR-031, ADR-032).
+        스킬 규칙에 따라 GTD 상태 파일(inbox.md, next_actions.md)에서는 해당 항목을 잘라내어(Cut) 제거하고,
+        당일 데일리 로그(logs/daily/YYYY-MM-DD.md)의 '## ✅ 오늘 완료한 일 (Completed GTD Tasks)'로 이관(Paste)합니다.
+        """
+        today_log = self.lifelog_service.get_lifelog_filepath() if self.lifelog_service else os.path.join(self.base_dir, "logs", "daily", f"{get_now().strftime('%Y-%m-%d')}.md")
+        target_files = [
+            os.path.join(self.base_dir, "gtd", "next_actions.md"),
+            today_log,
+            self.get_gtd_inbox_filepath(),
+        ]
+
+        expanded_keywords: list[str] = []
+        for kw in keywords:
+            kw_clean = kw.strip().lower()
+            # 서술어, 조사, 어미 정제 ("완료했어", "끝났어", "해결함", "은/는/이/가")
+            kw_pure = re.sub(r"(완료했어|완료함|완료|끝났어|끝냈어|끝|해결했어|해결함|해결|체크해줘|체크함|체크|다했어|다했다|마쳤어|마침)[\.\!\?\s]*$", "", kw_clean).strip()
+            kw_pure = re.sub(r"[은는이가을를도]$", "", kw_pure).strip()
+            if len(kw_pure) >= 2 and kw_pure not in ["완료", "해결", "체크", "끝", "할일", "태스크"] and kw_pure not in expanded_keywords:
+                expanded_keywords.append(kw_pure)
+            for token in kw_pure.split():
+                token_clean = token.strip()
+                if (
+                    len(token_clean) >= 2
+                    and token_clean not in ["은", "는", "이", "가", "을", "를", "의", "에", "로", "과", "와"]
+                    and token_clean not in expanded_keywords
+                ):
+                    expanded_keywords.append(token_clean)
+
+        clean_keywords = [
+            k for k in (expanded_keywords or keywords)
+            if len(k.strip()) >= 2 and k.strip().lower() not in ["완료", "해결", "체크", "끝", "할일", "태스크"]
+        ]
+        if not clean_keywords:
+            return []
+
+        completed_tasks: list[str] = []
+
+        for filepath in target_files:
+            if not os.path.exists(filepath):
+                continue
+
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+            except OSError:
+                continue
+
+            file_modified = False
+            new_lines = []
+            is_gtd_file = (os.path.abspath(filepath) != os.path.abspath(today_log))
+            tasks_to_transfer: list[str] = []
+
+            for line in lines:
+                line_s = line.strip()
+                if line_s.startswith("- [ ]"):
+                    line_lower = line_s.lower()
+                    matched = False
+                    for kw in clean_keywords:
+                        kw_nospace = kw.replace(" ", "")
+                        line_nospace = line_lower.replace(" ", "")
+                        if kw in line_lower or kw_nospace in line_nospace:
+                            matched = True
+                            task_raw = line_s[5:].strip()
+                            task_clean = re.sub(r"[\*`]", "", task_raw).strip()
+                            if is_gtd_file:
+                                tasks_to_transfer.append(task_raw)
+                            else:
+                                indent = line[: line.find("- [ ]")]
+                                new_lines.append(f"{indent}- [x] {task_raw}\n")
+
+                            if task_clean and task_clean not in completed_tasks:
+                                completed_tasks.append(task_clean)
+                            file_modified = True
+                            break
+                    if not matched:
+                        new_lines.append(line)
+                else:
+                    new_lines.append(line)
+
+            if file_modified:
+                try:
+                    with open(filepath, "w", encoding="utf-8") as f:
+                        f.writelines(new_lines)
+                    logger.info(f"Processed task completion in {filepath}: {completed_tasks}")
+                except OSError as e:
+                    logger.error(f"Failed to write to {filepath}: {e}")
+
+                # GTD 파일에서 잘라낸 태스크들을 당일 데일리 로그로 수술적 이관
+                if self.lifelog_service:
+                    for t_raw in tasks_to_transfer:
+                        self.lifelog_service.transfer_completed_task_to_daily_log(t_raw)
+
+        return completed_tasks
+
+    def read_gtd_files(self) -> str:
+        """
+        현재 연결된 GTD 저장소의 수집함(inbox.md) 및 다음 행동(next_actions.md) 파일을 직접 읽어
+        현재 등록된 모든 할 일과 섹션 현황을 반환합니다 (ADR-022).
+        """
+        inbox_path = self.get_gtd_inbox_filepath()
+        next_path = os.path.join(self.base_dir, "gtd", "next_actions.md")
+
+        inbox_rel = os.path.relpath(inbox_path, self.base_dir)
+        next_rel = os.path.relpath(next_path, self.base_dir) if os.path.exists(next_path) else "gtd/next_actions.md"
+
+        inbox_content = ""
+        inbox_open = 0
+        if os.path.exists(inbox_path):
+            try:
+                with open(inbox_path, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+                    inbox_open = sum(1 for line in lines if line.strip().startswith("- [ ]"))
+                    inbox_content = "".join(lines).strip()
+            except OSError as e:
+                inbox_content = f"⚠️ 파일 읽기 오류: {e}"
+        else:
+            inbox_content = "(파일이 존재하지 않습니다)"
+
+        next_content = ""
+        next_open = 0
+        if os.path.exists(next_path):
+            try:
+                with open(next_path, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+                    next_open = sum(1 for line in lines if line.strip().startswith("- [ ]"))
+                    next_content = "".join(lines).strip()
+            except OSError as e:
+                next_content = f"⚠️ 파일 읽기 오류: {e}"
+        else:
+            next_content = "(파일이 존재하지 않습니다)"
+
+        dday_section = ""
+        try:
+            from app.services.due_date_service import DueDateService
+            scan_res = DueDateService.scan_gtd_due_tasks(self.base_dir)
+            if scan_res["total_count"] > 0:
+                dday_lines = [
+                    f"#### ⏳ 3. 마감일(D-Day) 현황 - 총 `{scan_res['total_count']}`개 (긴급 `{scan_res['action_needed_count']}`개)"
+                ]
+                for t in scan_res["all_tasks"][:5]:
+                    dday_lines.append(f"* {t['badge']} `{t['display_title']}` (~{t['due_date_str']}) - {t['source_label']}")
+                if len(scan_res["all_tasks"]) > 5:
+                    dday_lines.append(f"* *(외 {len(scan_res['all_tasks']) - 5}개 과제 더 있음)*")
+                dday_section = "\n\n" + "\n".join(dday_lines)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Failed to scan due dates in read_gtd_files: {e}")
+
+        return (
+            f"### 📋 현재 GTD 파일 현황 브리핑\n\n"
+            f"#### 📥 1. 수집함 Inbox (`{inbox_rel}`) - 미완료 `{inbox_open}`개\n"
+            f"```markdown\n{inbox_content}\n```\n\n"
+            f"#### ⚡ 2. 다음 행동 Next Actions (`{next_rel}`) - 미완료 `{next_open}`개\n"
+            f"```markdown\n{next_content}\n```"
+            f"{dday_section}\n"
+        )

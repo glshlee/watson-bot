@@ -575,7 +575,17 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
   - 기존 모든 공개/내부 메서드 시그니처 및 `tests/conftest.py` 모킹 픽스처 100% 하위 호환 보장
 - [x] 단위 테스트(`tests/test_llm_provider.py` 13 passed in 0.92s, 관련 테스트 28 passed), 정적 타입/린트 검사(`mypy`, `ruff`) 및 `./scripts/smoke_test.sh` 40+개 전수 검증 완료
 
-### Phase 52: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
+### Phase 52: AgentService 라이프로그 및 GTD 오케스트레이션 분리 (ADR-053) - ✅ 완료
+- [x] 도메인별 2대 전용 서비스 분리 (`app/services/`):
+  - `lifelog_service.py` (260라인): 일일 마크다운 로그(`YYYY-MM-DD.md`) 입출력, KST 타임존 정규화, `[HH:MM]` 타임스탬프 엔트리 서식화, 30자 프리픽스 중복 방지, 당일 로그 마크다운 실시간 읽기 및 GTD 수술적 이관(Surgical Transfer) 수신 전담
+  - `gtd_service.py` (420라인): GTD 수집함(`inbox.md`), 다음 행동(`next_actions.md`), 문맥 맞춤형 섹션 라우팅, 키워드/자연어 태스크 물리적 삭제(`remove_gtd_tasks`, `find_and_remove_matching_tasks`), 결정론적 체크박스 완료(`complete_top_task`, `complete_matching_tasks`), GTD 잘라내기(Cut) 및 데일리 로그 이관(Paste) 오케스트레이션, D-Day 마감일 종합 브리핑 전담
+- [x] 메인 `AgentService` 오케스트레이터 파사드(Facade) 경량화:
+  - 853라인 ➔ 105라인 (87.7% 대폭 감축)
+  - `LifelogService`와 `GTDService`를 인스턴스화하고 상호 바인딩하여 순환 참조 없이 완벽 협업 구현
+  - 기존 모든 공개/내부 메서드 시그니처(`_normalize_datetime`, `read_gtd_and_daily_log` 등) 및 테스트 픽스처 100% 하위 호환 보장
+- [x] 단위 테스트(`tests/test_agent_service.py` 8 passed in 1.61s, 태스크 완료 7 passed), 정적 타입/린트 검사(`mypy`, `ruff`) 및 `./scripts/smoke_test.sh` 40+개 전수 검증 완료
+
+### Phase 53: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
 - [ ] `User` 모델 및 테넌트별 저장소/컨텍스트 격리 (`/data/tenants/{user_id}/`)
 - [ ] 단일 텔레그램 봇 기반 다중 사용자 라우팅 및 계정 바인딩 (`/start [연동코드]`)
 - [ ] 사용자 GitHub PAT 및 외부 API 키 AES-256 (Fernet) 암호화 보관
