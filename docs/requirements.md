@@ -299,6 +299,11 @@
 - **FR-50.2**: 메인 `web_router.py`를 95라인으로 슬림화하여 HTML 뷰 렌더링(`/`, `/watson`, `/dev`) 및 허브/데브 워크스페이스 상태 요약 전담 컨트롤러로 개편해야 한다.
 - **FR-50.3**: `web_router.py`에서 4대 서브 라우터를 `include_router`로 통합 마운트하여 기존 모든 클라이언트 통신 및 단위/스모크 테스트와 100% 하위 호환성을 유지해야 한다.
 
+### FR-51: LLMProvider 및 의도 분석 엔진 모듈화 리팩터링 (ADR-052)
+- **FR-51.1**: 1,188라인 단일 모놀리식 `llm_provider.py`를 4대 전용 서브모듈(`agy_client.py`, `prompt_builder.py`, `category_extractor.py`, `intent_analyzer.py`)로 분할 모듈화해야 한다.
+- **FR-51.2**: `LLMProvider`를 79라인의 경량 파사드(Facade)로 슬림화하고, 기존 모든 공개/내부 메서드(`_find_agy_path`, `_detect_category`, `analyze_and_respond` 등)를 그대로 보존해야 한다.
+- **FR-51.3**: 단위 테스트 모킹 픽스처(`patch.object(LLMProvider, "_find_agy_path")`)와의 100% 하위 호환성을 유지하고, `test_llm_provider.py` 13건의 단위 테스트를 1초 이내 초고속 검증해야 한다.
+
 ---
 
 
@@ -372,4 +377,5 @@
 | **FR-48** | `app/static/css/*.css`, `app/static/css/style.css` | cURL 정적 파일 검증 및 스모크 테스트 |
 | **FR-49** | `app/static/js/utils/*.js`, `app/static/js/modules/*.js`, `app/static/js/main.js`, `app/static/js/dev.js` | cURL 정적 파일 검증 및 스모크 테스트 |
 | **FR-50** | `app/routers/chat_router.py`, `app/routers/session_router.py`, `app/routers/briefing_router.py`, `app/routers/lifelog_router.py`, `app/routers/web_router.py` | Pytest 단위 테스트(`test_web_router.py`) & cURL 스모크 테스트 |
+| **FR-51** | `app/services/llm/agy_client.py`, `app/services/llm/prompt_builder.py`, `app/services/llm/category_extractor.py`, `app/services/llm/intent_analyzer.py`, `app/services/llm_provider.py` | Pytest 단위 테스트(`test_llm_provider.py`) & cURL 스모크 테스트 |
 

@@ -248,6 +248,10 @@
   - **4대 도메인 서브 라우터 분할 (`app/routers/`)**: 대화(`chat_router.py`), 세션(`session_router.py`), 브리핑(`briefing_router.py`), 라이프로그/검색/비전(`lifelog_router.py`)으로 분할하여 엔드포인트 단일 책임을 확립했습니다.
   - **`web_router.py` 뷰 오케스트레이터 슬림화 (515라인 ➔ 95라인, 81.6% 감축)**: HTML 뷰 렌더링(`/`, `/watson`, `/dev`) 및 허브 상태 요약에만 집중하며, 4대 서브 라우터를 `include_router`로 통합 마운트하여 100% 하위 호환성을 유지합니다.
 
+- 🧠 **LLMProvider 및 의도 분석 엔진 모듈화 리팩터링 (Modular LLM & Intent Architecture - ADR-052)**
+  - **4대 도메인 서브모듈 분리 (`app/services/llm/`)**: CLI 프로세스 호출(`agy_client.py`), 프롬프트 빌더/폴백(`prompt_builder.py`), 카테고리/태스크 추출(`category_extractor.py`), 20여 종 인텐트 분석(`intent_analyzer.py`)으로 SRP를 확립했습니다.
+  - **`LLMProvider` 파사드 경량화 (1,188라인 ➔ 79라인, 93.3% 감축)**: 모든 기존 메서드 및 테스트 모킹 픽스처 호환성을 100% 보존하면서 코드베이스 가독성과 유지보수성을 극대화했습니다.
+
 
 
 

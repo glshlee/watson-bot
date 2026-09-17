@@ -78,14 +78,14 @@
 * **프론트엔드 CSS 컴포넌트 모듈화 (ADR-049)**: 단일 모놀리식 style.css(3,423라인)를 7개 도메인별 CSS 모듈로 분할하고 메인 파일을 @import 오케스트레이터 번들(13라인, 99.6% 경량화)로 개편하여 100% 하위 호환성을 보장할 것.
 * **프론트엔드 JS 모듈화 & 모달 분리 (ADR-050)**: 단일 main.js(1,984라인)를 utils(api/date/modal) 및 5개 도메인 모달 컨트롤러로 분할(662라인, 66.6% 경량화)하고, dev.js 중복 제거 및 빌드리스 브라우저 네이티브 구동을 보장할 것.
 * **백엔드 라우터 모듈화 & SRP 분리 (ADR-051)**: 단일 web_router.py(515라인)를 4대 서브 라우터(chat/session/briefing/lifelog)로 분할(95라인, 81.6% 경량화)하고 include_router 통합으로 100% 하위 호환성을 보장할 것.
+* **LLM 및 의도 분석 모듈화 (ADR-052)**: 단일 llm_provider.py(1,188라인)를 4대 서브모듈(agy/prompt/category/intent)로 분할(79라인, 93.3% 경량화)하고 파사드 패턴으로 100% 하위 호환성을 보장할 것.
 * **Explicit User Commit Trigger Only (에이전트 코드 커밋 수칙)**: 코드 수정 및 기능 구현 후 Git 커밋(`git commit`)은 에이전트가 임의로 자동 실행하지 않으며, 오직 **사용자가 명시적으로 "커밋해" 지시를 내렸을 때만** 수행할 것.
 * **Curl-Based Live Verification (필수)**: 모든 코드 수정 후 반드시 `./scripts/smoke_test.sh` cURL 테스트를 실행하여 실제 라이브 API 수신 및 500 에러 부재를 검증할 것.
 * **Self-Verification & Evolution Loop**: 코드 변경 시 `pytest`/`mypy`/`ruff` 및 cURL 검증 수행 후 실패 시 `evolution.md` 지침에 따라 하네스 자가 진화 집행.
 
 ### 4. Progressive Disclosure (상세 문서 참조)
 * **제품 기획서 개요**: `docs/PRD.md` | **기능 요구사항**: `docs/requirements.md`
-* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-051)
-
+* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-052)
 
 ---
 

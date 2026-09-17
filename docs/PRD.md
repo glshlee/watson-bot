@@ -479,6 +479,16 @@
   * 515라인 단일 모놀리식 라우터에서 95라인(81.6% 감축)으로 슬림화하고, HTML 뷰 렌더링(`/`, `/watson`, `/dev`) 및 워크스페이스 상태 요약 전담.
   * 4개 서브 라우터를 `router.include_router(...)`로 안전하게 마운트하여 기존 모든 클라이언트 요청 및 단위/스모크 테스트와 100% 하위 호환성 유지.
 
+### 3.49. 🧠 LLMProvider 및 의도 분석 엔진 모듈화 리팩터링 (LLMProvider & Intent Strategy - ADR-052)
+* **4대 전용 서브모듈 분할 (`app/services/llm/`)**:
+  * `agy_client.py`: Antigravity CLI 바이너리 동적 탐색(`find_agy_path`) 및 서브프로세스 실행 전담.
+  * `prompt_builder.py`: GTD 스킬 행동 강령 주입, 비서 페르소나/대화 맥락 조립 및 스마트 로컬 폴백 전담.
+  * `category_extractor.py`: 4대 마크다운 카테고리 추론(`detect_category`) 및 D-Day 마감일 파싱 결합 GTD 태스크 추출(`extract_actionable_task`) 전담.
+  * `intent_analyzer.py`: 20여 종의 인텐트(승인/거절, 메타 피드백, 명시적/맥락적 기록, 숏컷 조회, 브리핑, 초안 제안, 자연어 대화) 분석 엔진(`analyze_intent`) 전담.
+* **`LLMProvider` 경량 파사드(Facade) 전환**:
+  * 1,188라인 거대 모놀리식 파일에서 **79라인(93.3% 감축)**으로 슬림화.
+  * 기존 모든 내부/외부 메서드 및 테스트 모킹(`patch.object(LLMProvider, "_find_agy_path")`)과 100% 하위 호환성을 유지하여 코드베이스 안정성 극대화.
+
 ---
 
 

@@ -564,7 +564,18 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
   - 4개 서브 라우터를 `include_router`로 통합 마운트하여 100% 하위 호환성 유지
 - [x] 단위 테스트(`tests/test_web_router.py`), 정적 타입/린트 검사(`mypy`, `ruff`) 및 `./scripts/smoke_test.sh` 40+개 전수 검증 완료
 
-### Phase 51: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
+### Phase 51: LLMProvider 및 의도 분석 엔진 모듈화 리팩터링 (ADR-052) - ✅ 완료
+- [x] 4대 전용 서브모듈 분할 (`app/services/llm/`):
+  - `agy_client.py` (55라인): Antigravity CLI 바이너리 동적 탐색 및 서브프로세스 실행
+  - `prompt_builder.py` (90라인): GTD 스킬 행동 강령 주입, 비서 페르소나/대화 맥락 조립 및 스마트 로컬 폴백
+  - `category_extractor.py` (85라인): 4대 마크다운 카테고리 추론 및 D-Day 결합 GTD 태스크 추출
+  - `intent_analyzer.py` (505라인): 20여 종의 인텐트 분석 엔진 및 IntentResult 데이터클래스 정의
+- [x] 메인 `LLMProvider` 경량 파사드(Facade) 슬림화:
+  - 1,188라인 ➔ 79라인 (93.3% 대폭 감축)
+  - 기존 모든 공개/내부 메서드 시그니처 및 `tests/conftest.py` 모킹 픽스처 100% 하위 호환 보장
+- [x] 단위 테스트(`tests/test_llm_provider.py` 13 passed in 0.92s, 관련 테스트 28 passed), 정적 타입/린트 검사(`mypy`, `ruff`) 및 `./scripts/smoke_test.sh` 40+개 전수 검증 완료
+
+### Phase 52: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
 - [ ] `User` 모델 및 테넌트별 저장소/컨텍스트 격리 (`/data/tenants/{user_id}/`)
 - [ ] 단일 텔레그램 봇 기반 다중 사용자 라우팅 및 계정 바인딩 (`/start [연동코드]`)
 - [ ] 사용자 GitHub PAT 및 외부 API 키 AES-256 (Fernet) 암호화 보관
