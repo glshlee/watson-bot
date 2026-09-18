@@ -898,6 +898,44 @@ else
     exit 1
 fi
 
+# 8-5. /roadmap & /skills DevBot 커맨드 검증 (ADR-057)
+DEV_ROADMAP=$(run_curl -s -X POST "$SERVER_URL/api/dev/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_dev_session", "message": "/roadmap"}')
+if echo "$DEV_ROADMAP" | grep -q '"action_type":"tool_roadmap"'; then
+    echo "  ✅ 8-5. DevBot /roadmap Command Passed"
+else
+    echo "  ❌ 8-5. DevBot /roadmap Failed: $DEV_ROADMAP"
+    exit 1
+fi
+
+DEV_SKILLS=$(run_curl -s -X POST "$SERVER_URL/api/dev/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_dev_session", "message": "/skills"}')
+if echo "$DEV_SKILLS" | grep -q '"action_type":"tool_skills"'; then
+    echo "  ✅ 8-6. DevBot /skills Command Passed"
+else
+    echo "  ❌ 8-6. DevBot /skills Failed: $DEV_SKILLS"
+    exit 1
+fi
+
+# 8-7. REST API /api/dev/roadmap & /api/dev/skills 검증 (ADR-057)
+DEV_API_ROADMAP=$(run_curl -s "$SERVER_URL/api/dev/roadmap")
+if echo "$DEV_API_ROADMAP" | grep -q 'total_phases' && echo "$DEV_API_ROADMAP" | grep -q 'progress_bar'; then
+    echo "  ✅ 8-7. GET /api/dev/roadmap API Passed"
+else
+    echo "  ❌ 8-7. GET /api/dev/roadmap Failed: $DEV_API_ROADMAP"
+    exit 1
+fi
+
+DEV_API_SKILLS=$(run_curl -s "$SERVER_URL/api/dev/skills")
+if echo "$DEV_API_SKILLS" | grep -q 'dev-workflow'; then
+    echo "  ✅ 8-8. GET /api/dev/skills API Passed"
+else
+    echo "  ❌ 8-8. GET /api/dev/skills Failed: $DEV_API_SKILLS"
+    exit 1
+fi
+
 # Clean up smoke dev session
 run_curl -s -X DELETE "$SERVER_URL/api/sessions/smoke_dev_session" > /dev/null 2>&1 || true
 

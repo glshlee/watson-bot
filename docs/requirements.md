@@ -326,6 +326,13 @@
 - **FR-55.3**: `scripts/start.sh`, `scripts/stop.sh`, `scripts/restart.sh`, `scripts/status.sh` 등 원터치 비동기 단축 스크립트를 제공해야 한다.
 - **FR-55.4**: 루트 `app.py`를 통해 직접 포그라운드 실행을 가드레일로 방어하고, `./scripts/service.sh start` 비동기 제어로 자동 위임해야 한다.
 
+### FR-56: DevBot 하네스 개발 스킬 연동 및 로드맵 인스펙터 (ADR-057)
+- **FR-56.1**: 표준 엔지니어링 7단계 파이프라인(요구사항 분석 ➔ TDD 테스트 ➔ 수술적 코드 구현 ➔ 정적 검사 ➔ cURL 검증 ➔ 4단계 문서화 ➔ Conventional Commits 제안 및 사용자 명시적 커밋 대기)을 명시한 `dev-workflow` 스킬(`.agents/skills/dev-workflow/SKILL.md`)을 제공해야 한다.
+- **FR-56.2**: DevBot 백엔드는 `.agents/skills/` 디렉토리의 전체 스킬을 동적으로 탐색(`get_available_skills()`)하고, `/skills` 및 `/skill <스킬명>` 명령과 REST API(`GET /api/dev/skills`, `GET /api/dev/skills/{name}`)를 통해 카탈로그 및 상세 명세를 제공해야 한다.
+- **FR-56.3**: DevBot 자연어 LLM 프롬프트에 하네스 보유 스킬 및 로드맵 컨텍스트를 동적으로 주입하여, 시니어 개발 엔지니어로서 일관된 7단계 워크플로우 안내를 제공해야 한다.
+- **FR-56.4**: `docs/roadmap.md` 문서를 실시간 분석(`parse_roadmap_data()`)하여 전체 진척도, 완료율(%), 진행바, 진행 중/예정 마일스톤 및 최근 완료 하이라이트를 산출하고, `/roadmap` 명령어 및 REST API(`GET /api/dev/roadmap`)로 대화형 리포트를 제공해야 한다.
+- **FR-56.5**: DevBot 콘솔 UI 상단 헤더에 `[🗺️ 로드맵]` 및 `[🧩 스킬]` 원터치 퀵 버튼을 제공하고, 커맨드 팔레트(`command_palette_dev.html`)에 18종 도구로 확장 통합해야 한다.
+
 ---
 
 
@@ -404,4 +411,5 @@
 | **FR-53** | `app/templates/modals/command_palette.html`, `app/static/js/modules/command_palette.js`, `app/static/css/chat.css` | 브라우저 콘솔 및 cURL 정적 템플릿 검증 |
 | **FR-54** | `app/services/dev_agent_service.py`, `app/templates/modals/command_palette_dev.html`, `app/templates/dev.html`, `app/static/css/dev.css`, `app/static/js/dev.js` | Pytest 단위 테스트(`test_dev_agent.py`) & cURL 스모크 테스트(8-1 ~ 8-4) |
 | **FR-55** | `scripts/service.sh`, `scripts/start.sh`, `scripts/stop.sh`, `scripts/restart.sh`, `scripts/status.sh`, `app.py`, `systemd/watson.service` | `./scripts/service.sh status` & `./scripts/smoke_test.sh` 라이브 검증 |
+| **FR-56** | `.agents/skills/dev-workflow/SKILL.md`, `app/services/dev_agent_service.py`, `app/routers/web_router.py`, `app/templates/modals/command_palette_dev.html`, `app/templates/dev.html`, `app/static/js/dev.js` | Pytest 단위 테스트(`test_dev_agent.py`) & cURL 스모크 테스트(8-5 ~ 8-8) |
 

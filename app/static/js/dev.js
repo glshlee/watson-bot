@@ -358,6 +358,18 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    // Roadmap & Skills Quick Header Buttons (ADR-057)
+    const btnDevRoadmapQuick = document.getElementById("btn-dev-roadmap-quick");
+    const btnDevSkillsQuick = document.getElementById("btn-dev-skills-quick");
+
+    btnDevRoadmapQuick?.addEventListener("click", () => {
+        sendMessage("/roadmap");
+    });
+
+    btnDevSkillsQuick?.addEventListener("click", () => {
+        sendMessage("/skills");
+    });
+
     // New Dev Session
     newSessionBtn?.addEventListener("click", () => {
         const newId = `dev_task_${Date.now()}`;

@@ -145,3 +145,59 @@ def test_dev_agent_toolchain():
     assert res_sync["action_type"] == "tool_sync"
     assert ("원격 GitHub 동기화" in res_sync["ai_response"])
 
+    # 9. /roadmap command (ADR-057)
+    res_roadmap = service.process_dev_request("dev_tool_test", "/roadmap")
+    assert res_roadmap["action_type"] == "tool_roadmap"
+    assert "개발 로드맵 & 마일스톤 현황" in res_roadmap["ai_response"]
+    assert "진척도" in res_roadmap["ai_response"]
+
+    # 10. /skills command (ADR-057)
+    res_skills = service.process_dev_request("dev_tool_test", "/skills")
+    assert res_skills["action_type"] == "tool_skills"
+    assert "하네스 개발 스킬 카탈로그" in res_skills["ai_response"]
+    assert "dev-workflow" in res_skills["ai_response"]
+
+    # 11. /skill <name> command (ADR-057)
+    res_skill_detail = service.process_dev_request("dev_tool_test", "/skill dev-workflow")
+    assert res_skill_detail["action_type"] == "tool_skill_detail"
+    assert "개발 스킬 상세" in res_skill_detail["ai_response"]
+    assert "dev-workflow" in res_skill_detail["ai_response"]
+
+    res_skill_invalid = service.process_dev_request("dev_tool_test", "/skill nonexistent_xyz")
+    assert res_skill_invalid["action_type"] == "tool_skill_detail"
+    assert "찾을 수 없습니다" in res_skill_invalid["ai_response"]
+
+
+def test_dev_roadmap_and_skills_api():
+    # 1. GET /api/dev/roadmap
+    res_roadmap = client.get("/api/dev/roadmap")
+    assert res_roadmap.status_code == 200
+    roadmap_data = res_roadmap.json()
+    assert "total_phases" in roadmap_data
+    assert "completed_phases" in roadmap_data
+    assert "completion_rate" in roadmap_data
+    assert "progress_bar" in roadmap_data
+    assert "markdown" in roadmap_data
+    assert roadmap_data["total_phases"] > 0
+
+    # 2. GET /api/dev/skills
+    res_skills = client.get("/api/dev/skills")
+    assert res_skills.status_code == 200
+    skills_data = res_skills.json()
+    assert "total_skills" in skills_data
+    assert "skills" in skills_data
+    assert "markdown" in skills_data
+    assert skills_data["total_skills"] >= 4
+    assert any(s["id"] == "dev-workflow" for s in skills_data["skills"])
+
+    # 3. GET /api/dev/skills/{skill_name}
+    res_detail = client.get("/api/dev/skills/dev-workflow")
+    assert res_detail.status_code == 200
+    detail_data = res_detail.json()
+    assert detail_data["id"] == "dev-workflow"
+    assert "content" in detail_data
+
+    # 4. GET /api/dev/skills/nonexistent (404)
+    res_404 = client.get("/api/dev/skills/nonexistent_xyz")
+    assert res_404.status_code == 404
+

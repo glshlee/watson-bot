@@ -612,11 +612,20 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] systemd 서비스 유닛 파일 경로 표준화 (`systemd/watson.service`) 및 `scripts/setup_wizard.sh` 비동기 안내 최신화
 - [x] `AGENTS.md` 및 `README.md` 가이드라인에서 포그라운드 직접 실행 금지 및 비동기 스크립트 사용 강제화
 
-### Phase 56: 웹 기반 자율 코딩 스튜디오 (Web Autonomous Coding Studio)
+### Phase 56: DevBot 하네스 개발 스킬 연동 및 로드맵 인스펙터 (ADR-057) - ✅ 완료
+- [x] 표준 엔지니어링 7단계 파이프라인 규약 스킬(`dev-workflow`) 신설 (`.agents/skills/dev-workflow/SKILL.md`)
+- [x] `.agents/skills/` 동적 스킬 탐색기(`get_available_skills()`) 및 인터랙티브 카탈로그 서식화(`format_skills_catalog()`)
+- [x] DevBot 자연어 LLM 추론 시 `dev_system_prompt`에 하네스 스킬 및 로드맵 컨텍스트 주입
+- [x] `docs/roadmap.md` 실시간 파싱 엔진(`parse_roadmap_data()`) 및 마일스톤 진척도 리포트(`format_roadmap_report()`)
+- [x] DevBot 명령어 `/roadmap`, `/skills`, `/skill <name>` 라우팅 및 REST API (`GET /api/dev/roadmap`, `GET /api/dev/skills`) 구현
+- [x] DevBot 커맨드 팔레트 18종 확장 및 헤더 원터치 퀵 버튼(`[🗺️ 로드맵]`, `[🧩 스킬]`) 연동
+- [x] 단위 테스트(`tests/test_dev_agent.py`), 린트(`ruff`), 정적 타입 검사(`mypy`) 및 `./scripts/smoke_test.sh` 전수 검증 완료
+
+### Phase 57: 웹 기반 자율 코딩 스튜디오 (Web Autonomous Coding Studio)
 - [ ] DevBot 웹 콘솔에서 자연어 코드 수정 요청 시 실시간 diff 프리뷰 및 파일 편집 인터페이스
 - [ ] 테스트 자동 실행 및 오류 발생 시 자가 치유(Self-Healing) 엔지니어링 루프
 
-### Phase 57: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
+### Phase 58: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
 - [ ] `User` 모델 및 테넌트별 저장소/컨텍스트 격리 (`/data/tenants/{user_id}/`)
 - [ ] 단일 텔레그램 봇 기반 다중 사용자 라우팅 및 계정 바인딩 (`/start [연동코드]`)
 - [ ] 사용자 GitHub PAT 및 외부 API 키 AES-256 (Fernet) 암호화 보관

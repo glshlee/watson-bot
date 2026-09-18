@@ -22,6 +22,7 @@
   * `git_worker.md`: [작업자] Git Pull/Commit/Push 및 예외 롤백 처리
   * `spec_verifier.md`: [검증자] 마크다운 템플릿 및 PRD 명세 무결성 검증
 * **모듈형 스킬 (`.agents/skills/`)**:
+  * `dev-workflow/SKILL.md`: TDD, 린트/타입 검사, 4단계 문서화 루프 및 하네스 개발 규약 스킬
   * `git-automation/SKILL.md`: Git 커밋/푸시 및 충돌 복구 스킬
   * `session-memory/SKILL.md`: 텔레그램/웹 대시보드 대화 세션 맥락 관리 스킬
   * `markdown-lifelog/SKILL.md`: 마크다운 템플릿 변환 및 Append/Edit 스킬
@@ -83,17 +84,15 @@
 * **슬래시 커맨드 팔레트 & 미니멀 UI (ADR-054)**: 15개 고정 칩 바를 철거하고 [/] 팝오버 팔레트(3대 카테고리 14종)로 통합하여 실시간 / 필터링, 키보드 내비게이션 및 모바일 최적화를 보장할 것.
 * **DevBot 팔레트 & 인터랙티브 Git 위저드 (ADR-055)**: 20개 칩 바 철거 후 [/] 팔레트(16종 도구) 통합, 3종 Conventional Commits 원클릭 커밋/원터치 푸시 위저드, 백엔드 /push, /sync 탑재 및 다크 터미널 박스를 보장할 것.
 * **비동기 서비스 제어 & 포그라운드 차단 (ADR-056)**: 터미널 세션 블로킹 및 고아 프로세스 방지를 위해 포그라운드 직접 실행(`python app.py`, `uvicorn`)을 엄격히 금지하고, 반드시 `./scripts/service.sh` 또는 `start.sh` 등 비동기 스크립트 및 `app.py` 가드레일로 백그라운드 구동할 것.
+* **DevBot 스킬 연동 & 로드맵 인스펙터 (ADR-057)**: .agents/skills/ 동적 탐색·주입과 /skills, /skill <name> 명세 카탈로그를 지원하고, /roadmap 및 REST API로 전체 56개 마일스톤 진척도·예정 과제를 실시간 브리핑할 것.
 * **Explicit User Commit Trigger Only (에이전트 코드 커밋 수칙)**: 코드 수정 및 기능 구현 후 Git 커밋(`git commit`)은 에이전트가 임의로 자동 실행하지 않으며, 오직 **사용자가 명시적으로 "커밋해" 지시를 내렸을 때만** 수행할 것.
 * **Curl-Based Live Verification (필수)**: 모든 코드 수정 후 반드시 `./scripts/smoke_test.sh` cURL 테스트를 실행하여 실제 라이브 API 수신 및 500 에러 부재를 검증할 것.
 * **Self-Verification & Evolution Loop**: 코드 변경 시 `pytest`/`mypy`/`ruff` 및 cURL 검증 수행 후 실패 시 `evolution.md` 지침에 따라 하네스 자가 진화 집행.
 
 ### 4. Progressive Disclosure (상세 문서 참조)
 * **제품 기획서 개요**: `docs/PRD.md` | **기능 요구사항**: `docs/requirements.md`
-* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-056)
-
+* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-057)
 ---
-
 ## 🛠 1. 기술 스택 & 프로젝트 구조 요약
-
 * **Tech Stack**: Python (v3.10+), FastAPI, SQLAlchemy, SQLite, Jinja2/HTML5/CSS3/JS, pytest, mypy, ruff
 * **Project Structure**: `.agents/`, `app/` (`models/`, `services/`, `routers/`, `templates/`, `static/`), `scripts/`, `tests/`, `docs/`

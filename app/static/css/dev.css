@@ -372,4 +372,39 @@
     color: #38bdf8;
 }
 
+/* Quick Action Badges in Dev Header (ADR-057) */
+.dev-action-badge {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    color: #6ee7b7;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    padding: 4px 10px;
+    border-radius: 6px;
+}
+
+.dev-action-badge:hover {
+    background: rgba(16, 185, 129, 0.28);
+    border-color: #34d399;
+    color: #ffffff;
+}
+
+/* Palette item icon accents for roadmap & skills */
+.palette-item .item-icon.roadmap {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.palette-item .item-icon.skills {
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import (
     APIRouter,
     Depends,
+    HTTPException,
     Request,
 )
 from fastapi.responses import HTMLResponse
@@ -93,3 +94,37 @@ def get_dev_status(db: Session = Depends(get_db)):  # noqa: B008
     """DevBot 워크스페이스 상태 조회 (ADR-018)."""
     dev_service = DevAgentService(db=db)
     return dev_service.get_workspace_status()
+
+
+@router.get("/api/dev/roadmap")
+def get_dev_roadmap(db: Session = Depends(get_db)):  # noqa: B008
+    """DevBot 로드맵 데이터 및 진행률 조회 (ADR-057)."""
+    dev_service = DevAgentService(db=db)
+    data = dev_service.parse_roadmap_data()
+    data["markdown"] = dev_service.format_roadmap_report()
+    return data
+
+
+@router.get("/api/dev/skills")
+def get_dev_skills(db: Session = Depends(get_db)):  # noqa: B008
+    """DevBot 사용 가능 .agents/skills 카탈로그 조회 (ADR-057)."""
+    dev_service = DevAgentService(db=db)
+    skills = dev_service.get_available_skills()
+    return {
+        "total_skills": len(skills),
+        "skills": skills,
+        "markdown": dev_service.format_skills_catalog(),
+    }
+
+
+@router.get("/api/dev/skills/{skill_name}")
+def get_dev_skill_detail(skill_name: str, db: Session = Depends(get_db)):  # noqa: B008
+    """DevBot 특정 스킬 상세 조회 (ADR-057)."""
+    dev_service = DevAgentService(db=db)
+    skills = dev_service.get_available_skills()
+    target = skill_name.strip().lower()
+    for s in skills:
+        if target == s["id"].lower() or target == s["name"].lower() or target in s["id"].lower():
+            return s
+    raise HTTPException(status_code=404, detail=f"Skill '{skill_name}' not found")
+

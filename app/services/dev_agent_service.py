@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import subprocess
 from typing import Any
 
@@ -314,6 +315,183 @@ class DevAgentService:
             f"*직접 메시지를 지정하여 커밋하려면 `/commit <원하는 메시지>` 명령으로 실행해 주세요.*"
         )
 
+    def get_available_skills(self) -> list[dict[str, Any]]:
+        """
+        .agents/skills/ 디렉토리에 정의된 범용 하네스 스킬 목록을 동적으로 탐색하고 파싱합니다.
+        """
+        skills_dir = os.path.join(self.workspace_path, ".agents", "skills")
+        skills: list[dict[str, Any]] = []
+        if not os.path.exists(skills_dir):
+            return skills
+
+        try:
+            for entry in sorted(os.listdir(skills_dir)):
+                skill_path = os.path.join(skills_dir, entry, "SKILL.md")
+                if os.path.isfile(skill_path):
+                    name = entry
+                    description = ""
+                    with open(skill_path, encoding="utf-8") as f:
+                        raw = f.read()
+                        content = raw
+                        if raw.startswith("---"):
+                            parts = raw.split("---", 2)
+                            if len(parts) >= 3:
+                                frontmatter = parts[1]
+                                for line in frontmatter.splitlines():
+                                    if line.strip().startswith("name:"):
+                                        name = line.split("name:", 1)[1].strip()
+                                    elif line.strip().startswith("description:"):
+                                        description = line.split("description:", 1)[1].strip()
+                    skills.append({
+                        "id": entry,
+                        "name": name,
+                        "description": description or "설명 없음",
+                        "path": f".agents/skills/{entry}/SKILL.md",
+                        "content": content,
+                    })
+        except Exception as e:  # noqa: BLE001
+            logger.debug(f"Failed to load skills: {e}")
+
+        return skills
+
+    def format_skills_catalog(self, skill_name: str | None = None) -> str:
+        """스킬 카탈로그 또는 특정 스킬의 상세 가이드를 마크다운 서식으로 생성합니다."""
+        skills = self.get_available_skills()
+        if not skills:
+            return "현재 등록된 `.agents/skills/` 개발 스킬이 없습니다."
+
+        if skill_name:
+            target = skill_name.strip().lower()
+            matched = None
+            for s in skills:
+                if target == s["id"].lower() or target == s["name"].lower() or target in s["id"].lower():
+                    matched = s
+                    break
+            if matched:
+                return (
+                    f"### 🧩 개발 스킬 상세: `{matched['name']}`\n\n"
+                    f"* **설명**: {matched['description']}\n"
+                    f"* **스킬 경로**: `{matched['path']}`\n\n"
+                    f"```markdown\n{matched['content'].strip()}\n```\n\n"
+                    f'<div class="dev-git-wizard">\n'
+                    f'  <button type="button" class="dev-btn-action" data-cmd="/skills"><i class="fa-solid fa-list"></i> 전체 스킬 카탈로그 (/skills)</button>\n'
+                    f'  <button type="button" class="dev-btn-action" data-cmd="/roadmap"><i class="fa-solid fa-map"></i> 개발 로드맵 (/roadmap)</button>\n'
+                    f'  <button type="button" class="dev-btn-action" data-cmd="/test"><i class="fa-solid fa-flask"></i> 단위 테스트 실행 (/test)</button>\n'
+                    f'</div>'
+                )
+            else:
+                available = ", ".join([f"`{s['id']}`" for s in skills])
+                return f"⚠️ `{skill_name}` 스킬을 찾을 수 없습니다.\n\n* **사용 가능한 스킬**: {available}\n* 전체 스킬 목록은 `/skills`로 확인하세요."
+
+        # Catalog Overview
+        lines = [
+            "### 🧩 Watson 하네스 개발 스킬 카탈로그 (Skill Catalog)\n",
+            "DevBot이 개발 및 오케스트레이션에 활용하는 표준 하네스 스킬입니다:\n",
+        ]
+        for s in skills:
+            lines.append(
+                f'<div class="dev-commit-opt" style="margin-bottom: 12px;">\n'
+                f'  <div class="opt-desc"><strong>🔹 {s["name"]}</strong>: {s["description"]} (`{s["path"]}`)</div>\n'
+                f'  <button type="button" class="dev-btn-action" data-cmd="/skill {s["id"]}">'
+                f'<i class="fa-solid fa-book-open"></i> {s["name"]} 스킬 명세 열람 (/skill {s["id"]})'
+                f'</button>\n'
+                f'</div>'
+            )
+
+        lines.append("\n*특정 스킬의 전문 가이드를 보시려면 `/skill <스킬명>`(예: `/skill dev-workflow`, `/skill git-automation`)을 입력하세요.*")
+        return "\n".join(lines)
+
+    def parse_roadmap_data(self) -> dict[str, Any]:
+        """docs/roadmap.md를 분석하여 마일스톤 완료 통계 및 상태를 반환합니다."""
+        roadmap_path = os.path.join(self.workspace_path, "docs", "roadmap.md")
+        if not os.path.exists(roadmap_path):
+            return {
+                "total_phases": 0,
+                "completed_phases": 0,
+                "completion_rate": 0.0,
+                "progress_bar": "░░░░░░░░░░ 0.0%",
+                "active_phases": [],
+                "recent_phases": [],
+                "all_phases": [],
+            }
+
+        phases: list[dict[str, Any]] = []
+        try:
+            with open(roadmap_path, encoding="utf-8") as f:
+                content = f.read()
+
+            for line in content.splitlines():
+                m = re.match(r"^###\s+Phase\s+(\d+):\s*(.*)$", line.strip())
+                if m:
+                    num = int(m.group(1))
+                    raw_title = m.group(2).strip()
+                    done = any(k in raw_title.lower() for k in ["done", "완료", "completed"])
+                    clean_title = re.sub(r"\s*-\s*✅\s*완료|\s*\((Done|완료|Current Phase - Done)\)", "", raw_title).strip()
+                    phases.append({
+                        "phase": num,
+                        "raw_title": raw_title,
+                        "title": clean_title,
+                        "completed": done,
+                    })
+        except Exception as e:  # noqa: BLE001
+            logger.debug(f"Failed to parse roadmap: {e}")
+
+        total = len(phases)
+        completed = sum(1 for p in phases if p["completed"])
+        rate = round((completed / total * 100), 1) if total > 0 else 0.0
+
+        filled_blocks = min(10, max(0, round(rate / 10)))
+        empty_blocks = 10 - filled_blocks
+        progress_bar = f"{'█' * filled_blocks}{'░' * empty_blocks} {rate}%"
+
+        active = [p for p in phases if not p["completed"]]
+        recent = [p for p in phases if p["completed"]][-4:]
+
+        return {
+            "total_phases": total,
+            "completed_phases": completed,
+            "completion_rate": rate,
+            "progress_bar": progress_bar,
+            "active_phases": active,
+            "recent_phases": recent,
+            "all_phases": phases,
+        }
+
+    def format_roadmap_report(self) -> str:
+        """개발 로드맵 및 마일스톤 진행 현황을 대화형 카드로 서식화합니다."""
+        data = self.parse_roadmap_data()
+        if data["total_phases"] == 0:
+            return "⚠️ `docs/roadmap.md` 파일을 찾을 수 없거나 마일스톤이 정의되지 않았습니다."
+
+        lines = [
+            "### 🗺️ Watson 개발 로드맵 & 마일스톤 현황\n",
+            f"* **📊 마일스톤 진척도**: `[{data['progress_bar']}]` (**{data['completed_phases']}** / {data['total_phases']} 단계 완료)\n",
+        ]
+
+        if data["active_phases"]:
+            lines.append("#### 🎯 진행 중 & 예정 마일스톤 (Active & Upcoming)")
+            for p in data["active_phases"]:
+                lines.append(f"- **Phase {p['phase']}**: {p['title']}")
+            lines.append("")
+
+        if data["recent_phases"]:
+            lines.append("#### 🌟 최근 완료 마일스톤 하이라이트 (Recent Completed)")
+            for p in reversed(data["recent_phases"]):
+                lines.append(f"- ✅ **Phase {p['phase']}**: {p['title']}")
+            lines.append("")
+
+        lines.append(
+            '<div class="dev-git-wizard">\n'
+            '  <button type="button" class="dev-btn-action" data-cmd="/skills"><i class="fa-solid fa-puzzle-piece"></i> 개발 스킬 목록 (/skills)</button>\n'
+            '  <button type="button" class="dev-btn-action" data-cmd="/test"><i class="fa-solid fa-flask"></i> 단위 테스트 실행 (/test)</button>\n'
+            '  <button type="button" class="dev-btn-action" data-cmd="/lint"><i class="fa-solid fa-broom"></i> 코드 린트 검사 (/lint)</button>\n'
+            '  <button type="button" class="dev-btn-action" data-cmd="/status"><i class="fa-solid fa-circle-info"></i> Git 상태 확인 (/status)</button>\n'
+            '</div>\n\n'
+            '*전체 상세 백로그는 `docs/roadmap.md` 파일에서 확인하실 수 있습니다.*'
+        )
+
+        return "\n".join(lines)
+
     def _get_roadmap_summary(self) -> str:
         """docs/roadmap.md 파일에서 최근 완료 상태 및 다음 계획 요약을 추출합니다."""
         try:
@@ -596,10 +774,27 @@ class DevAgentService:
             setup_svc = SetupService()
             ai_response = setup_svc.format_status_report()
 
+        elif lower_msg in ["/roadmap", "/로드맵", "roadmap", "로드맵", "개발 로드맵", "로드맵 확인", "마일스톤", "마일스톤 확인", "로드맵 보여줘"]:
+            action_type = "tool_roadmap"
+            ai_response = self.format_roadmap_report()
+
+        elif lower_msg in ["/skills", "/스킬", "skills", "스킬", "개발 스킬", "스킬 목록", "스킬 확인", "스킬 보여줘"]:
+            action_type = "tool_skills"
+            ai_response = self.format_skills_catalog()
+
+        elif lower_msg.startswith(("/skill ", "/스킬 ")):
+            action_type = "tool_skill_detail"
+            skill_arg = clean_msg.split(maxsplit=1)[1].strip()
+            ai_response = self.format_skills_catalog(skill_arg)
+
         elif lower_msg in ["/help", "help", "도움말", "명령어", "도구"]:
             action_type = "tool_help"
             ai_response = (
                 "### 🛠️ DevBot 지원 엔지니어링 도구 안내\n\n"
+                "* **🗺️ 개발 로드맵 & 하네스 스킬 (ADR-057)**:\n"
+                "  * `/roadmap`: 전체 개발 로드맵 진행률 및 예정 마일스톤 현황 점검\n"
+                "  * `/skills`: DevBot 활용 가능 `.agents/skills/` 카탈로그 조회\n"
+                "  * `/skill [이름]`: 특정 스킬(예: `/skill dev-workflow`, `/skill git-automation`)의 상세 명세 열람\n"
                 "* **🌿 Git 워크스페이스 도구**:\n"
                 "  * `/status`: 현재 작업 트리 상태 및 브랜치 확인\n"
                 "  * `/diff`: 변경 코드(Staged/Unstaged) 실시간 비교\n"
@@ -636,6 +831,8 @@ class DevAgentService:
             action_type = "ai_reasoning"
             ws_status = self.get_workspace_status()
             roadmap_summary = self._get_roadmap_summary()
+            skills = self.get_available_skills()
+            skills_summary = "\n".join([f"- {s['name']}: {s['description']}" for s in skills])
 
             repo_context = (
                 f"[프로젝트 현황 컨텍스트]\n"
@@ -644,12 +841,17 @@ class DevAgentService:
                 f"- 변경 중인 파일 수: {ws_status['changed_files_count']}\n"
                 f"- 최근 커밋: {ws_status['last_commit']}\n"
             )
+            if skills_summary:
+                repo_context += f"- 보유 개발 스킬 (.agents/skills):\n{skills_summary}\n"
             if roadmap_summary:
                 repo_context += f"- 최근 완료 단계 및 로드맵:\n{roadmap_summary}\n"
 
             dev_system_prompt = (
                 "너는 왓슨(Watson) 프로젝트의 개발 및 DevOps를 전담하는 전문 AI 소프트웨어 엔지니어 'DevBot'이다.\n"
                 "Python, FastAPI, SQLite, Git 자동화, LLM 에이전트 아키텍처에 능통하다.\n"
+                "너는 하네스에 정의된 개발 스킬(.agents/skills/)과 로드맵을 철저히 숙지하고 준수하여 개발 작업을 수행한다.\n"
+                "기능 개발 요청 시 dev-workflow 스킬의 표준 7단계(요구사항 분석 ➔ TDD 테스트 ➔ 수술적 코드 구현 ➔ 린트/타입 검사 ➔ cURL 검증 ➔ 4단계 문서화 루프 ➔ Conventional Commits 제안)를 기반으로 단계별 안내를 제공하라.\n"
+                "사용자가 '커밋해'라고 명시적으로 지시하기 전까지 임의 커밋하지 않는 규칙을 엄격히 준수하라.\n"
                 "친절하고 정중하며 기술적으로 명쾌하고 깊이 있게 한국어로 답변하라.\n"
                 "절대로 쉘 명령어나 외부 도구를 호출하지 말고, 오직 주어진 [프로젝트 현황 컨텍스트]를 완벽히 숙지하여 텍스트로만 구체적이고 실현 가능한 제안을 제시하라.\n"
                 "절대로 기계적이거나 판에 박힌 앵무새 답변을 하지 마라.\n\n"

@@ -267,10 +267,16 @@
   - **인터랙티브 Conventional Commits 3종 추천 & 원터치 커밋/푸시 위저드**: `/commit` 실행 시 Conventional Commits 3종(`feat`, `fix`, `refactor`) 추천 카드와 원터치 커밋 버튼을 즉시 렌더링하고, 커밋 성공 시 말풍선 하단에 `[🚀 GitHub 원격 푸시 (/push)]` 배너를 제공합니다.
   - **결정론적 원격 푸시 & 동기화 도구 탑재**: 백엔드에 `_run_git_push()` 및 `_run_git_sync()`를 신설하여 `/push`, `/sync`를 터미널 없이 즉시 실행하고, 결과를 JetBrains Mono 기반 다크 터미널 박스(`.dev-terminal-box`)로 시각화합니다.
 
+- ⚙️ **비동기 서비스 제어 스크립트 및 데몬 구동 표준화 (Service Script & Daemon - ADR-056)**
+  - **포그라운드 실행 원천 금지**: 터미널 블로킹 및 고아 프로세스 방지를 위해 `python app.py` 및 포그라운드 `uvicorn` 실행을 금지하고, `scripts/service.sh` 비동기 제어기를 통해 서비스 전체 생명주기를 논블로킹으로 관리합니다.
+  - **원터치 단축 스크립트**: `./scripts/start.sh`, `stop.sh`, `restart.sh`, `status.sh`, `logs`를 제공하여 언제든 1초 만에 안전하게 서비스를 시작·재시작·점검합니다.
+  - **방어 가드레일**: 관성적인 `python app.py` 호출 시 포그라운드 차단 경고를 출력하고 자동으로 `./scripts/service.sh start` 비동기 제어로 위임합니다.
 
-
-
-
+- 🗺️ **DevBot 하네스 개발 스킬 연동 & 로드맵 인스펙터 (Harness Skill Integration & Roadmap Inspector - ADR-057)**
+  - **표준 엔지니어링 7단계 개발 규약 스킬 (`dev-workflow`)**: `.agents/skills/dev-workflow/SKILL.md`를 통해 요구사항 분석 ➔ TDD 단위테스트 ➔ 수술적 코드 구현 ➔ 정적 검사(Ruff/Mypy) ➔ cURL 라이브 검증 ➔ 4단계 필수 문서화 루프 ➔ Conventional Commits 제안 및 사용자 명시적 커밋 대기 절차를 표준 규정했습니다.
+  - **동적 스킬 탐색 & 카탈로그 서식화 (`/skills`, `/skill <이름>`)**: `.agents/skills/` 디렉토리 내 모든 스킬을 동적 탐색하여 전체 카탈로그 카드, 상세 명세 가이드 및 REST API(`GET /api/dev/skills`, `GET /api/dev/skills/{name}`)를 제공하며, 자연어 질의 시 `dev_system_prompt`에 보유 스킬과 워크플로우를 자동 주입합니다.
+  - **실시간 로드맵 분석 & 마일스톤 인스펙터 (`/roadmap`)**: `docs/roadmap.md`를 실시간 분석하여 전체 56개 마일스톤 진척도, 완료율(%), 10칸 텍스트 진행바(`[██████████ 96.4%]`), 진행 중/예정 마일스톤 및 최근 완료 마일스톤을 대화형 카드로 브리핑합니다.
+  - **UI & 커맨드 팔레트 확장**: DevBot 콘솔 상단 헤더에 `[🗺️ 로드맵]`(`#btn-dev-roadmap-quick`) 및 `[🧩 스킬]`(`#btn-dev-skills-quick`) 원터치 액션 배지를 신설하고, 커맨드 팔레트를 18종 도구로 확장했습니다.
 
 - 📁 **GTD 저장소 격리 및 외부 체계 오케스트레이션 (GTD Repo Isolation - ADR-007)**
   - 왓슨 봇 소스코드 저장소와 개인 데이터(GTD/라이프로그) 저장소를 물리적으로 완벽히 분리합니다.
@@ -540,7 +546,7 @@ mypy app tests
 watson-bot/
 ├── .agents/                 # 범용 에이전트 하네스 표준 (supervisor, lifelog_generator, git_worker 등)
 │   ├── agents/              # 서브 에이전트 역할 정의
-│   ├── skills/              # 모듈형 스킬 (git-automation, session-memory, markdown-lifelog)
+│   ├── skills/              # 모듈형 스킬 (dev-workflow, git-automation, session-memory, markdown-lifelog)
 │   └── rules/               # 자가진화(evolution.md) 및 정합성(spec_alignment.md) 규칙
 ├── app/
 │   ├── db/                  # SQLAlchemy SQLite 모델 및 세션 관리
@@ -551,7 +557,7 @@ watson-bot/
 │   ├── templates/           # Jinja2 HTML 대시보드 및 설정 템플릿
 │   └── main.py              # FastAPI 진입점 및 Lifespan 관리
 ├── docs/
-│   ├── adr/                 # 아키텍처 결정 기록 (ADR-001 ~ ADR-038)
+│   ├── adr/                 # 아키텍처 결정 기록 (ADR-001 ~ ADR-057)
 │   ├── PRD.md               # 제품 기획서
 │   ├── requirements.md      # 기능 명세서
 │   └── roadmap.md           # 개발 로드맵

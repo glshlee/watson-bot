@@ -528,6 +528,18 @@
 * **방어적 실행 가드레일 (`app.py`)**:
   * 관성적인 `python app.py` 호출 시 포그라운드 차단 경고를 출력하고 자동으로 `./scripts/service.sh start` 비동기 제어로 안전하게 위임.
 
+### 3.54. 🗺️ DevBot 하네스 개발 스킬 연동 및 로드맵 인스펙터 (Harness Skill Integration & Roadmap Inspector - ADR-057)
+* **표준 엔지니어링 7단계 개발 규약 스킬 (`dev-workflow`)**:
+  * `.agents/skills/dev-workflow/SKILL.md` 신설을 통해 요구사항 분석 ➔ TDD 단위테스트 ➔ 수술적 코드 구현 ➔ 정적 검사(Ruff/Mypy) ➔ cURL 라이브 검증 ➔ 4단계 필수 문서화 루프 ➔ Conventional Commits 제안 및 사용자 명시적 커밋 대기 절차를 표준 규정.
+* **동적 스킬 탐색 & 카탈로그 서식화 (`get_available_skills`, `format_skills_catalog`)**:
+  * `.agents/skills/` 디렉토리 내 모든 스킬 명세를 동적 파싱하여 `/skills` 카탈로그 카드, `/skill <이름>` 상세 명세 뷰 및 REST API(`GET /api/dev/skills`, `GET /api/dev/skills/{name}`) 제공.
+  * 자연어 개발 질의 시 `dev_system_prompt`에 보유 스킬과 워크플로우를 주입하여 체계적인 시니어 페어 프로그래밍 제공.
+* **개발 로드맵 분석 및 인스펙터 (`parse_roadmap_data`, `format_roadmap_report`)**:
+  * `docs/roadmap.md`를 실시간 파싱하여 전체 56개 마일스톤 진척도, 완료율(%), 진행바, 진행 중/예정 마일스톤 및 최근 완료 마일스톤 하이라이트 제공.
+  * `/roadmap` 명령어 및 REST API(`GET /api/dev/roadmap`)를 통해 0.01초 내 대화형 마일스톤 리포트 카드 제공.
+* **콘솔 UI 및 커맨드 팔레트 확장**:
+  * DevBot 콘솔 상단 헤더에 `[🗺️ 로드맵]`, `[🧩 스킬]` 원터치 퀵 액션 배지 신설 및 커맨드 팔레트 18종 도구로 확장.
+
 ---
 
 
