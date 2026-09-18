@@ -1,0 +1,190 @@
+<!-- Floating Command Palette Popover (ADR-054) -->
+<div id="command-palette-backdrop" class="command-palette-backdrop hidden"></div>
+<div id="command-palette" class="command-palette hidden" role="menu" aria-label="빠른 명령어 및 숏컷 메뉴">
+    <div class="palette-header">
+        <div class="palette-header-left">
+            <i class="fa-solid fa-bolt-lightning palette-header-icon"></i>
+            <span class="palette-title">빠른 명령어 & 숏컷</span>
+            <span class="palette-count-badge" id="palette-count">14개</span>
+        </div>
+        <div class="palette-header-right">
+            <span class="palette-hint desktop-only"><kbd>↑</kbd><kbd>↓</kbd> 탐색</span>
+            <span class="palette-hint desktop-only"><kbd>Enter</kbd> 실행</span>
+            <button type="button" id="btn-close-palette" class="btn-close-palette" title="명령어 팔레트 닫기" aria-label="닫기">
+                <i class="fa-solid fa-xmark"></i> <span>닫기</span>
+            </button>
+        </div>
+    </div>
+    <div class="palette-body" id="palette-body">
+        <!-- ☀️ 브리핑 & 일정 -->
+        <div class="palette-group" data-group="briefing">
+            <div class="palette-group-title"><i class="fa-solid fa-sun"></i> 브리핑 & 일정</div>
+            <div class="palette-item" data-cmd="/briefing morning">
+                <span class="item-icon morning"><i class="fa-solid fa-sun"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">아침 브리핑</span>
+                        <span class="item-cmd">/briefing morning</span>
+                    </div>
+                    <div class="item-desc">오늘 아침 우선순위 Top 3 및 일정 브리핑 (08:30 KST)</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/briefing evening">
+                <span class="item-icon evening"><i class="fa-solid fa-moon"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">저녁 브리핑</span>
+                        <span class="item-cmd">/briefing evening</span>
+                    </div>
+                    <div class="item-desc">오늘 하루 일과 회고 및 미완료 과제 이월 점검 (20:00 KST)</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/bus">
+                <span class="item-icon bus"><i class="fa-solid fa-bus"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">출근 버스 도착</span>
+                        <span class="item-cmd">/bus</span>
+                    </div>
+                    <div class="item-desc">출근 버스 실시간 도착 잔여시간 및 인라인 갱신 카드</div>
+                </div>
+            </div>
+            <div class="palette-item" id="btn-schedule-view" data-action="modal-schedule">
+                <span class="item-icon schedule"><i class="fa-solid fa-clock"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">스케줄 타임라인</span>
+                        <span class="item-badge">설정 팝업</span>
+                    </div>
+                    <div class="item-desc">아침/저녁 브리핑 스케줄 및 당일 일정 타임라인 모달</div>
+                </div>
+            </div>
+            <div class="palette-item" id="btn-commute-view" data-action="modal-commute">
+                <span class="item-icon commute"><i class="fa-solid fa-gear"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">출근길 맞춤 설정</span>
+                        <span class="item-badge">설정 팝업</span>
+                    </div>
+                    <div class="item-desc">거주지 날씨/미세먼지, 버스 정류소 및 알림 시각 설정</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 📝 라이프로그 & GTD -->
+        <div class="palette-group" data-group="gtd">
+            <div class="palette-group-title"><i class="fa-solid fa-book-bookmark"></i> 라이프로그 & GTD</div>
+            <div class="palette-item" data-cmd="/today">
+                <span class="item-icon today"><i class="fa-solid fa-calendar-day"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">오늘 일일 로그</span>
+                        <span class="item-cmd">/today</span>
+                    </div>
+                    <div class="item-desc">오늘 날짜 일일 로그(YYYY-MM-DD.md) 마크다운 전문 확인</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/gtd">
+                <span class="item-icon gtd"><i class="fa-solid fa-list-check"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">GTD 현황</span>
+                        <span class="item-cmd">/gtd</span>
+                    </div>
+                    <div class="item-desc">현재 GTD 수집함(inbox) 및 다음 행동(next_actions) 점검</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/dday">
+                <span class="item-icon dday"><i class="fa-solid fa-hourglass-half"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">D-Day 마감 점검</span>
+                        <span class="item-cmd">/dday</span>
+                    </div>
+                    <div class="item-desc">GTD 마감일 현황 및 기한 임박/초과 과제 긴급도 점검</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/search ">
+                <span class="item-icon search"><i class="fa-solid fa-magnifying-glass"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">과거 기록 검색</span>
+                        <span class="item-cmd">/search [키워드]</span>
+                    </div>
+                    <div class="item-desc">모든 일일 로그 및 GTD 파일 전역 다중 키워드 고속 검색</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/weekly">
+                <span class="item-icon weekly"><i class="fa-solid fa-chart-line"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">주간 결산 리포트</span>
+                        <span class="item-cmd">/weekly</span>
+                    </div>
+                    <div class="item-desc">지난 7일간 기록 통계 및 주간 회고 리포트</div>
+                </div>
+            </div>
+            <div class="palette-item" id="btn-open-editor" data-action="modal-editor">
+                <span class="item-icon editor"><i class="fa-solid fa-pen-to-square"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">연간 잔디 & 로그 편집기</span>
+                        <span class="item-badge">에디터 팝업</span>
+                    </div>
+                    <div class="item-desc">52주 기여도 잔디 그리드 및 마크다운 일일 로그 인플레이스 편집</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ⚡ 동기화 & 도구 -->
+        <div class="palette-group" data-group="tools">
+            <div class="palette-group-title"><i class="fa-solid fa-code-branch"></i> 동기화 & 도구</div>
+            <div class="palette-item" data-cmd="/sync">
+                <span class="item-icon sync"><i class="fa-solid fa-rotate"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">원격 저장소 동기화</span>
+                        <span class="item-cmd">/sync</span>
+                    </div>
+                    <div class="item-desc">원격 GitHub 저장소로부터 최신 변경점 풀 (git pull)</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/push">
+                <span class="item-icon push"><i class="fa-solid fa-cloud-arrow-up"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">원격 Git 푸시</span>
+                        <span class="item-cmd">/push</span>
+                    </div>
+                    <div class="item-desc">로컬 커밋을 원격 GitHub 저장소로 즉시 푸시 (git push)</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/vision ">
+                <span class="item-icon vision"><i class="fa-solid fa-camera"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">사진 AI 분석</span>
+                        <span class="item-cmd">/vision</span>
+                    </div>
+                    <div class="item-desc">영수증/운동인증/식단/풍경 사진 Vision AI 멀티모달 분석</div>
+                </div>
+            </div>
+            <div class="palette-item" id="btn-telegram-menu-view" data-action="modal-telegram">
+                <span class="item-icon telegram"><i class="fa-brands fa-telegram"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">텔레그램 봇 메뉴 설정</span>
+                        <span class="item-badge">설정 팝업</span>
+                    </div>
+                    <div class="item-desc">텔레그램 모바일 봇 슬래시(/) 메뉴 14종 관리 및 즉시 동기화</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 검색 결과 없음 상태 -->
+        <div id="palette-empty" class="palette-empty hidden">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <p>일치하는 명령어를 찾을 수 없습니다.</p>
+        </div>
+    </div>
+</div>

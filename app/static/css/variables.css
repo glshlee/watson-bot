@@ -61,7 +61,10 @@ span.desktop-only {
     display: inline;
 }
 
-
+/* Global Hidden Utility */
+.hidden {
+    display: none !important;
+}
 
 @keyframes fadeIn {
     from { opacity: 0; }

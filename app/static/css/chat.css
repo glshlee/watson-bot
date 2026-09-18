@@ -83,6 +83,7 @@
 
 /* Input Area */
 .chat-input-wrapper {
+    position: relative;
     background: var(--bg-secondary);
     border-top: 1px solid var(--border-color);
     padding: 14px 18px;
@@ -330,4 +331,323 @@ textarea:focus {
     color: #ffffff;
     transform: translateY(-1px);
 }
+
+/* ==========================================================================
+   Slash Command Palette & Popover Menu (ADR-054)
+   ========================================================================== */
+
+.btn-command-palette {
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: var(--radius-md);
+    color: #94a3b8;
+    font-size: 1.15rem;
+    font-weight: 700;
+    font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    flex-shrink: 0;
+}
+
+.btn-command-palette:hover,
+.btn-command-palette.active {
+    background: #312e81;
+    border-color: #6366f1;
+    color: #a5b4fc;
+    box-shadow: 0 0 14px rgba(99, 102, 241, 0.4);
+    transform: translateY(-1px);
+}
+
+.btn-command-palette .cmd-slash {
+    line-height: 1;
+    transform: translateY(-1px);
+}
+
+/* Floating Command Palette Backdrop & Popover (ADR-054) */
+.command-palette-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100%;
+    height: 100dvh;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 99;
+}
+
+.command-palette-backdrop.hidden {
+    display: none !important;
+}
+
+.command-palette {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 18px;
+    right: 18px;
+    max-width: 580px;
+    max-height: 420px;
+    background: rgba(15, 23, 42, 0.96);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid #334155;
+    border-radius: 12px;
+    box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.06);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: paletteSlideUp 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.command-palette.hidden {
+    display: none !important;
+}
+
+.btn-close-palette {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(239, 68, 68, 0.18);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #fca5a5;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 4px 9px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-close-palette:hover,
+.btn-close-palette:active {
+    background: rgba(239, 68, 68, 0.35);
+    border-color: #f87171;
+    color: #ffffff;
+}
+
+@keyframes paletteSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.palette-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: rgba(30, 41, 59, 0.7);
+    border-bottom: 1px solid #334155;
+}
+
+.palette-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.palette-header-icon {
+    color: #fbbf24;
+    font-size: 0.9rem;
+}
+
+.palette-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #f1f5f9;
+}
+
+.palette-count-badge {
+    background: rgba(99, 102, 241, 0.2);
+    color: #a5b4fc;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 1px 7px;
+    border-radius: 10px;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.palette-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.palette-hint {
+    font-size: 0.72rem;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.palette-hint kbd {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 0.68rem;
+    color: #94a3b8;
+    font-family: inherit;
+}
+
+.palette-body {
+    padding: 8px;
+    overflow-y: auto;
+    max-height: 360px;
+}
+
+.palette-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.palette-body::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 3px;
+}
+
+.palette-group {
+    margin-bottom: 10px;
+}
+
+.palette-group:last-child {
+    margin-bottom: 2px;
+}
+
+.palette-group-title {
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #64748b;
+    padding: 6px 8px 4px 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.palette-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: 1px solid transparent;
+}
+
+.palette-item:hover,
+.palette-item.selected {
+    background: rgba(30, 41, 59, 0.85);
+    border-color: rgba(99, 102, 241, 0.4);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.palette-item .item-icon {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    background: #1e293b;
+    color: #94a3b8;
+    border: 1px solid #334155;
+}
+
+.palette-item .item-icon.morning { color: #f59e0b; background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.3); }
+.palette-item .item-icon.evening { color: #a855f7; background: rgba(168, 85, 247, 0.15); border-color: rgba(168, 85, 247, 0.3); }
+.palette-item .item-icon.bus { color: #3b82f6; background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.3); }
+.palette-item .item-icon.schedule { color: #06b6d4; background: rgba(6, 182, 212, 0.15); border-color: rgba(6, 182, 212, 0.3); }
+.palette-item .item-icon.commute { color: #10b981; background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3); }
+.palette-item .item-icon.today { color: #6366f1; background: rgba(99, 102, 241, 0.15); border-color: rgba(99, 102, 241, 0.3); }
+.palette-item .item-icon.gtd { color: #10b981; background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3); }
+.palette-item .item-icon.dday { color: #ef4444; background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.3); }
+.palette-item .item-icon.search { color: #ec4899; background: rgba(236, 72, 153, 0.15); border-color: rgba(236, 72, 153, 0.3); }
+.palette-item .item-icon.weekly { color: #8b5cf6; background: rgba(139, 92, 246, 0.15); border-color: rgba(139, 92, 246, 0.3); }
+.palette-item .item-icon.editor { color: #14b8a6; background: rgba(20, 184, 166, 0.15); border-color: rgba(20, 184, 166, 0.3); }
+.palette-item .item-icon.sync { color: #38bdf8; background: rgba(56, 189, 248, 0.15); border-color: rgba(56, 189, 248, 0.3); }
+.palette-item .item-icon.push { color: #f43f5e; background: rgba(244, 63, 94, 0.15); border-color: rgba(244, 63, 94, 0.3); }
+.palette-item .item-icon.vision { color: #eab308; background: rgba(234, 179, 8, 0.15); border-color: rgba(234, 179, 8, 0.3); }
+.palette-item .item-icon.telegram { color: #0284c7; background: rgba(2, 132, 199, 0.15); border-color: rgba(2, 132, 199, 0.3); }
+
+.palette-item .item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.palette-item .item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.palette-item .item-name {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #f1f5f9;
+}
+
+.palette-item .item-cmd {
+    font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+    color: #818cf8;
+    background: rgba(99, 102, 241, 0.12);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.palette-item .item-badge {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    background: #1e293b;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid #334155;
+}
+
+.palette-item .item-desc {
+    font-size: 0.76rem;
+    color: #94a3b8;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.palette-empty {
+    padding: 28px 16px;
+    text-align: center;
+    color: #64748b;
+}
+
+.palette-empty i {
+    font-size: 1.6rem;
+    margin-bottom: 8px;
+    opacity: 0.5;
+}
+
+.palette-empty p {
+    font-size: 0.85rem;
+    margin: 0;
+}
+
 

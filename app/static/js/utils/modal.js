@@ -14,21 +14,34 @@
 
     function setupModalDismiss(modalEl, closeBtnEl, cancelBtnEl = null, onClose = null) {
         if (!modalEl) return;
-        const doClose = () => {
+        const doClose = (e) => {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
             closeModal(modalEl);
             if (typeof onClose === "function") onClose();
         };
 
-        if (closeBtnEl) closeBtnEl.addEventListener("click", doClose);
-        if (cancelBtnEl) cancelBtnEl.addEventListener("click", doClose);
+        if (closeBtnEl) {
+            closeBtnEl.addEventListener("click", doClose);
+            closeBtnEl.addEventListener("touchstart", doClose, { passive: false });
+        }
+        if (cancelBtnEl) {
+            cancelBtnEl.addEventListener("click", doClose);
+            cancelBtnEl.addEventListener("touchstart", doClose, { passive: false });
+        }
 
         modalEl.addEventListener("click", (e) => {
-            if (e.target === modalEl) doClose();
+            if (e.target === modalEl) doClose(e);
         });
+        modalEl.addEventListener("touchstart", (e) => {
+            if (e.target === modalEl) doClose(e);
+        }, { passive: false });
 
         document.addEventListener("keydown", (e) => {
             if (e.key === "Escape" && !modalEl.classList.contains("hidden")) {
-                doClose();
+                doClose(e);
             }
         });
     }

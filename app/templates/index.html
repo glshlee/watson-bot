@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Watson - 24/7 AI Agent Console</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/static/css/style.css?v=1.3.4">
+    <link rel="stylesheet" href="/static/css/style.css?v=1.5.2">
 </head>
 <body>
     <div class="app-container">
@@ -142,26 +142,14 @@
 
                 <!-- Input Box Bar -->
                 <div class="chat-input-wrapper">
-                    <!-- Quick Shortcut Chips Bar (ADR-022, ADR-024, ADR-025, ADR-030, ADR-041) -->
-                    <div class="watson-quick-bar">
-                        <button type="button" class="watson-chip-btn" id="btn-telegram-menu-view" title="텔레그램 봇 메뉴 명령어 관리 및 동기화"><i class="fa-brands fa-telegram"></i> 📱 텔레그램 메뉴</button>
-                        <button type="button" class="watson-chip-btn" id="btn-commute-view" title="출근길 날씨·미세먼지·버스 정보 설정"><i class="fa-solid fa-bus"></i> 🚌 출근길 설정</button>
-                        <button type="button" class="watson-chip-btn" data-cmd="/bus" title="출근 버스 실시간 도착 현황 및 인라인 갱신"><i class="fa-solid fa-clock-rotate-left"></i> 🚍 버스 도착</button>
-                        <button type="button" class="watson-chip-btn" id="btn-schedule-view" title="브리핑 스케줄 및 오늘 일정 확인"><i class="fa-solid fa-clock"></i> ⏰ 스케줄</button>
-                        <button type="button" class="watson-chip-btn" id="btn-open-editor" title="연간 잔디 및 마크다운 일일 로그 인플레이스 편집기 열기"><i class="fa-solid fa-pen-to-square"></i> ✏️ 잔디 & 로그 편집</button>
-                        <button type="button" class="watson-chip-btn" data-cmd="/weekly" title="지난 7일간 기록 통계 및 주간 결산 리포트"><i class="fa-solid fa-chart-line"></i> 📊 주간 결산</button>
-                        <button type="button" class="watson-chip-btn" data-cmd="/vision " title="사진·영수증·운동인증 Vision AI 분석"><i class="fa-solid fa-camera"></i> 📷 사진 분석</button>
-                        <button type="button" class="watson-chip-btn" data-cmd="/search " title="과거 라이프로그 및 GTD 문서 고속 검색"><i class="fa-solid fa-magnifying-glass"></i> 🔍 기록 검색</button>
-                        <button type="button" class="watson-chip-btn" data-cmd="/dday" title="GTD 마감일(D-Day) 현황 및 기한 임박/초과 과제 종합 점검"><i class="fa-solid fa-hourglass-half"></i> ⏳ D-Day 마감</button>
-                        <button type="button" class="watson-chip-btn" data-cmd="/briefing morning" title="오늘 아침 우선순위 및 일정 브리핑 (스케줄: 08:30 KST)"><i class="fa-solid fa-sun"></i> 🌅 아침 (08:30)</button>
-                        <button type="button" class="watson-chip-btn" data-cmd="/briefing evening" title="오늘 하루 일과 회고 및 이월 점검 (스케줄: 20:00 KST)"><i class="fa-solid fa-moon"></i> 🌇 저녁 (20:00)</button>
-                        <button type="button" class="watson-chip-btn" data-cmd="/today" title="오늘 작성된 일일 로그 확인"><i class="fa-solid fa-calendar-day"></i> 오늘 로그</button>
-                        <button type="button" class="watson-chip-btn" data-cmd="/gtd" title="현재 GTD 인박스 및 다음 행동 확인"><i class="fa-solid fa-list-check"></i> GTD 현황</button>
-                        <button type="button" class="watson-chip-btn" data-cmd="/sync" title="원격 저장소에서 최신 변경점 풀"><i class="fa-solid fa-rotate"></i> 동기화</button>
-                        <button type="button" class="watson-chip-btn" data-cmd="/push" title="로컬 커밋을 원격 GitHub에 푸시"><i class="fa-solid fa-cloud-arrow-up"></i> 원격 푸시</button>
-                    </div>
+                    <!-- Command Palette Popover (ADR-054) -->
+                    {% include "modals/command_palette.html" %}
+
                     <div class="input-row">
-                        <textarea id="chat-input" placeholder="메시지를 입력하세요... (예: 오늘 저녁 운동 완료!)" rows="1"></textarea>
+                        <button type="button" id="btn-command-palette" class="btn-command-palette" title="빠른 명령어 & 숏컷 팔레트 (/)" aria-label="명령어 팔레트 열기">
+                            <span class="cmd-slash">/</span>
+                        </button>
+                        <textarea id="chat-input" placeholder="메시지를 입력하세요... (/ 입력 시 빠른 명령어 팔레트)" rows="1"></textarea>
                         <button id="send-btn" class="btn-primary" aria-label="메시지 전송">
                             <i class="fa-solid fa-paper-plane"></i> <span class="desktop-only">전송</span>
                         </button>
@@ -171,15 +159,16 @@
         </main>
     </div>
 
-    <!-- Modular JavaScript Bundle (ADR-050) -->
-    <script src="/static/js/utils/api.js?v=1.4.0"></script>
-    <script src="/static/js/utils/date.js?v=1.4.0"></script>
-    <script src="/static/js/utils/modal.js?v=1.4.0"></script>
-    <script src="/static/js/modules/gtd_modal.js?v=1.4.0"></script>
-    <script src="/static/js/modules/schedule_modal.js?v=1.4.0"></script>
-    <script src="/static/js/modules/commute_modal.js?v=1.4.0"></script>
-    <script src="/static/js/modules/telegram_modal.js?v=1.4.0"></script>
-    <script src="/static/js/modules/editor_modal.js?v=1.4.0"></script>
-    <script src="/static/js/main.js?v=1.4.0"></script>
+    <!-- Modular JavaScript Bundle (ADR-050, ADR-054) -->
+    <script src="/static/js/utils/api.js?v=1.5.2"></script>
+    <script src="/static/js/utils/date.js?v=1.5.2"></script>
+    <script src="/static/js/utils/modal.js?v=1.5.2"></script>
+    <script src="/static/js/modules/gtd_modal.js?v=1.5.2"></script>
+    <script src="/static/js/modules/schedule_modal.js?v=1.5.2"></script>
+    <script src="/static/js/modules/commute_modal.js?v=1.5.2"></script>
+    <script src="/static/js/modules/telegram_modal.js?v=1.5.2"></script>
+    <script src="/static/js/modules/editor_modal.js?v=1.5.2"></script>
+    <script src="/static/js/modules/command_palette.js?v=1.5.2"></script>
+    <script src="/static/js/main.js?v=1.5.2"></script>
 </body>
 </html>

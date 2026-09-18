@@ -80,19 +80,30 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Off-canvas mobile drawer handlers
-    function openSidebar() {
+    function openSidebar(e) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
         if (sidebar) sidebar.classList.add("open");
         if (sidebarBackdrop) sidebarBackdrop.classList.add("active");
     }
 
-    function closeSidebar() {
+    function closeSidebar(e) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
         if (sidebar) sidebar.classList.remove("open");
         if (sidebarBackdrop) sidebarBackdrop.classList.remove("active");
     }
 
     mobileMenuBtn?.addEventListener("click", openSidebar);
+    mobileMenuBtn?.addEventListener("touchstart", openSidebar, { passive: false });
     closeSidebarBtn?.addEventListener("click", closeSidebar);
+    closeSidebarBtn?.addEventListener("touchstart", closeSidebar, { passive: false });
     sidebarBackdrop?.addEventListener("click", closeSidebar);
+    sidebarBackdrop?.addEventListener("touchstart", closeSidebar, { passive: false });
 
     // Fetch session list from API
     async function loadSessions(autoSelect = false) {
@@ -193,7 +204,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Switch Session and load history
     async function switchSession(sessionId) {
         currentSessionId = sessionId;
-        if (window.innerWidth <= 768) {
+        if (window.innerWidth <= 900) {
             closeSidebar();
         }
 
@@ -604,7 +615,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     newSessionBtn?.addEventListener("click", () => {
         const newId = `web_session_${Date.now()}`;
-        if (window.innerWidth <= 768) closeSidebar();
+        if (window.innerWidth <= 900) closeSidebar();
         switchSession(newId);
     });
 
@@ -650,6 +661,9 @@ document.addEventListener("DOMContentLoaded", () => {
     window.WatsonCommute?.initCommuteModal();
     window.WatsonTelegram?.initTelegramModal();
     window.WatsonEditor?.initEditorModal();
+    window.WatsonCommandPalette?.initCommandPalette({
+        onTriggerCommand: (cmd) => sendTextMessage(cmd)
+    });
 
     // Initial Load & Heartbeat
     loadSessions(true);
