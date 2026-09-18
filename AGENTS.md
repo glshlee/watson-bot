@@ -10,7 +10,7 @@
 
 ### 1. Essential Commands (수행 명령어)
 * **의존성 설치**: `pip install -r requirements.txt` (또는 `poetry install`)
-* **개발 서버 실행**: `python app.py` (또는 `uvicorn app.main:app --reload`)
+* **서비스 비동기 실행 및 제어 (직접 실행 금지)**: `./scripts/service.sh {start|stop|restart|status|logs}` (또는 `./scripts/start.sh`)
 * **단위 및 스모크 테스트**: `pytest`
 * **cURL 라이브 API 검증 (필수)**: `./scripts/smoke_test.sh` (또는 `curl -X POST "http://localhost:8000/api/chat" ...`)
 * **타입 검사 및 코드 린트**: `mypy . && ruff check .`
@@ -81,13 +81,15 @@
 * **LLM 및 의도 분석 모듈화 (ADR-052)**: 단일 llm_provider.py(1,188라인)를 4대 서브모듈(agy/prompt/category/intent)로 분할(79라인, 93.3% 경량화)하고 파사드 패턴으로 100% 하위 호환성을 보장할 것.
 * **라이프로그 및 GTD 모듈화 (ADR-053)**: 단일 agent_service.py(853라인)를 lifelog_service(260라인)와 gtd_service(420라인)로 분할(105라인, 87.7% 경량화)하고 파사드로 100% 하위 호환성을 보장할 것.
 * **슬래시 커맨드 팔레트 & 미니멀 UI (ADR-054)**: 15개 고정 칩 바를 철거하고 [/] 팝오버 팔레트(3대 카테고리 14종)로 통합하여 실시간 / 필터링, 키보드 내비게이션 및 모바일 최적화를 보장할 것.
+* **DevBot 팔레트 & 인터랙티브 Git 위저드 (ADR-055)**: 20개 칩 바 철거 후 [/] 팔레트(16종 도구) 통합, 3종 Conventional Commits 원클릭 커밋/원터치 푸시 위저드, 백엔드 /push, /sync 탑재 및 다크 터미널 박스를 보장할 것.
+* **비동기 서비스 제어 & 포그라운드 차단 (ADR-056)**: 터미널 세션 블로킹 및 고아 프로세스 방지를 위해 포그라운드 직접 실행(`python app.py`, `uvicorn`)을 엄격히 금지하고, 반드시 `./scripts/service.sh` 또는 `start.sh` 등 비동기 스크립트 및 `app.py` 가드레일로 백그라운드 구동할 것.
 * **Explicit User Commit Trigger Only (에이전트 코드 커밋 수칙)**: 코드 수정 및 기능 구현 후 Git 커밋(`git commit`)은 에이전트가 임의로 자동 실행하지 않으며, 오직 **사용자가 명시적으로 "커밋해" 지시를 내렸을 때만** 수행할 것.
 * **Curl-Based Live Verification (필수)**: 모든 코드 수정 후 반드시 `./scripts/smoke_test.sh` cURL 테스트를 실행하여 실제 라이브 API 수신 및 500 에러 부재를 검증할 것.
 * **Self-Verification & Evolution Loop**: 코드 변경 시 `pytest`/`mypy`/`ruff` 및 cURL 검증 수행 후 실패 시 `evolution.md` 지침에 따라 하네스 자가 진화 집행.
 
 ### 4. Progressive Disclosure (상세 문서 참조)
 * **제품 기획서 개요**: `docs/PRD.md` | **기능 요구사항**: `docs/requirements.md`
-* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-054)
+* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-056)
 
 ---
 

@@ -505,7 +505,28 @@
   * 입력창 바로 위에 3대 카테고리(☀️ 브리핑 & 일정, 📝 라이프로그 & GTD, ⚡ 동기화 & 도구)로 14개 핵심 기능을 그룹화한 팝오버 메뉴 제공.
   * `↑`/`↓` 방향키 내비게이션, `Enter` 실행, `ESC` 닫기 지원.
   * 입력창에서 `/` 타이핑 시 명령어, 명칭, 설명을 실시간으로 고속 필터링(`command_palette.js`).
-  * 모바일 화면(`<=768px`)에서는 가로 전폭 확장 및 간결 모드로 최적화.
+### 3.52. 🛠️ DevBot 콘솔 UI 미니멀화 및 인터랙티브 Git 위저드 (DevBot Command Palette & Git Wizard - ADR-055)
+* **상시 노출 20개 칩 바 철거 및 `[/]` 팔레트 액션 버튼 탑재**:
+  * DevBot 콘솔(`/dev`) 입력창 상단의 20개 고정 칩 바(`.dev-quick-bar`)를 전면 철거하여 넓고 몰입감 높은 페어 프로그래밍 대화 뷰 제공.
+  * 입력창 좌측에 에메랄드 테마의 모던한 `[/]` 액션 버튼(`#btn-dev-palette.dev-trigger`) 배치.
+* **DevBot 전용 플로팅 커맨드 팔레트 (`templates/modals/command_palette_dev.html`)**:
+  * 16대 핵심 엔지니어링 도구를 3대 카테고리(🛠️ Git 버전 관리, 🧪 품질 & 엔지니어링, 📋 비서 연동 & 유틸리티)로 체계화.
+  * `/` 타이핑 실시간 필터링, `↑`/`↓` 방향키 탐색, `Enter` 실행, 모바일 전용 닫기 버튼 및 터치 백드롭 완비.
+* **인터랙티브 Conventional Commits 3종 추천 & 원터치 커밋/푸시 위저드**:
+  * `/commit` 실행 시 변경점 기반 Conventional Commits 3종(`feat`, `fix`, `refactor`) 추천 카드 및 원클릭 커밋 버튼(`.dev-btn-action.dev-btn-commit`) 즉시 렌더링.
+  * 커밋 성공 시 말풍선 하단에 `[🚀 GitHub 원격 푸시 (/push)]` 원터치 액션 배너 제공.
+  * 백엔드에 `_run_git_push()` 및 `_run_git_sync()`를 신설하여 `/push`, `/sync` 명령어를 웹 콘솔에서 0초 지연으로 집행.
+* **다크 IDE 터미널 박스 및 안전한 HTML 위젯 렌더러 (`dev.css`, `dev.js`)**:
+  * `/diff`, `/test`, `/lint`, `/push`, `/sync` 결과를 JetBrains Mono 기반 다크 터미널 박스(`.dev-terminal-box`)로 렌더링.
+### 3.53. ⚙️ 비동기 서비스 제어 스크립트 및 데몬 구동 표준화 (Asynchronous Service Control Script & Daemonized Execution Standard - ADR-056)
+* **포그라운드 직접 실행 금지 및 비동기 서비스 제어기 (`scripts/service.sh`)**:
+  * AI 에이전트와 사용자가 터미널 세션에서 `python app.py`나 포그라운드 `uvicorn`을 직접 실행하여 세션이 무한 블로킹되거나 고아 프로세스가 발생하는 문제를 원천 차단.
+  * `scripts/service.sh`를 통해 `start`, `stop`, `restart`, `status`, `logs`, `install-systemd`를 논블로킹 비동기 방식으로 제어.
+  * `start`/`restart` 시 systemd(`watson.service`) 또는 백그라운드 데몬(`nohup`)으로 가동하고, 최대 30초 내 `/api/health` 헬스체크를 비동기 확인 후 즉시 정상 반환.
+* **원터치 단축 스크립트 완비**:
+  * `scripts/start.sh`, `scripts/stop.sh`, `scripts/restart.sh`, `scripts/status.sh` 제공.
+* **방어적 실행 가드레일 (`app.py`)**:
+  * 관성적인 `python app.py` 호출 시 포그라운드 차단 경고를 출력하고 자동으로 `./scripts/service.sh start` 비동기 제어로 안전하게 위임.
 
 ---
 

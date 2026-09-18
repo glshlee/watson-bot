@@ -8,22 +8,22 @@
 (function () {
     "use strict";
 
-    let isPaletteOpen = false;
-    let selectedIndex = -1;
-    let visibleItems = [];
-    let triggerCommandCallback = null;
-
     function initCommandPalette(options = {}) {
-        triggerCommandCallback = options.onTriggerCommand || null;
+        let isPaletteOpen = false;
+        let selectedIndex = -1;
+        let visibleItems = [];
+        const triggerCommandCallback = options.onTriggerCommand || null;
 
-        const btnCommandPalette = document.getElementById("btn-command-palette");
-        const palette = document.getElementById("command-palette");
-        const chatInput = document.getElementById("chat-input");
-        const paletteBody = document.getElementById("palette-body");
-        const paletteEmpty = document.getElementById("palette-empty");
-        const paletteCount = document.getElementById("palette-count");
+        const btnCommandPalette = options.btnTrigger || document.getElementById(options.btnTriggerId || "btn-command-palette");
+        const palette = options.palette || document.getElementById(options.paletteId || "command-palette");
+        const chatInput = options.chatInput || document.getElementById(options.chatInputId || "chat-input");
+        const paletteBody = options.paletteBody || document.getElementById(options.paletteBodyId || "palette-body");
+        const paletteEmpty = options.paletteEmpty || document.getElementById(options.paletteEmptyId || "palette-empty");
+        const paletteCount = options.paletteCount || document.getElementById(options.paletteCountId || "palette-count");
+        const paletteBackdrop = options.paletteBackdrop || document.getElementById(options.paletteBackdropId || "command-palette-backdrop");
+        const btnClosePalette = options.btnClosePalette || document.getElementById(options.btnClosePaletteId || "btn-close-palette");
 
-        if (!palette || !chatInput) return;
+        if (!palette || !chatInput) return null;
 
         const allItems = Array.from(palette.querySelectorAll(".palette-item"));
         const allGroups = Array.from(palette.querySelectorAll(".palette-group"));
@@ -88,9 +88,6 @@
                 selectedIndex = -1;
             }
         }
-
-        const paletteBackdrop = document.getElementById("command-palette-backdrop");
-        const btnClosePalette = document.getElementById("btn-close-palette");
 
         function openPalette(initialQuery = "") {
             palette.classList.remove("hidden");
@@ -267,9 +264,7 @@
         document.addEventListener("click", handleOutsideInteraction);
         document.addEventListener("touchstart", handleOutsideInteraction, { passive: true });
 
-        // Export public methods
-        window.WatsonCommandPalette = {
-            initCommandPalette,
+        return {
             openPalette,
             closePalette,
             togglePalette,

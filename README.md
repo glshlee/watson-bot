@@ -261,6 +261,13 @@
   - **플로팅 글래스모피즘 커맨드 팔레트 (`command_palette.html`, `command_palette.js`)**: 3대 카테고리 14종 기능을 실시간 검색 필터링, 키보드 방향키/Enter 내비게이션, 모바일 간결 모드로 초고속 실행합니다.
   - **모바일 햄버거 메뉴 가시성 및 터치 닫기 안정화**: 모바일 헤더 좌측 압축 방지로 햄버거 메뉴(`☰`)를 영구 노출하고, 우측 배지 34x34px 아이콘화, 팔레트 전용 `[✕ 닫기]` 터치 버튼 및 외부 터치 백드롭을 추가하여 모바일 조작 편의성을 극대화했습니다.
 
+- 🛠️ **DevBot 콘솔 UI 미니멀화 & 인터랙티브 Git 위저드 (DevBot Command Palette & Git Wizard - ADR-055)**
+  - **상시 노출 20개 칩 바 철거 & `[/]` 액션 버튼**: DevBot 콘솔(`/dev`) 입력창 상단의 20개 칩 바를 전면 철거하여 넓고 몰입감 높은 페어 프로그래밍 대화 뷰를 제공하고, 에메랄드 테마의 모던한 `[/]` 액션 버튼(`#btn-dev-palette`)을 배치했습니다.
+  - **DevBot 전용 플로팅 커맨드 팔레트 (`command_palette_dev.html`)**: 16대 핵심 엔지니어링 도구를 3대 카테고리(Git Ops, Quality & Test, Butler & Tools)로 체계화하고 실시간 `/` 검색 필터링, 방향키 탐색, Enter 실행, 모바일 전용 닫기 버튼 및 터치 백드롭을 지원합니다.
+  - **인터랙티브 Conventional Commits 3종 추천 & 원터치 커밋/푸시 위저드**: `/commit` 실행 시 Conventional Commits 3종(`feat`, `fix`, `refactor`) 추천 카드와 원터치 커밋 버튼을 즉시 렌더링하고, 커밋 성공 시 말풍선 하단에 `[🚀 GitHub 원격 푸시 (/push)]` 배너를 제공합니다.
+  - **결정론적 원격 푸시 & 동기화 도구 탑재**: 백엔드에 `_run_git_push()` 및 `_run_git_sync()`를 신설하여 `/push`, `/sync`를 터미널 없이 즉시 실행하고, 결과를 JetBrains Mono 기반 다크 터미널 박스(`.dev-terminal-box`)로 시각화합니다.
+
+
 
 
 
@@ -372,16 +379,31 @@ docker compose logs -f
 
 ---
 
-### 방법 3: 로컬 파이썬 가상환경 직접 실행
+### 방법 3: 비동기 서비스 제어 스크립트 실행 (추천 ⭐️ - ADR-056)
 
-개발 및 기능 테스트용으로 포그라운드에서 직접 실행합니다:
+Watson 백엔드를 터미널 블로킹 없이 백그라운드에서 비동기로 안전하게 실행 및 제어합니다:
 
 ```bash
-source venv/bin/activate
-python app.py
+# 1. 비동기 서비스 시작 (systemd 또는 백그라운드 데몬)
+./scripts/service.sh start
+# 또는 단축 스크립트
+./scripts/start.sh
+
+# 2. 서비스 상태 점검 (PID, 포트, 헬스체크, 터널 URL)
+./scripts/service.sh status
 # 또는
-uvicorn app.main:app --reload --port 8000
+./scripts/status.sh
+
+# 3. 최근 로그 확인 (Non-blocking)
+./scripts/service.sh logs 50
+
+# 4. 서비스 재시작 및 중지
+./scripts/service.sh restart  # 또는 ./scripts/restart.sh
+./scripts/service.sh stop     # 또는 ./scripts/stop.sh
 ```
+
+> **🛡️ 포그라운드 직접 실행 방지 가드레일 (ADR-056)**:
+> 에이전트나 사용자가 관성적으로 `python app.py`를 실행하더라도 세션이 블로킹되지 않으며, 자동으로 `./scripts/service.sh start` 비동기 백그라운드 구동으로 안전하게 위임됩니다.
 
 ---
 

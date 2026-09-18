@@ -42,9 +42,23 @@ def test_weather_service_get_live_weather():
 def test_weather_service_caching():
     WeatherService._cache.clear()
 
-    # First call
-    res1 = WeatherService.get_live_weather(37.55, 127.02, "서울 성동구 금호동")
-    assert f"{37.55:.2f},{127.02:.2f}" in WeatherService._cache
+    mock_live = {
+        "temp": "18.5°C",
+        "feels_like": "17.0°C",
+        "sky": "맑음 ☀️",
+        "rain_prob": "10%",
+        "umbrella_tip": "우산 불필요 ☀️",
+        "pm10": "좋음 🟢 (25 µg/m³)",
+        "pm25": "좋음 🟢 (12 µg/m³)",
+        "source": "Open-Meteo API",
+        "updated_time": "14:00",
+        "is_live": True,
+    }
+
+    # First call (mocked to avoid network latency)
+    with patch.object(WeatherService, "_fetch_open_meteo", return_value=mock_live):
+        res1 = WeatherService.get_live_weather(37.55, 127.02, "서울 성동구 금호동")
+        assert f"{37.55:.2f},{127.02:.2f}" in WeatherService._cache
 
     # Second call should hit cache without network
     with patch.object(WeatherService, "_fetch_open_meteo") as mock_fetch:

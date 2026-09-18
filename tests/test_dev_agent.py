@@ -135,3 +135,13 @@ def test_dev_agent_toolchain():
     assert res_gtd["action_type"] == "tool_gtd_files"
     assert "GTD 파일 현황" in res_gtd["ai_response"]
 
+    # 7. /push command (ADR-055)
+    res_push = service.process_dev_request("dev_tool_test", "/push")
+    assert res_push["action_type"] == "tool_push"
+    assert ("GitHub 원격 푸시" in res_push["ai_response"])
+
+    # 8. /sync command (ADR-055)
+    res_sync = service.process_dev_request("dev_tool_test", "/sync")
+    assert res_sync["action_type"] == "tool_sync"
+    assert ("원격 GitHub 동기화" in res_sync["ai_response"])
+

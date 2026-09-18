@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -25,12 +25,17 @@ class DevChatRequest(BaseModel):
 
 
 @router.post("/api/chat")
-def chat_with_agent(payload: ChatRequest, db: Session = Depends(get_db)):  # noqa: B008
+def chat_with_agent(
+    payload: ChatRequest,
+    db: Session = Depends(get_db),  # noqa: B008
+    x_fast_mode: str | None = Header(default=None),
+):
     """왓슨 라이프로그 AI 에이전트 인터랙티브 대화 엔드포인트."""
     if not payload.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
-    supervisor = SupervisorService(db=db)
+    is_fast = bool(x_fast_mode and x_fast_mode.lower() in ("true", "1"))
+    supervisor = SupervisorService(db=db, fast_mode=is_fast)
     return supervisor.process_user_request(
         session_id=payload.session_id,
         user_message=payload.message,
@@ -41,11 +46,17 @@ def chat_with_agent(payload: ChatRequest, db: Session = Depends(get_db)):  # noq
 
 
 @router.post("/api/dev/chat")
-def chat_with_dev_agent(payload: DevChatRequest, db: Session = Depends(get_db)):  # noqa: B008
+def chat_with_dev_agent(
+    payload: DevChatRequest,
+    db: Session = Depends(get_db),  # noqa: B008
+    x_fast_mode: str | None = Header(default=None),
+):
     """DevBot 소프트웨어 엔지니어링 에이전트 대화 엔드포인트 (ADR-018)."""
     if not payload.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
-    dev_service = DevAgentService(db=db)
+
+    is_fast = bool(x_fast_mode and x_fast_mode.lower() in ("true", "1"))
+    dev_service = DevAgentService(db=db, fast_mode=is_fast)
     return dev_service.process_dev_request(
         session_id=payload.session_id,
         user_message=payload.message,

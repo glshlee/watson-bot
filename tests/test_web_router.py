@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -99,19 +101,32 @@ def test_health_check_endpoints():
 
 def test_get_briefing_endpoint():
     """ADR-024: 아침/저녁 GTD 브리핑 REST 엔드포인트 검증."""
-    res_morning = client.get("/api/briefing?mode=morning")
-    assert res_morning.status_code == 200
-    data_m = res_morning.json()
-    assert data_m["status"] == "success"
-    assert data_m["data"]["mode"] == "morning"
-    assert any(k in data_m["data"]["markdown"] for k in ["Watson Morning Briefing", "Morning Briefing", "아침 브리핑"])
+    mock_weather = {
+        "temp": "18.5°C",
+        "feels_like": "17.0°C",
+        "sky": "맑음 ☀️",
+        "rain_prob": "10%",
+        "umbrella_tip": "우산 불필요 ☀️",
+        "pm10": "좋음 🟢 (25 µg/m³)",
+        "pm25": "좋음 🟢 (12 µg/m³)",
+        "source": "Open-Meteo API",
+        "updated_time": "14:00",
+        "is_live": True,
+    }
+    with patch("app.services.weather_service.WeatherService._fetch_open_meteo", return_value=mock_weather):
+        res_morning = client.get("/api/briefing?mode=morning")
+        assert res_morning.status_code == 200
+        data_m = res_morning.json()
+        assert data_m["status"] == "success"
+        assert data_m["data"]["mode"] == "morning"
+        assert any(k in data_m["data"]["markdown"] for k in ["Watson Morning Briefing", "Morning Briefing", "아침 브리핑"])
 
-    res_evening = client.get("/api/briefing?mode=evening")
-    assert res_evening.status_code == 200
-    data_e = res_evening.json()
-    assert data_e["status"] == "success"
-    assert data_e["data"]["mode"] == "evening"
-    assert any(k in data_e["data"]["markdown"] for k in ["Watson Evening Briefing", "Evening Briefing", "저녁 회고", "일과 회고"])
+        res_evening = client.get("/api/briefing?mode=evening")
+        assert res_evening.status_code == 200
+        data_e = res_evening.json()
+        assert data_e["status"] == "success"
+        assert data_e["data"]["mode"] == "evening"
+        assert any(k in data_e["data"]["markdown"] for k in ["Watson Evening Briefing", "Evening Briefing", "저녁 회고", "일과 회고"])
 
 
 def test_get_briefing_schedule_endpoint():

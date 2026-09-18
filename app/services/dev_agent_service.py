@@ -21,11 +21,12 @@ class DevAgentService:
     코드베이스 분석, Git 상태/Diff/커밋 조회, 터미널 도구 실행 및 소프트웨어 엔지니어링 대화를 수행한다.
     """
 
-    def __init__(self, db: Session, workspace_path: str = "."):
+    def __init__(self, db: Session, workspace_path: str = ".", fast_mode: bool = False):
         self.db = db
         self.workspace_path = os.path.abspath(workspace_path)
+        self.fast_mode = fast_mode or (os.getenv("FAST_MODE", "").lower() in ("1", "true"))
         self.session_service = SessionService(db)
-        self.llm_provider = LLMProvider()
+        self.llm_provider = LLMProvider(fast_mode=self.fast_mode)
 
     def _get_agent_service(self) -> AgentService:
         """현재 설정된 GTD 저장소 경로를 기반으로 AgentService 인스턴스를 반환합니다."""
@@ -202,6 +203,83 @@ class DevAgentService:
             "details": commit_res,
         }
 
+    def _run_git_push(self) -> dict[str, Any]:
+        """로컬 커밋을 원격 GitHub 저장소(origin)로 푸시합니다."""
+        branch = self._run_git_cmd(["branch", "--show-current"]) or "main"
+        remote_url = self._run_git_cmd(["remote", "get-url", "origin"])
+
+        try:
+            res = subprocess.run(
+                ["git", "push", "origin", branch],
+                capture_output=True,
+                text=True,
+                cwd=self.workspace_path,
+                timeout=35,
+                check=False,
+            )
+            out = (res.stdout + "\n" + res.stderr).strip()
+            success = (res.returncode == 0)
+            last_commit = self._run_git_cmd(["log", "-1", "--oneline"])
+            return {
+                "success": success,
+                "branch": branch,
+                "remote_url": remote_url,
+                "commit": last_commit,
+                "output": out or ("성공적으로 원격 저장소에 푸시되었습니다." if success else "푸시 실패"),
+            }
+        except subprocess.TimeoutExpired:
+            return {
+                "success": False,
+                "branch": branch,
+                "remote_url": remote_url,
+                "commit": "",
+                "output": "⏱️ Git 푸시 실행 시간이 초과되었습니다 (35초 제한).",
+            }
+        except (subprocess.SubprocessError, OSError) as e:
+            return {
+                "success": False,
+                "branch": branch,
+                "remote_url": remote_url,
+                "commit": "",
+                "output": f"오류 발생: {e}",
+            }
+
+    def _run_git_sync(self) -> dict[str, Any]:
+        """원격 GitHub 저장소(origin)로부터 autostash를 사용하여 최신 코드를 안전하게 가져옵니다."""
+        branch = self._run_git_cmd(["branch", "--show-current"]) or "main"
+        try:
+            res = subprocess.run(
+                ["git", "pull", "--autostash"],
+                capture_output=True,
+                text=True,
+                cwd=self.workspace_path,
+                timeout=35,
+                check=False,
+            )
+            out = (res.stdout + "\n" + res.stderr).strip()
+            success = (res.returncode == 0)
+            last_commit = self._run_git_cmd(["log", "-1", "--oneline"])
+            return {
+                "success": success,
+                "branch": branch,
+                "commit": last_commit,
+                "output": out or "이미 최신 상태입니다.",
+            }
+        except subprocess.TimeoutExpired:
+            return {
+                "success": False,
+                "branch": branch,
+                "commit": "",
+                "output": "⏱️ Git 동기화 실행 시간이 초과되었습니다 (35초 제한).",
+            }
+        except (subprocess.SubprocessError, OSError) as e:
+            return {
+                "success": False,
+                "branch": branch,
+                "commit": "",
+                "output": f"오류 발생: {e}",
+            }
+
     def _recommend_commit_messages(self) -> str:
         """현재 git diff 및 상태를 기반으로 추천 커밋 메시지를 생성합니다."""
         status = self._run_git_cmd(["status", "-s"])
@@ -211,13 +289,29 @@ class DevAgentService:
         changed_lines = [line.strip() for line in status.splitlines() if line.strip()]
         sample_files = ", ".join([line.split()[-1] for line in changed_lines[:4]])
 
+        msg1 = "feat(dev): implement command palette and interactive git wizard"
+        msg2 = "fix(dev): improve devbot console toolchain and mobile responsiveness"
+        msg3 = "refactor(dev): streamline dev engineering tools and terminal rendering"
+
         return (
             f"### 💡 추천 커밋 메시지 (Conventional Commits)\n\n"
-            f"현재 변경 중인 파일({len(changed_lines)}개: `{sample_files}` 등)을 기반으로 추천된 메시지입니다.\n"
-            f"원하시는 메시지를 선택하여 `/commit <메시지>` 명령으로 실행해 주세요:\n\n"
-            f"1. `/commit feat(dev): implement interactive dev toolchain (/test, /lint)`\n"
-            f"2. `/commit fix(dev): enhance DevBot engineering capabilities and prompt alignment`\n"
-            f"3. `/commit refactor(dev): streamline dev agent tools and roadmap integration`\n"
+            f"현재 변경 중인 파일({len(changed_lines)}개: `{sample_files}` 등)을 기반으로 분석한 추천 메시지입니다.\n"
+            f"원하는 메시지의 버튼을 누르면 즉시 커밋이 실행됩니다:\n\n"
+            f'<div class="dev-git-wizard">\n'
+            f'  <div class="dev-commit-opt">\n'
+            f'    <div class="opt-desc"><strong>1. 기능 추가 (feat)</strong>: 새 도구 또는 콘솔 기능 구현</div>\n'
+            f'    <button type="button" class="dev-btn-action dev-btn-commit" data-commit-cmd="/commit {msg1}"><i class="fa-solid fa-code-commit"></i> {msg1}</button>\n'
+            f'  </div>\n'
+            f'  <div class="dev-commit-opt">\n'
+            f'    <div class="opt-desc"><strong>2. 버그 수정 (fix)</strong>: 안정성 및 오류 보완</div>\n'
+            f'    <button type="button" class="dev-btn-action dev-btn-commit" data-commit-cmd="/commit {msg2}"><i class="fa-solid fa-wrench"></i> {msg2}</button>\n'
+            f'  </div>\n'
+            f'  <div class="dev-commit-opt">\n'
+            f'    <div class="opt-desc"><strong>3. 구조 개선 (refactor)</strong>: 코드 리팩토링 및 툴체인 최적화</div>\n'
+            f'    <button type="button" class="dev-btn-action dev-btn-commit" data-commit-cmd="/commit {msg3}"><i class="fa-solid fa-arrows-rotate"></i> {msg3}</button>\n'
+            f'  </div>\n'
+            f'</div>\n\n'
+            f"*직접 메시지를 지정하여 커밋하려면 `/commit <원하는 메시지>` 명령으로 실행해 주세요.*"
         )
 
     def _get_roadmap_summary(self) -> str:
@@ -334,12 +428,46 @@ class DevAgentService:
                     ai_response = (
                         f"### 🚀 Git 커밋 완료\n\n"
                         f"* **최신 커밋**: `{commit_res['commit']}`\n\n"
-                        f"```text\n{commit_res['details']}\n```\n"
+                        f"```text\n{commit_res['details']}\n```\n\n"
+                        f'<div class="dev-push-banner">\n'
+                        f'  <div class="push-desc"><i class="fa-solid fa-circle-question"></i> 원격 저장소(GitHub)에 바로 푸시하시겠습니까?</div>\n'
+                        f'  <button type="button" class="dev-btn-action dev-btn-push" data-push-cmd="/push"><i class="fa-solid fa-cloud-arrow-up"></i> 🚀 GitHub 원격 푸시 실행 (/push)</button>\n'
+                        f'</div>'
                     )
                 else:
                     ai_response = f"⚠️ **Git 커밋 실패**: {commit_res['message']}"
             else:
                 ai_response = self._recommend_commit_messages()
+
+        elif lower_msg in ["/push", "git push", "푸시", "푸시해줘", "원격 푸시"]:
+            action_type = "tool_push"
+            push_res = self._run_git_push()
+            if push_res["success"]:
+                ai_response = (
+                    f"### 🚀 GitHub 원격 푸시 완료 (`origin/{push_res['branch']}`)\n\n"
+                    f"* **원격 저장소**: `{push_res['remote_url']}`\n"
+                    f"* **브랜치**: `{push_res['branch']}`\n"
+                    f"* **최신 커밋**: `{push_res['commit']}`\n\n"
+                    f"```text\n{push_res['output']}\n```"
+                )
+            else:
+                ai_response = (
+                    f"⚠️ **GitHub 원격 푸시 실패**\n\n"
+                    f"* **브랜치**: `{push_res['branch']}`\n"
+                    f"```text\n{push_res['output']}\n```\n\n"
+                    f"원격 저장소와 충돌 또는 변경사항이 있다면 `/sync` 명령으로 먼저 최신화해 보세요."
+                )
+
+        elif lower_msg in ["/sync", "/pull", "git pull", "동기화", "최신화", "원격 동기화", "레포 동기화"]:
+            action_type = "tool_sync"
+            sync_res = self._run_git_sync()
+            status_badge = "✅ 동기화 완료" if sync_res["success"] else "⚠️ 동기화 주의"
+            ai_response = (
+                f"### 🔄 원격 GitHub 동기화 결과 (`origin/{sync_res['branch']}`)\n\n"
+                f"* **결과**: {status_badge}\n"
+                f"* **최신 커밋**: `{sync_res['commit']}`\n\n"
+                f"```text\n{sync_res['output']}\n```"
+            )
 
         elif lower_msg in ["/today", "/daily", "today", "daily", "오늘 로그", "오늘 일기", "오늘자 로그", "오늘 로그 보여줘", "오늘 일기 보여줘"]:
             action_type = "tool_today_log"
@@ -494,9 +622,11 @@ class DevAgentService:
                 "* **🧪 자동화 CI & 검증 도구**:\n"
                 "  * `/test [경로]`: pytest 단위 테스트 비동기 실행 (예: `/test`, `/test tests/test_auth.py`)\n"
                 "  * `/lint`: Ruff 린터 및 Mypy 타입 검사 즉시 실행\n"
-                "* **🚀 Git 커밋 관리**:\n"
+                "* **🚀 Git 커밋 & 원격 관리 (ADR-055)**:\n"
                 "  * `/commit <메시지>`: 현재 변경된 코드를 스테이징 및 커밋\n"
-                "  * `/commit`: 현재 변경점을 분석하여 Conventional Commit 메시지 추천\n"
+                "  * `/commit`: 현재 변경점을 분석하여 Conventional Commit 메시지 추천 위저드\n"
+                "  * `/push`: 로컬 커밋을 원격 GitHub 저장소(origin/main)에 즉시 푸시\n"
+                "  * `/sync`: 원격 GitHub 저장소로부터 autostash로 안전하게 최신화 (Pull)\n"
                 "* **💡 엔지니어링 인공지능 질의**:\n"
                 "  * \"다음에 뭘 개발하면 좋을지 추천해줘\", \"이 코드 구조 개선해줘\" 등 자유로운 기술 상담"
             )
@@ -539,7 +669,7 @@ class DevAgentService:
 
             # Use LLMProvider analyze or generate
             try:
-                if self.llm_provider.agy_path:
+                if not self.fast_mode and self.llm_provider.agy_path:
                     cmd = [
                         self.llm_provider.agy_path,
                         "-p",

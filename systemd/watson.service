@@ -5,10 +5,10 @@ After=network.target
 [Service]
 Type=simple
 User=ubuntu
-WorkingDirectory=/home/ubuntu/watson
-EnvironmentFile=/home/ubuntu/watson/.env
+WorkingDirectory=/home/ubuntu/workspace/watson-bot
+EnvironmentFile=/home/ubuntu/workspace/watson-bot/.env
 Environment="PATH=/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin"
-ExecStart=/home/ubuntu/watson/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --timeout-keep-alive 75 --limit-concurrency 100
+ExecStart=/home/ubuntu/workspace/watson-bot/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --timeout-keep-alive 75 --limit-concurrency 100
 Restart=always
 RestartSec=5s
 

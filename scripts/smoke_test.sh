@@ -19,7 +19,7 @@ if [ -f .env ]; then
 fi
 
 run_curl() {
-    curl -s "${AUTH_FLAGS[@]}" "$@"
+    curl -s -H "X-Fast-Mode: true" "${AUTH_FLAGS[@]}" "$@"
 }
 
 SERVER_READY=0
@@ -854,5 +854,51 @@ else
     echo "  ❌ 7-3. Meta-Feedback Protest Guardrail Failed: $PROTEST_CHAT"
     exit 1
 fi
+
+echo "8. Testing DevBot Command Palette & Interactive Git Wizard (ADR-055)..."
+# 8-1. GET /dev 및 팔레트 템플릿 렌더링 확인
+DEV_PAGE=$(run_curl -s "$SERVER_URL/dev")
+if echo "$DEV_PAGE" | grep -q 'id="dev-command-palette"' && echo "$DEV_PAGE" | grep -q 'id="btn-dev-palette"'; then
+    echo "  ✅ 8-1. Dev Command Palette & Trigger Button Rendered"
+else
+    echo "  ❌ 8-1. Dev Command Palette Missing in /dev"
+    exit 1
+fi
+
+# 8-2. /commit 대화형 위저드 추천 카드 검증
+DEV_COMMIT_REC=$(run_curl -s -X POST "$SERVER_URL/api/dev/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_dev_session", "message": "/commit"}')
+if echo "$DEV_COMMIT_REC" | grep -q 'dev-git-wizard' || echo "$DEV_COMMIT_REC" | grep -q 'Conventional Commits'; then
+    echo "  ✅ 8-2. DevBot /commit Interactive Recommendation Passed"
+else
+    echo "  ❌ 8-2. DevBot /commit Recommendation Failed: $DEV_COMMIT_REC"
+    exit 1
+fi
+
+# 8-3. /sync 원격 동기화 검증
+DEV_SYNC=$(run_curl -s -X POST "$SERVER_URL/api/dev/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_dev_session", "message": "/sync"}')
+if echo "$DEV_SYNC" | grep -q '"action_type":"tool_sync"'; then
+    echo "  ✅ 8-3. DevBot /sync Command Passed"
+else
+    echo "  ❌ 8-3. DevBot /sync Failed: $DEV_SYNC"
+    exit 1
+fi
+
+# 8-4. /push 원격 푸시 검증
+DEV_PUSH=$(run_curl -s -X POST "$SERVER_URL/api/dev/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_dev_session", "message": "/push"}')
+if echo "$DEV_PUSH" | grep -q '"action_type":"tool_push"'; then
+    echo "  ✅ 8-4. DevBot /push Command Passed"
+else
+    echo "  ❌ 8-4. DevBot /push Failed: $DEV_PUSH"
+    exit 1
+fi
+
+# Clean up smoke dev session
+run_curl -s -X DELETE "$SERVER_URL/api/sessions/smoke_dev_session" > /dev/null 2>&1 || true
 
 echo "🎉 All Curl Smoke Tests Passed Successfully!"

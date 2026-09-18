@@ -594,7 +594,29 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] 모바일(`<=768px`) 가로 전폭 확장 및 간결 모드 최적화 (`responsive.css`)
 - [x] 정적 파일 전송 검증 및 `./scripts/smoke_test.sh` 40+개 전수 라이브 검증 완료
 
-### Phase 54: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
+### Phase 54: DevBot 콘솔 UI 미니멀화 및 인터랙티브 Git 위저드 (ADR-055) - ✅ 완료
+- [x] DevBot 콘솔(`/dev`) 입력창 상단의 20개 고정 칩 바(`.dev-quick-bar`) 전면 철거 및 `[/]` 에메랄드 액션 버튼 신설
+- [x] DevBot 전용 플로팅 커맨드 팔레트 컴포넌트(`templates/modals/command_palette_dev.html`) 신설:
+  - 16대 핵심 엔지니어링 도구 3대 카테고리(Git Ops, Quality & Test, Butler & Tools) 체계화
+  - 닫기 버튼, 백드롭 터치, 실시간 / 타이핑 검색 필터링, 방향키 및 Enter 실행 지원
+- [x] 범용 `command_palette.js` 컨트롤러 모듈 리팩터링 및 `dev.js` 연동
+- [x] 인터랙티브 Conventional Commits 3종(`feat`, `fix`, `refactor`) 추천 카드 및 원클릭 커밋 버튼(`.dev-btn-action.dev-btn-commit`) 구현
+- [x] 커밋 성공 시 말풍선 하단 `[🚀 GitHub 원격 푸시 (/push)]` 배너 제공 및 백엔드 `_run_git_push()`, `_run_git_sync()` 명령 핸들러 구현
+- [x] 다크 IDE 터미널 박스(`.dev-terminal-box`) 및 안전한 HTML 위젯 렌더러 지원
+- [x] 단위 테스트(`tests/test_dev_agent.py`), 린트(`ruff`), 정적 타입 검사(`mypy`) 및 `./scripts/smoke_test.sh` 전수 검증 완료
+
+### Phase 55: 비동기 서비스 제어 스크립트 및 데몬 구동 표준화 (ADR-056) - ✅ 완료
+- [x] 통합 비동기 서비스 제어기 `scripts/service.sh` 개발 (`start`, `stop`, `restart`, `status`, `logs`, `install-systemd`)
+- [x] 원터치 단축 실행 스크립트 구축 (`scripts/start.sh`, `scripts/stop.sh`, `scripts/restart.sh`, `scripts/status.sh`)
+- [x] 포그라운드 직접 실행 방지 방어 가드레일 `app.py` 구축 (호출 시 `./scripts/service.sh start` 비동기 자동 위임)
+- [x] systemd 서비스 유닛 파일 경로 표준화 (`systemd/watson.service`) 및 `scripts/setup_wizard.sh` 비동기 안내 최신화
+- [x] `AGENTS.md` 및 `README.md` 가이드라인에서 포그라운드 직접 실행 금지 및 비동기 스크립트 사용 강제화
+
+### Phase 56: 웹 기반 자율 코딩 스튜디오 (Web Autonomous Coding Studio)
+- [ ] DevBot 웹 콘솔에서 자연어 코드 수정 요청 시 실시간 diff 프리뷰 및 파일 편집 인터페이스
+- [ ] 테스트 자동 실행 및 오류 발생 시 자가 치유(Self-Healing) 엔지니어링 루프
+
+### Phase 57: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
 - [ ] `User` 모델 및 테넌트별 저장소/컨텍스트 격리 (`/data/tenants/{user_id}/`)
 - [ ] 단일 텔레그램 봇 기반 다중 사용자 라우팅 및 계정 바인딩 (`/start [연동코드]`)
 - [ ] 사용자 GitHub PAT 및 외부 API 키 AES-256 (Fernet) 암호화 보관

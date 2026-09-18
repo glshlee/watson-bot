@@ -17,14 +17,15 @@ from app.services.settings_service import SettingsService
 
 
 class SupervisorService:
-    def __init__(self, db: Session, base_dir: str | None = None):
+    def __init__(self, db: Session, base_dir: str | None = None, fast_mode: bool = False):
         self.session_service = SessionService(db)
         self.settings_service = SettingsService()
         self.commute_config_service = CommuteConfigService()
         self.base_dir = base_dir or self.settings_service.get_gtd_path()
+        self.fast_mode = fast_mode or (os.getenv("FAST_MODE", "").lower() in ("1", "true"))
         self.agent_service = AgentService(base_dir=self.base_dir)
         self.git_service = GitService(repo_path=self.base_dir)
-        self.llm_provider = LLMProvider(gtd_path=self.base_dir)
+        self.llm_provider = LLMProvider(gtd_path=self.base_dir, fast_mode=self.fast_mode)
         self.briefing_service = BriefingService(
             base_dir=self.base_dir,
             llm_provider=self.llm_provider,

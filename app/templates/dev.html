@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>DevBot - Software Engineering Console</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/static/css/style.css?v=1.5.2">
+    <link rel="stylesheet" href="/static/css/style.css?v=1.6.0">
 </head>
 <body class="dev-body">
     <div class="app-container">
@@ -82,31 +82,6 @@
                 <button id="reconnect-btn" class="btn-reconnect" title="연결 재시도"><i class="fa-solid fa-rotate"></i> 재시도</button>
             </div>
 
-            <!-- Quick Command Chips Bar -->
-            <div class="dev-quick-bar">
-                <span class="quick-label"><i class="fa-solid fa-terminal"></i> 도구:</span>
-                <button class="cmd-chip" data-cmd="/status"><i class="fa-solid fa-circle-info"></i> /status</button>
-                <button class="cmd-chip" data-cmd="/diff"><i class="fa-solid fa-code-compare"></i> /diff</button>
-                <button class="cmd-chip" data-cmd="/test"><i class="fa-solid fa-flask"></i> /test (pytest)</button>
-                <button class="cmd-chip" data-cmd="/lint"><i class="fa-solid fa-broom"></i> /lint (ruff/mypy)</button>
-                <button class="cmd-chip" data-cmd="/log"><i class="fa-solid fa-clock-rotate-left"></i> /log</button>
-                <button class="cmd-chip" data-cmd="/commit"><i class="fa-solid fa-code-commit"></i> /commit (추천)</button>
-                <button class="cmd-chip" data-cmd="/commute"><i class="fa-solid fa-bus"></i> /commute (출근길)</button>
-                <button class="cmd-chip" data-cmd="/schedule"><i class="fa-solid fa-clock"></i> /schedule</button>
-                <button class="cmd-chip" data-cmd="/weekly"><i class="fa-solid fa-chart-line"></i> /weekly (주간결산)</button>
-                <button class="cmd-chip" data-cmd="/vision "><i class="fa-solid fa-camera"></i> /vision (시각AI)</button>
-                <button class="cmd-chip" data-cmd="/search "><i class="fa-solid fa-magnifying-glass"></i> /search (기록검색)</button>
-                <button class="cmd-chip" data-cmd="/dday"><i class="fa-solid fa-hourglass-half"></i> /dday (마감일)</button>
-                <button class="cmd-chip" data-cmd="/briefing morning"><i class="fa-solid fa-sun"></i> /briefing (아침 08:30)</button>
-                <button class="cmd-chip" data-cmd="/briefing evening"><i class="fa-solid fa-moon"></i> /briefing (저녁 20:00)</button>
-                <button class="cmd-chip" data-cmd="/today"><i class="fa-solid fa-calendar-day"></i> /today (일일로그)</button>
-                <button class="cmd-chip" data-cmd="/edit"><i class="fa-solid fa-pen-to-square"></i> /edit (로그편집)</button>
-                <button class="cmd-chip" data-cmd="/heatmap"><i class="fa-solid fa-calendar-check"></i> /heatmap (잔디)</button>
-                <button class="cmd-chip" data-cmd="/gtd"><i class="fa-solid fa-list-check"></i> /gtd (GTD현황)</button>
-                <button class="cmd-chip" data-cmd="/setup"><i class="fa-solid fa-gears"></i> /setup (배포점검)</button>
-                <button class="cmd-chip" data-cmd="/help"><i class="fa-solid fa-circle-question"></i> /help</button>
-            </div>
-
             <!-- Chat Console Area -->
             <div class="chat-console-wrapper">
                 <div id="dev-chat-messages" class="chat-messages-container">
@@ -114,16 +89,22 @@
                         <div class="avatar"><i class="fa-solid fa-code"></i></div>
                         <div class="bubble">
                             안녕하세요! 개발 전담 AI 에이전트 **DevBot**입니다. 💻<br>
-                            워크스페이스 소스코드 분석, Git 버전 관리(`status`/`diff`/`log`), 버그 패치 및 시스템 아키텍처 지원을 담당합니다.<br>
-                            위의 빠른 명령 칩을 누르시거나 궁금한 코딩 질문을 자유롭게 입력해 주세요!
+                            워크스페이스 소스코드 분석, Git 버전 관리(`status`/`diff`/`log`/`commit`/`push`), 버그 패치 및 테스트 자동화를 담당합니다.<br>
+                            입력창 좌측의 **`/` 버튼**을 누르시거나 슬래시(`/`)를 입력하여 편리한 도구 팔레트를 이용해 보세요!
                         </div>
                     </div>
                 </div>
 
                 <!-- Input Box Bar -->
                 <div class="chat-input-wrapper">
+                    <!-- DevBot Command Palette Popover (ADR-055) -->
+                    {% include "modals/command_palette_dev.html" %}
+
                     <div class="input-row">
-                        <textarea id="dev-chat-input" placeholder="개발 요청이나 질문을 입력하세요... (예: /status, 프로젝트 구조 설명해줘)" rows="1"></textarea>
+                        <button type="button" id="btn-dev-palette" class="btn-command-palette dev-trigger" title="DevBot 명령어 & 숏컷 팔레트 (/)" aria-label="명령어 팔레트 열기">
+                            <span class="cmd-slash">/</span>
+                        </button>
+                        <textarea id="dev-chat-input" placeholder="개발 요청이나 질문을 입력하세요... (/ 입력 시 도구 팔레트)" rows="1"></textarea>
                         <button id="dev-send-btn" class="btn-primary dev-send-btn" aria-label="메시지 전송">
                             <i class="fa-solid fa-paper-plane"></i> <span class="desktop-only">실행</span>
                         </button>
@@ -133,9 +114,10 @@
         </main>
     </div>
 
-    <!-- Modular JavaScript Utilities (ADR-050) -->
-    <script src="/static/js/utils/api.js?v=1.4.0"></script>
-    <script src="/static/js/utils/date.js?v=1.4.0"></script>
-    <script src="/static/js/dev.js?v=1.4.0"></script>
+    <!-- Modular JavaScript Utilities (ADR-050, ADR-055) -->
+    <script src="/static/js/utils/api.js?v=1.6.0"></script>
+    <script src="/static/js/utils/date.js?v=1.6.0"></script>
+    <script src="/static/js/modules/command_palette.js?v=1.6.0"></script>
+    <script src="/static/js/dev.js?v=1.6.0"></script>
 </body>
 </html>

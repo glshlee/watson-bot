@@ -1,0 +1,189 @@
+<!-- Floating DevBot Command Palette Popover (ADR-055) -->
+<div id="dev-command-palette-backdrop" class="command-palette-backdrop hidden"></div>
+<div id="dev-command-palette" class="command-palette dev-palette hidden" role="menu" aria-label="DevBot 빠른 명령어 및 숏컷 메뉴">
+    <div class="palette-header">
+        <div class="palette-header-left">
+            <i class="fa-solid fa-code palette-header-icon dev-icon"></i>
+            <span class="palette-title">DevBot 명령어 & 도구</span>
+            <span class="palette-count-badge dev-badge" id="dev-palette-count">16개</span>
+        </div>
+        <div class="palette-header-right">
+            <span class="palette-hint desktop-only"><kbd>↑</kbd><kbd>↓</kbd> 탐색</span>
+            <span class="palette-hint desktop-only"><kbd>Enter</kbd> 실행</span>
+            <button type="button" id="btn-close-dev-palette" class="btn-close-palette" title="명령어 팔레트 닫기" aria-label="닫기">
+                <i class="fa-solid fa-xmark"></i> <span>닫기</span>
+            </button>
+        </div>
+    </div>
+    <div class="palette-body" id="dev-palette-body">
+        <!-- 🛠️ Git 버전 관리 (Git Ops) -->
+        <div class="palette-group" data-group="git">
+            <div class="palette-group-title"><i class="fa-solid fa-code-branch"></i> Git 버전 관리 (Git Ops)</div>
+            <div class="palette-item" data-cmd="/status">
+                <span class="item-icon git"><i class="fa-solid fa-circle-info"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">Git 상태 점검</span>
+                        <span class="item-cmd">/status</span>
+                    </div>
+                    <div class="item-desc">현재 작업 트리 변경 파일 및 브랜치 상태 점검</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/diff">
+                <span class="item-icon diff"><i class="fa-solid fa-code-compare"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">코드 변경점 비교</span>
+                        <span class="item-cmd">/diff</span>
+                    </div>
+                    <div class="item-desc">수정된 코드 라인 단위 Git Diff 검토</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/commit">
+                <span class="item-icon commit"><i class="fa-solid fa-code-commit"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">커밋 추천 & 위저드</span>
+                        <span class="item-cmd">/commit</span>
+                    </div>
+                    <div class="item-desc">Conventional Commits 3종 추천 및 원터치 커밋/푸시</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/push">
+                <span class="item-icon push"><i class="fa-solid fa-cloud-arrow-up"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">원격 저장소 푸시</span>
+                        <span class="item-cmd">/push</span>
+                    </div>
+                    <div class="item-desc">로컬 커밋을 원격 GitHub 저장소(origin/main)에 즉시 푸시</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/sync">
+                <span class="item-icon sync"><i class="fa-solid fa-rotate"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">원격 동기화 (Pull)</span>
+                        <span class="item-cmd">/sync</span>
+                    </div>
+                    <div class="item-desc">원격 GitHub 변경점을 autostash로 안전하게 최신화</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/log">
+                <span class="item-icon log"><i class="fa-solid fa-clock-rotate-left"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">커밋 로그 히스토리</span>
+                        <span class="item-cmd">/log</span>
+                    </div>
+                    <div class="item-desc">최근 5개 커밋 해시 및 변경 이력 조회</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🧪 품질 & 엔지니어링 (Quality & Test) -->
+        <div class="palette-group" data-group="quality">
+            <div class="palette-group-title"><i class="fa-solid fa-flask"></i> 품질 & 엔지니어링 (Quality & Test)</div>
+            <div class="palette-item" data-cmd="/test">
+                <span class="item-icon test"><i class="fa-solid fa-flask"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">단위 테스트 실행</span>
+                        <span class="item-cmd">/test</span>
+                    </div>
+                    <div class="item-desc">Pytest 기반 핵심 테스트 스위트 안전 프로세스 검증</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/lint">
+                <span class="item-icon lint"><i class="fa-solid fa-broom"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">코드 린트 & 타입 검사</span>
+                        <span class="item-cmd">/lint</span>
+                    </div>
+                    <div class="item-desc">Ruff 정적 린트 및 Mypy 타입 안정성 전수 검사</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/setup">
+                <span class="item-icon setup"><i class="fa-solid fa-gears"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">배포 환경 진단</span>
+                        <span class="item-cmd">/setup</span>
+                    </div>
+                    <div class="item-desc">셀프호스팅 배포 7단계 상태 및 필수 바이너리 점검 (ADR-046)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 📋 비서 연동 & 유틸리티 (Butler & Tools) -->
+        <div class="palette-group" data-group="butler">
+            <div class="palette-group-title"><i class="fa-solid fa-screwdriver-wrench"></i> 비서 연동 & 유틸리티</div>
+            <div class="palette-item" data-cmd="/today">
+                <span class="item-icon today"><i class="fa-solid fa-calendar-day"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">오늘 일일 로그</span>
+                        <span class="item-cmd">/today</span>
+                    </div>
+                    <div class="item-desc">오늘 자 라이프로그(YYYY-MM-DD.md) 마크다운 전문 확인</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/gtd">
+                <span class="item-icon gtd"><i class="fa-solid fa-list-check"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">GTD 현황 점검</span>
+                        <span class="item-cmd">/gtd</span>
+                    </div>
+                    <div class="item-desc">현재 GTD 수집함(inbox) 및 다음 행동(next_actions) 열람</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/dday">
+                <span class="item-icon dday"><i class="fa-solid fa-hourglass-half"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">D-Day 마감일 점검</span>
+                        <span class="item-cmd">/dday</span>
+                    </div>
+                    <div class="item-desc">GTD 마감 태스크 긴급도 4단계 및 기한 점검</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/briefing morning">
+                <span class="item-icon briefing"><i class="fa-solid fa-sun"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">아침 맞춤 브리핑</span>
+                        <span class="item-cmd">/briefing morning</span>
+                    </div>
+                    <div class="item-desc">날씨, 버스, 일정 및 우선순위 Top 3 브리핑</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/search ">
+                <span class="item-icon search"><i class="fa-solid fa-magnifying-glass"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">기록 & 로그 검색</span>
+                        <span class="item-cmd">/search [검색어]</span>
+                    </div>
+                    <div class="item-desc">라이프로그 및 GTD 문서 고속 검색</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/help">
+                <span class="item-icon help"><i class="fa-solid fa-circle-question"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">명령어 도움말</span>
+                        <span class="item-cmd">/help</span>
+                    </div>
+                    <div class="item-desc">DevBot 사용 가능한 전체 툴체인 및 가이드 안내</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="palette-empty hidden" id="dev-palette-empty">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <p>일치하는 DevBot 명령어가 없습니다.</p>
+        </div>
+    </div>
+</div>

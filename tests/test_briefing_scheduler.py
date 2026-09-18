@@ -34,7 +34,20 @@ async def test_dispatch_briefing_morning(mock_telegram_service, tmp_path):
         mock_db = MagicMock()
         mock_session_cls.return_value = mock_db
 
-        with patch("app.services.briefing_scheduler.SupervisorService") as mock_sup_cls:
+        mock_weather = {
+            "temp": "18.5°C",
+            "feels_like": "17.0°C",
+            "sky": "맑음 ☀️",
+            "rain_prob": "10%",
+            "umbrella_tip": "우산 불필요 ☀️",
+            "pm10": "좋음 🟢 (25 µg/m³)",
+            "pm25": "좋음 🟢 (12 µg/m³)",
+            "source": "Open-Meteo API",
+            "updated_time": "14:00",
+            "is_live": True,
+        }
+        with patch("app.services.weather_service.WeatherService._fetch_open_meteo", return_value=mock_weather), \
+             patch("app.services.briefing_scheduler.SupervisorService") as mock_sup_cls:
             mock_sup = MagicMock()
             mock_sup.base_dir = str(tmp_path)
             mock_sup.git_service = MagicMock()

@@ -314,6 +314,18 @@
 - **FR-53.2**: 입력창에서 `/` 입력 시 실시간 필터링되는 3대 카테고리(브리핑, GTD, 도구) 14종 플로팅 커맨드 팔레트(`command_palette.html`, `command_palette.js`)를 제공해야 한다.
 - **FR-53.3**: 방향키(`↑`/`↓`), `Enter` 실행, `ESC` 닫기 및 기존 모달 바인딩 ID(`btn-schedule-view`, `btn-commute-view` 등)와의 100% 하위 호환성을 보장해야 한다.
 
+### FR-54: DevBot 콘솔 UI 미니멀화 및 인터랙티브 Git 위저드 (ADR-055)
+- **FR-54.1**: DevBot 콘솔(`/dev`) 입력창 상단의 20개 고정 칩 바를 철거하고, 에메랄드 테마의 `[/]` 팔레트 토글 버튼(`#btn-dev-palette`)을 배치해야 한다.
+- **FR-54.2**: 3대 카테고리 16종 엔지니어링 도구 플로팅 팔레트(`command_palette_dev.html`)를 제공하고, `/` 타이핑 실시간 필터링 및 방향키/Enter 원클릭 실행을 보장해야 한다.
+- **FR-54.3**: `/commit` 실행 시 Conventional Commits 3종(`feat`, `fix`, `refactor`) 추천 카드와 원터치 커밋 버튼을 제공하고, 커밋 성공 시 `[🚀 GitHub 원격 푸시]` 배너를 제공해야 한다.
+- **FR-54.4**: 백엔드 핸들러에 `_run_git_push()` 및 `_run_git_sync()`를 탑재하여 `/push` 및 `/sync`를 터미널 없이 즉시 실행하고 결과를 다크 터미널 박스로 시각화해야 한다.
+
+### FR-55: 비동기 서비스 제어 스크립트 및 데몬 구동 표준화 (ADR-056)
+- **FR-55.1**: 에이전트 및 사용자가 터미널 세션에서 `python app.py` 또는 포그라운드 `uvicorn`을 직접 실행하여 세션이 블로킹되는 현상을 엄격히 금지해야 한다.
+- **FR-55.2**: `scripts/service.sh`를 통해 `start`, `stop`, `restart`, `status`, `logs`, `install-systemd`를 논블로킹 비동기 방식으로 제어하고, 가동 시 최대 30초 내 `/api/health` 헬스체크 성공 확인 후 즉시 정상 반환해야 한다.
+- **FR-55.3**: `scripts/start.sh`, `scripts/stop.sh`, `scripts/restart.sh`, `scripts/status.sh` 등 원터치 비동기 단축 스크립트를 제공해야 한다.
+- **FR-55.4**: 루트 `app.py`를 통해 직접 포그라운드 실행을 가드레일로 방어하고, `./scripts/service.sh start` 비동기 제어로 자동 위임해야 한다.
+
 ---
 
 
@@ -390,4 +402,6 @@
 | **FR-51** | `app/services/llm/agy_client.py`, `app/services/llm/prompt_builder.py`, `app/services/llm/category_extractor.py`, `app/services/llm/intent_analyzer.py`, `app/services/llm_provider.py` | Pytest 단위 테스트(`test_llm_provider.py`) & cURL 스모크 테스트 |
 | **FR-52** | `app/services/lifelog_service.py`, `app/services/gtd_service.py`, `app/services/agent_service.py` | Pytest 단위 테스트(`test_agent_service.py`) & cURL 스모크 테스트 |
 | **FR-53** | `app/templates/modals/command_palette.html`, `app/static/js/modules/command_palette.js`, `app/static/css/chat.css` | 브라우저 콘솔 및 cURL 정적 템플릿 검증 |
+| **FR-54** | `app/services/dev_agent_service.py`, `app/templates/modals/command_palette_dev.html`, `app/templates/dev.html`, `app/static/css/dev.css`, `app/static/js/dev.js` | Pytest 단위 테스트(`test_dev_agent.py`) & cURL 스모크 테스트(8-1 ~ 8-4) |
+| **FR-55** | `scripts/service.sh`, `scripts/start.sh`, `scripts/stop.sh`, `scripts/restart.sh`, `scripts/status.sh`, `app.py`, `systemd/watson.service` | `./scripts/service.sh status` & `./scripts/smoke_test.sh` 라이브 검증 |
 

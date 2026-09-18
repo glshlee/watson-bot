@@ -28,8 +28,9 @@ class LLMProvider:
     조합하여 단일 진입점 인터페이스 및 100% 하위 호환성을 제공합니다.
     """
 
-    def __init__(self, gtd_path: str | None = None):
+    def __init__(self, gtd_path: str | None = None, fast_mode: bool = False):
         self.gtd_path = gtd_path or os.getenv("GTD_PATH", "/home/ubuntu/workspace/life_log")
+        self.fast_mode = fast_mode or (os.getenv("FAST_MODE", "").lower() in ("1", "true"))
         self.agy_path = self._find_agy_path()
 
     def _find_agy_path(self) -> str | None:
@@ -50,6 +51,9 @@ class LLMProvider:
 
     def _call_ai_engine(self, prompt: str, history: list[dict[str, str]] | None = None) -> str:
         """AGY CLI 또는 지능형 AI 엔진을 호출하며, 미구동 시 스마트 로컬 폴백을 제공합니다."""
+        if self.fast_mode:
+            return get_smart_fallback(prompt=prompt, history=history)
+
         agy_bin = self._find_agy_path()
         if agy_bin:
             full_prompt = build_system_prompt(prompt=prompt, history=history, gtd_path=self.gtd_path)

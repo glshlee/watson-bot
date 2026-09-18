@@ -15,7 +15,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const sidebarBranch = document.getElementById("dev-sidebar-branch");
     const activeDevTitle = document.getElementById("active-dev-title");
     const activeDevMeta = document.getElementById("active-dev-meta");
-    const cmdChips = document.querySelectorAll(".cmd-chip");
 
     // Connection Resilience & Heartbeat Elements (ADR-021)
     const connectionBanner = document.getElementById("connection-banner");
@@ -129,13 +128,17 @@ document.addEventListener("DOMContentLoaded", () => {
     closeSidebarBtn?.addEventListener("click", closeSidebar);
     sidebarBackdrop?.addEventListener("click", closeSidebar);
 
-    // Simple Markdown Formatter
+    // Simple Markdown Formatter with Safe HTML Widget Support (ADR-055)
     function formatMarkdown(text) {
         if (!text) return "";
         let escaped = text
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;");
+
+        // Restore safe HTML tags and attributes for DevBot interactive UI
+        escaped = escaped.replace(/&lt;(\/?(div|button|span|pre|code|i|strong|p|kbd|h3|h4)[^&gt;]*)&gt;/gi, '<$1>');
+        escaped = escaped.replace(/&quot;/g, '"');
 
         // Code blocks
         escaped = escaped.replace(/```([a-z]*)\n([\s\S]*?)```/g, (match, lang, code) => {
@@ -152,10 +155,10 @@ document.addEventListener("DOMContentLoaded", () => {
         // Bold
         escaped = escaped.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
 
-        // Line breaks (outside pre)
-        const parts = escaped.split(/(<pre[\s\S]*?<\/pre>)/);
+        // Line breaks (outside pre and interactive widgets)
+        const parts = escaped.split(/(<pre[\s\S]*?<\/pre>|<div[\s\S]*?<\/div>)/gi);
         for (let i = 0; i < parts.length; i++) {
-            if (!parts[i].startsWith("<pre")) {
+            if (!parts[i].startsWith("<pre") && !parts[i].startsWith("<div")) {
                 parts[i] = parts[i].replace(/\n/g, "<br>");
             }
         }
@@ -320,18 +323,39 @@ document.addEventListener("DOMContentLoaded", () => {
 
     sendBtn?.addEventListener("click", () => sendMessage());
     chatInput?.addEventListener("keydown", (e) => {
+        if (devPaletteController?.isOpen?.()) return;
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             sendMessage();
         }
     });
 
-    // Quick Command Chips
-    cmdChips.forEach(chip => {
-        chip.addEventListener("click", () => {
-            const cmd = chip.dataset.cmd;
-            if (cmd) sendMessage(cmd);
-        });
+    // Initialize DevBot Command Palette (ADR-055)
+    const devPaletteController = window.WatsonCommandPalette?.initCommandPalette({
+        btnTriggerId: "btn-dev-palette",
+        paletteId: "dev-command-palette",
+        chatInputId: "dev-chat-input",
+        paletteBodyId: "dev-palette-body",
+        paletteEmptyId: "dev-palette-empty",
+        paletteCountId: "dev-palette-count",
+        paletteBackdropId: "dev-command-palette-backdrop",
+        btnClosePaletteId: "btn-close-dev-palette",
+        onTriggerCommand: (cmd) => sendMessage(cmd),
+    });
+
+    // Interactive Git Wizard & Action Button Delegation (ADR-055)
+    chatMessages?.addEventListener("click", (e) => {
+        const btn = e.target.closest(".dev-btn-action");
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        const commitCmd = btn.dataset.commitCmd;
+        const pushCmd = btn.dataset.pushCmd;
+        const cmd = commitCmd || pushCmd || btn.dataset.cmd;
+        if (cmd) {
+            sendMessage(cmd);
+        }
     });
 
     // New Dev Session
