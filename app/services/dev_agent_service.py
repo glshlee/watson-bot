@@ -4,11 +4,13 @@ import re
 import subprocess
 from typing import Any
 
+import yaml
 from sqlalchemy.orm import Session
 
 from app.config import get_now
 from app.services.agent_service import AgentService
 from app.services.briefing_service import BriefingService
+from app.services.coding_studio_service import CodingStudioService
 from app.services.llm_provider import LLMProvider
 from app.services.session_service import SessionService
 from app.services.settings_service import SettingsService
@@ -28,6 +30,7 @@ class DevAgentService:
         self.fast_mode = fast_mode or (os.getenv("FAST_MODE", "").lower() in ("1", "true"))
         self.session_service = SessionService(db)
         self.llm_provider = LLMProvider(fast_mode=self.fast_mode)
+        self.coding_studio = CodingStudioService(workspace_path=self.workspace_path)
 
     def _get_agent_service(self) -> AgentService:
         """현재 설정된 GTD 저장소 경로를 기반으로 AgentService 인스턴스를 반환합니다."""
@@ -505,6 +508,182 @@ class DevAgentService:
             logger.debug(f"Failed to read roadmap summary: {e}")
         return ""
 
+    def _handle_autonomous_implementation(
+        self,
+        clean_msg: str,
+        session_id: str,
+    ) -> tuple[str, str, str | None]:
+        """
+        사용자의 코드 구현/수정/패치 요청을 분석하여 실제 소스코드에 패치를 적용하고
+        단위 테스트 검증 및 결과 카드를 반환합니다.
+        Returns: (ai_response, action_type, target_file)
+        """
+        # 1. Pipe-based manual surgical patch: /patch file.py | target | replacement
+        if "|" in clean_msg and clean_msg.startswith(("/patch", "/implement", "/구현", "/패치")):
+            pipe_parts = [p.strip() for p in clean_msg.split("|")]
+            if len(pipe_parts) >= 3:
+                first_part = pipe_parts[0].split(maxsplit=1)
+                if len(first_part) > 1:
+                    target_file = first_part[1].strip()
+                    target_code = pipe_parts[1]
+                    repl_code = pipe_parts[2]
+                    patch_res = self.coding_studio.apply_code_patch(
+                        rel_path=target_file,
+                        target_content=target_code,
+                        replacement_content=repl_code,
+                    )
+                    if patch_res["success"]:
+                        test_res = self._run_pytest()
+                        card = self.coding_studio.format_patch_card(
+                            rel_path=target_file,
+                            backup_id=patch_res.get("backup_id", ""),
+                            diff=patch_res.get("diff", ""),
+                            test_passed=test_res["success"],
+                            explanation="지정 수술적 패치 적용 완료",
+                        )
+                        return card, "tool_code_patch", target_file
+                    else:
+                        error_msg = (
+                            f"⚠️ **패치 적용 실패**: {patch_res.get('error')}\n\n"
+                            f"대상 파일: `{target_file}`\n\n"
+                            f'<div class="dev-git-wizard">\n'
+                            f'  <button type="button" class="dev-btn-action" data-open-studio="{target_file}"><i class="fa-solid fa-laptop-code"></i> 웹 스튜디오에서 직접 편집</button>\n'
+                            f'</div>'
+                        )
+                        return error_msg, "tool_studio_open", target_file
+
+        # 2. Fast mode simulation (for rapid CI/testing)
+        if self.fast_mode or not self.llm_provider.agy_path:
+            matched_files = re.findall(r"[\w/.-]+\.(?:py|js|html|css|md|sh)", clean_msg)
+            t_file = matched_files[0] if matched_files else "app/main.py"
+            simulated_card = (
+                f"### 🛠️ 자율 코드 구현 (Fast Mode / 테스트 모드)\n\n"
+                f"* **대상 파일**: `{t_file}`\n"
+                f"* **요청 내용**: \"{clean_msg}\"\n"
+                f"* **상태**: 빠른 테스트 모드 시뮬레이션 완료\n\n"
+                f'<div class="dev-git-wizard">\n'
+                f'  <button type="button" class="dev-btn-action" data-open-studio="{t_file}"><i class="fa-solid fa-laptop-code"></i> ✏️ 웹 스튜디오에서 열기</button>\n'
+                f'  <button type="button" class="dev-btn-action" data-cmd="/test"><i class="fa-solid fa-flask"></i> 단위 테스트 검증 (/test)</button>\n'
+                f'</div>'
+            )
+            return simulated_card, "tool_code_patch", t_file
+
+        # 3. LLM-based autonomous surgical patch generation & execution
+        ws_status = self.get_workspace_status()
+        prompt = (
+            "너는 Watson 워크스페이스의 코드를 실제로 구현 및 수정하는 자율 코딩 에이전트(Autonomous Coding Agent)이다.\n"
+            "사용자의 요구사항을 분석하여, 워크스페이스 내 파일에 적용할 수 있는 수술적 패치(Surgical Patch)를 작성하라.\n\n"
+            "[작성 규칙 - 절대 준수]\n"
+            "1. 반드시 아래의 YAML 마크다운 블록(```yaml ... ```)을 최상단에 정확히 출력하라.\n"
+            "2. file: 워크스페이스 내 상대 경로 (예: app/services/example.py). 절대 경로 금지.\n"
+            "3. target: 기존 파일에서 치환할 정확한 코드 블록 (공백, 들여쓰기 원본 그대로 포함). 새 파일 생성 시에는 target: \"\"\n"
+            "4. replacement: 치환되어 새로 들어갈 완성된 코드 블록.\n"
+            "5. explanation: 구현/수정 내용에 대한 1~2줄 한국어 요약.\n\n"
+            "```yaml\n"
+            "file: app/services/foo.py\n"
+            "target: |\n"
+            "  # 치환할 원본 코드\n"
+            "replacement: |\n"
+            "  # 새로 들어갈 코드\n"
+            "explanation: 작업 요약\n"
+            "```\n\n"
+            f"[프로젝트 현황]\n"
+            f"- 최근 커밋: {ws_status.get('last_commit')}\n"
+            f"- 변경 중 파일: {ws_status.get('changed_files_count')}개\n\n"
+            f"[사용자 구현/수정 요청]\n{clean_msg}\n\n"
+            "자율 코딩 응답:"
+        )
+
+        try:
+            cmd = [
+                self.llm_provider.agy_path,
+                "-p",
+                prompt,
+                "--model",
+                "gemini-3.8-flash-low",
+                "--effort",
+                "low",
+                "--disable-slash-commands",
+                "--dangerously-skip-permissions",
+            ]
+            env = os.environ.copy()
+            env["PATH"] = "/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin:" + env.get("PATH", "")
+            res = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=55,
+                check=False,
+                env=env,
+                cwd=self.workspace_path,
+            )
+
+            raw_out = res.stdout.strip()
+            m = re.search(r"```ya?ml\s*\n(.*?)```", raw_out, re.DOTALL)
+            if m:
+                yaml_data = yaml.safe_load(m.group(1))
+                if isinstance(yaml_data, dict):
+                    rel_file = str(yaml_data.get("file", "")).strip()
+                    target_block = yaml_data.get("target")
+                    repl_block = yaml_data.get("replacement")
+                    explanation = str(yaml_data.get("explanation", "자율 코드 패치 적용 완료"))
+
+                    if rel_file and repl_block is not None:
+                        patch_res = self.coding_studio.apply_code_patch(
+                            rel_path=rel_file,
+                            target_content=target_block if target_block else None,
+                            replacement_content=repl_block if target_block else None,
+                            new_content=repl_block if not target_block else None,
+                        )
+                        if patch_res["success"]:
+                            test_res = self._run_pytest()
+                            card = self.coding_studio.format_patch_card(
+                                rel_path=rel_file,
+                                backup_id=patch_res.get("backup_id", ""),
+                                diff=patch_res.get("diff", ""),
+                                test_passed=test_res["success"],
+                                explanation=explanation,
+                            )
+                            return card, "tool_code_patch", rel_file
+                        else:
+                            fail_msg = (
+                                f"⚠️ **자율 패치 적용 실패**: {patch_res.get('error')}\n\n"
+                                f"* **대상 파일**: `{rel_file}`\n"
+                                f"* 웹 코딩 스튜디오를 열어 직접 코드를 확인하고 편집하실 수 있습니다.\n\n"
+                                f'<div class="dev-git-wizard">\n'
+                                f'  <button type="button" class="dev-btn-action" data-open-studio="{rel_file}"><i class="fa-solid fa-laptop-code"></i> ✏️ 웹 스튜디오에서 열기</button>\n'
+                                f'</div>'
+                            )
+                            return fail_msg, "tool_studio_open", rel_file
+
+            matched_files = re.findall(r"[\w/.-]+\.(?:py|js|html|css|md)", clean_msg)
+            t_file = matched_files[0] if matched_files else None
+            fallback_resp = (
+                f"### 💡 자율 코드 구현 분석 제안\n\n"
+                f"{raw_out or '요청하신 코드를 분석했습니다.'}\n\n"
+            )
+            if t_file:
+                fallback_resp += (
+                    f'<div class="dev-git-wizard">\n'
+                    f'  <button type="button" class="dev-btn-action" data-open-studio="{t_file}"><i class="fa-solid fa-laptop-code"></i> ✏️ `{t_file}` 웹 스튜디오에서 직접 편집</button>\n'
+                    f'</div>'
+                )
+                return fallback_resp, "tool_studio_open", t_file
+            else:
+                fallback_resp += (
+                    '<div class="dev-git-wizard">\n'
+                    '  <button type="button" class="dev-btn-action" data-open-studio="app/main.py"><i class="fa-solid fa-laptop-code"></i> 💻 웹 코딩 스튜디오 열기</button>\n'
+                    '  <button type="button" class="dev-btn-action" data-cmd="/files"><i class="fa-solid fa-folder-open"></i> 파일 탐색기 (/files)</button>\n'
+                    '</div>'
+                )
+                return fallback_resp, "ai_reasoning", None
+
+        except subprocess.TimeoutExpired:
+            return "⏱️ 자율 코드 구현 응답 시간이 초과되었습니다 (55초 제한).", "timeout", None
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Autonomous implementation error: {e}")
+            return f"⚠️ 코드 구현 처리 중 예외 발생: {e}", "error", None
+
     def process_dev_request(
         self,
         session_id: str,
@@ -532,6 +711,7 @@ class DevAgentService:
         lower_msg = clean_msg.lower()
         ai_response = ""
         action_type = "chat"
+        target_file: str | None = None
 
         if lower_msg in ["/status", "git status", "상태", "상태 확인", "깃 상태"]:
             action_type = "git_status"
@@ -787,10 +967,122 @@ class DevAgentService:
             skill_arg = clean_msg.split(maxsplit=1)[1].strip()
             ai_response = self.format_skills_catalog(skill_arg)
 
+        elif lower_msg.startswith(("/studio", "/스튜디오", "/web-studio", "/웹스튜디오")):
+            action_type = "tool_studio_open"
+            parts = clean_msg.split(maxsplit=1)
+            target_path = parts[1].strip() if len(parts) > 1 else ""
+            target_file = target_path or "app/main.py"
+            ai_response = (
+                f"### 💻 웹 코딩 스튜디오 (Web Autonomous Coding Studio)\n\n"
+                f"* **대상 파일**: `{target_file}`\n"
+                f"* 웹 에디터가 브라우저에 열렸습니다. 소스코드를 직접 편집하고 Diff 미리보기, 패치 적용, 롤백 및 테스트를 브라우저에서 수행할 수 있습니다.\n\n"
+                f'<div class="dev-git-wizard">\n'
+                f'  <button type="button" class="dev-btn-action" data-open-studio="{target_file}"><i class="fa-solid fa-code"></i> 스튜디오 다시 열기</button>\n'
+                f'  <button type="button" class="dev-btn-action" data-cmd="/files"><i class="fa-solid fa-folder-open"></i> 전체 파일 목록 (/files)</button>\n'
+                f'</div>'
+            )
+
+        elif (
+            lower_msg.startswith(("/implement", "/patch", "/구현", "/패치"))
+            or (
+                any(k in lower_msg for k in ["구현해", "수정해", "코드 작성", "개발해", "패치해", "만들어줘"])
+                and not any(q in lower_msg for q in ["방법", "어떻게", "계획", "설명", "추천", "어때", "어디"])
+            )
+        ):
+            ai_response, action_type, target_file = self._handle_autonomous_implementation(clean_msg, session_id)
+
+        elif lower_msg.startswith(("/code", "/cat", "/view", "/파일보기")):
+            action_type = "tool_code_view"
+            parts = clean_msg.split(maxsplit=1)
+            target_path = parts[1].strip() if len(parts) > 1 else ""
+            target_file = target_path or None
+            if not target_path:
+                ai_response = "### 💻 소스코드 열람 도구 (Coding Studio)\n\n* **사용법**: `/code [파일상대경로]` (예: `/code app/main.py`)\n* 워크스페이스 내 전체 소스코드 목록은 `/files`로 확인하세요."
+            else:
+                ai_response = self.coding_studio.format_code_card(target_path)
+
+        elif lower_msg.startswith(("/files", "/tree", "/트리", "/파일목록")):
+            action_type = "tool_files_list"
+            parts = clean_msg.split(maxsplit=1)
+            sub_dir = parts[1].strip() if len(parts) > 1 else ""
+            files = self.coding_studio.list_workspace_files(sub_dir)
+            if not files:
+                ai_response = f"⚠️ `{sub_dir or '워크스페이스'}` 내에 열람 가능한 파일이 없습니다."
+            else:
+                target_title = f"`{sub_dir}/`" if sub_dir else "전체 워크스페이스"
+                lines = [
+                    f"### 📂 소스코드 파일 탐색기 ({target_title} - 총 {len(files)}개)\n",
+                    "원하는 파일의 버튼을 누르면 즉시 코드를 열람하거나 웹 에디터로 편집할 수 있습니다:\n",
+                ]
+                for f in files[:20]:
+                    lines.append(
+                        f'<div class="dev-commit-opt" style="margin-bottom: 6px;">\n'
+                        f'  <div class="opt-desc"><strong>📄 {f["name"]}</strong> ({f["lines"]}줄, {f["size"]:,} bytes) - `{f["path"]}`</div>\n'
+                        f'  <div style="display: flex; gap: 6px;">\n'
+                        f'    <button type="button" class="dev-btn-action" data-cmd="/code {f["path"]}"><i class="fa-solid fa-code"></i> 열람</button>\n'
+                        f'    <button type="button" class="dev-btn-action" data-open-studio="{f["path"]}"><i class="fa-solid fa-pen-to-square"></i> 편집</button>\n'
+                        f'  </div>\n'
+                        f'</div>'
+                    )
+                if len(files) > 20:
+                    lines.append(f"\n*... 외 {len(files) - 20}개 파일 생략*")
+                ai_response = "\n".join(lines)
+
+        elif lower_msg.startswith(("/rollback", "/롤백", "/되돌리기")):
+            action_type = "tool_code_rollback"
+            parts = clean_msg.split(maxsplit=1)
+            target_path = parts[1].strip() if len(parts) > 1 else ""
+            target_file = target_path or None
+            if not target_path:
+                ai_response = "### 🔄 파일 롤백 도구\n\n* **사용법**: `/rollback [파일상대경로]` (예: `/rollback app/main.py`)"
+            else:
+                rollback_res = self.coding_studio.rollback_file(target_path)
+                if rollback_res["success"]:
+                    ai_response = (
+                        f"### 🔄 파일 복원 완료\n\n"
+                        f"* **대상 파일**: `{rollback_res['path']}`\n"
+                        f"* **복원된 백업**: `{rollback_res['restored_from']}`\n\n"
+                        f"이전 백업 시점으로 파일이 안전하게 원상 복구되었습니다."
+                    )
+                else:
+                    ai_response = f"⚠️ **롤백 실패**: {rollback_res.get('error')}"
+
+        elif lower_msg in ["/heal", "/self-heal", "/자가치유", "자가치유", "heal", "self-heal"]:
+            action_type = "tool_self_heal"
+            test_res = self._run_pytest()
+            if test_res["success"]:
+                ai_response = (
+                    "### 🩺 자가 치유(Self-Healing) 진단 결과\n\n"
+                    "✨ **전체 단위 테스트 통과 (All Passed)**\n\n"
+                    "현재 코드베이스에 실패하거나 중단된 테스트 결함이 없습니다! "
+                    "새로운 기능 개발이나 리팩터링을 진행하실 준비가 완료되었습니다."
+                )
+            else:
+                diag = self.coding_studio.diagnose_test_failure(test_res["output"])
+                ai_response = (
+                    "### 🩺 자가 치유(Self-Healing) 진단 결과\n\n"
+                    "❌ **단위 테스트 실패 감지**\n\n"
+                    f"```text\n{diag['summary']}\n```\n\n"
+                    "#### 상세 실패 로그:\n"
+                    f"```text\n{test_res['output'][:1000]}\n```\n\n"
+                    '<div class="dev-git-wizard">\n'
+                    f'  <button type="button" class="dev-btn-action" data-cmd="/code {diag["file"] or "tests/test_auth.py"}"><i class="fa-solid fa-code"></i> 실패 파일 열람</button>\n'
+                    f'  <button type="button" class="dev-btn-action" data-cmd="/diff"><i class="fa-solid fa-code-compare"></i> 변경점 비교 (/diff)</button>\n'
+                    '</div>'
+                )
+
         elif lower_msg in ["/help", "help", "도움말", "명령어", "도구"]:
             action_type = "tool_help"
             ai_response = (
                 "### 🛠️ DevBot 지원 엔지니어링 도구 안내\n\n"
+                "* **💻 웹 자율 코딩 스튜디오 (ADR-058)**:\n"
+                "  * `/studio [파일경로]`: 웹 에디터 및 Diff 프리뷰 스튜디오 모달 열기\n"
+                "  * `/implement [설명]`: AI 자율 코드 구현 및 수술적 패치 적용, 단위 테스트 검증\n"
+                "  * `/patch [파일|target|replacement]`: 지정 코드 블록 수술적 치환 패치\n"
+                "  * `/files [디렉토리]`: 워크스페이스 소스코드 파일 탐색 및 열람/편집\n"
+                "  * `/code [파일경로]`: 파일 소스코드 구문 하이라이트 및 실시간 열람\n"
+                "  * `/rollback [파일경로]`: 최근 백업 시점으로 파일 원상 복구\n"
+                "  * `/heal`: 단위 테스트 결함 진단 및 자가 치유(Self-Healing) 분석 실행\n"
                 "* **🗺️ 개발 로드맵 & 하네스 스킬 (ADR-057)**:\n"
                 "  * `/roadmap`: 전체 개발 로드맵 진행률 및 예정 마일스톤 현황 점검\n"
                 "  * `/skills`: DevBot 활용 가능 `.agents/skills/` 카탈로그 조회\n"
@@ -917,5 +1209,6 @@ class DevAgentService:
             "user_message": clean_msg,
             "ai_response": ai_response,
             "action_type": action_type,
+            "target_file": target_file,
             "timestamp": get_now().isoformat(),
         }

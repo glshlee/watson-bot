@@ -74,6 +74,9 @@
                     <button type="button" id="btn-dev-skills-quick" class="badge dev-action-badge" title="하네스 개발 스킬 목록 (/skills)">
                         <i class="fa-solid fa-puzzle-piece"></i> <span class="desktop-only">스킬</span>
                     </button>
+                    <button type="button" id="btn-dev-studio-quick" class="badge dev-action-badge" title="웹 자율 코딩 스튜디오 소스코드 탐색 (/files)">
+                        <i class="fa-solid fa-laptop-code"></i> <span class="desktop-only">스튜디오</span>
+                    </button>
                     <div id="header-clock-badge" class="badge header-clock-badge desktop-only" title="현재 한국 표준시 (KST, Asia/Seoul)">
                         <i class="fa-solid fa-clock"></i> <span id="header-live-clock">--:-- KST</span>
                     </div>
@@ -106,6 +109,9 @@
                     <!-- DevBot Command Palette Popover (ADR-055) -->
                     {% include "modals/command_palette_dev.html" %}
 
+                    <!-- Web Autonomous Coding Studio Modal (ADR-058) -->
+                    {% include "modals/code_studio_modal.html" %}
+
                     <div class="input-row">
                         <button type="button" id="btn-dev-palette" class="btn-command-palette dev-trigger" title="DevBot 명령어 & 숏컷 팔레트 (/)" aria-label="명령어 팔레트 열기">
                             <span class="cmd-slash">/</span>
@@ -120,10 +126,11 @@
         </main>
     </div>
 
-    <!-- Modular JavaScript Utilities (ADR-050, ADR-055) -->
+    <!-- Modular JavaScript Utilities (ADR-050, ADR-055, ADR-058) -->
     <script src="/static/js/utils/api.js?v=1.6.0"></script>
     <script src="/static/js/utils/date.js?v=1.6.0"></script>
     <script src="/static/js/modules/command_palette.js?v=1.6.0"></script>
+    <script src="/static/js/modules/code_studio_modal.js?v=1.6.0"></script>
     <script src="/static/js/dev.js?v=1.6.0"></script>
 </body>
 </html>

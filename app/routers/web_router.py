@@ -8,6 +8,7 @@ from fastapi import (
 )
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.auth import verify_web_auth
@@ -127,4 +128,109 @@ def get_dev_skill_detail(skill_name: str, db: Session = Depends(get_db)):  # noq
         if target == s["id"].lower() or target == s["name"].lower() or target in s["id"].lower():
             return s
     raise HTTPException(status_code=404, detail=f"Skill '{skill_name}' not found")
+
+
+class PatchCodeRequest(BaseModel):
+    filepath: str
+    new_content: str | None = None
+    target_content: str | None = None
+    replacement_content: str | None = None
+    dry_run: bool = False
+
+
+class RollbackCodeRequest(BaseModel):
+    filepath: str
+    backup_id: str | None = None
+
+
+@router.get("/api/dev/code/tree")
+def get_code_tree(subpath: str = "", db: Session = Depends(get_db)):  # noqa: B008
+    """DevBot 코딩 스튜디오 워크스페이스 파일 트리 조회 (ADR-058)."""
+    dev_service = DevAgentService(db=db)
+    files = dev_service.coding_studio.list_workspace_files(sub_dir=subpath)
+    return {
+        "workspace": dev_service.workspace_path,
+        "subpath": subpath,
+        "total_files": len(files),
+        "files": files,
+    }
+
+
+@router.get("/api/dev/code/file")
+def get_code_file(
+    filepath: str,
+    start_line: int = 1,
+    end_line: int | None = None,
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    """DevBot 코딩 스튜디오 소스코드 파일 열람 (ADR-058)."""
+    dev_service = DevAgentService(db=db)
+    res = dev_service.coding_studio.read_code_file(filepath, start_line, end_line)
+    if not res.get("success"):
+        err = str(res.get("error", ""))
+        if "경로 탐색" in err or "접근이 제한된" in err:
+            raise HTTPException(status_code=403, detail=err)
+        if "찾을 수 없습니다" in err:
+            raise HTTPException(status_code=404, detail=err)
+        raise HTTPException(status_code=400, detail=err)
+    return res
+
+
+@router.post("/api/dev/code/patch")
+def apply_code_patch_endpoint(
+    payload: PatchCodeRequest,
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    """DevBot 코딩 스튜디오 Diff 생성 및 코드 패치 적용 (ADR-058)."""
+    dev_service = DevAgentService(db=db)
+    if payload.dry_run:
+        res = dev_service.coding_studio.generate_diff_preview(
+            payload.filepath,
+            payload.target_content or "",
+            payload.replacement_content or "",
+        )
+    else:
+        res = dev_service.coding_studio.apply_code_patch(
+            rel_path=payload.filepath,
+            new_content=payload.new_content,
+            target_content=payload.target_content,
+            replacement_content=payload.replacement_content,
+        )
+    if not res.get("success"):
+        err = str(res.get("error", ""))
+        if "경로 탐색" in err or "접근이 제한된" in err:
+            raise HTTPException(status_code=403, detail=err)
+        raise HTTPException(status_code=400, detail=err)
+    return res
+
+
+@router.post("/api/dev/code/rollback")
+def rollback_code_endpoint(
+    payload: RollbackCodeRequest,
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    """DevBot 코딩 스튜디오 백업 롤백 복원 (ADR-058)."""
+    dev_service = DevAgentService(db=db)
+    res = dev_service.coding_studio.rollback_file(payload.filepath, payload.backup_id)
+    if not res.get("success"):
+        err = str(res.get("error", ""))
+        if "경로 탐색" in err or "접근이 제한된" in err:
+            raise HTTPException(status_code=403, detail=err)
+        raise HTTPException(status_code=400, detail=err)
+    return res
+
+
+@router.post("/api/dev/code/self-heal")
+def self_heal_endpoint(
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    """DevBot 코딩 스튜디오 테스트 자가 치유(Self-Healing) 진단 (ADR-058)."""
+    dev_service = DevAgentService(db=db)
+    test_res = dev_service._run_pytest()
+    diag = dev_service.coding_studio.diagnose_test_failure(test_res.get("output", ""))
+    return {
+        "test_passed": test_res.get("success", False),
+        "output": test_res.get("output", "")[:2000],
+        "diagnosis": diag,
+    }
 

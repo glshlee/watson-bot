@@ -1,0 +1,99 @@
+<!-- Web Autonomous Coding Studio Modal (ADR-058) -->
+<div id="code-studio-modal" class="modal hidden" role="dialog" aria-labelledby="studio-modal-title" aria-modal="true">
+    <div class="modal-content code-studio-modal-content">
+        <!-- Modal Header -->
+        <div class="modal-header studio-modal-header">
+            <div class="studio-header-left">
+                <i class="fa-solid fa-laptop-code studio-icon"></i>
+                <div class="studio-header-title-wrap">
+                    <h3 id="studio-modal-title" class="studio-title">웹 자율 코딩 스튜디오</h3>
+                    <div class="studio-file-meta">
+                        <span id="studio-active-filename" class="studio-active-file">app/main.py</span>
+                        <span id="studio-lang-badge" class="studio-badge lang">python</span>
+                        <span id="studio-size-badge" class="studio-badge size">0 B</span>
+                        <span id="studio-lines-badge" class="studio-badge lines">0줄</span>
+                        <span id="studio-dirty-badge" class="studio-badge dirty hidden">수정됨 *</span>
+                    </div>
+                </div>
+            </div>
+            <div class="studio-header-right">
+                <div class="studio-tabs">
+                    <button type="button" id="tab-studio-editor" class="studio-tab-btn active"><i class="fa-solid fa-code"></i> 코드 편집</button>
+                    <button type="button" id="tab-studio-diff" class="studio-tab-btn"><i class="fa-solid fa-code-compare"></i> Diff 비교</button>
+                </div>
+                <button type="button" id="close-studio-modal-btn" class="close-btn" title="스튜디오 닫기" aria-label="닫기">&times;</button>
+            </div>
+        </div>
+
+        <!-- Modal Body (Two-Column Layout) -->
+        <div class="modal-body studio-modal-body">
+            <!-- Sidebar: File Tree -->
+            <aside class="studio-sidebar">
+                <div class="studio-sidebar-header">
+                    <div class="studio-search-wrap">
+                        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                        <input type="text" id="studio-file-search" placeholder="소스 파일 검색..." autocomplete="off" />
+                    </div>
+                    <button type="button" id="btn-studio-refresh-tree" class="btn-studio-icon" title="파일 목록 새로고침">
+                        <i class="fa-solid fa-rotate"></i>
+                    </button>
+                </div>
+                <div id="studio-file-tree" class="studio-file-tree">
+                    <div class="studio-loading"><i class="fa-solid fa-spinner fa-spin"></i> 소스코드 파일 로딩 중...</div>
+                </div>
+            </aside>
+
+            <!-- Main Editor Area -->
+            <section class="studio-main-panel">
+                <!-- Editor View -->
+                <div id="studio-view-editor" class="studio-view-panel active">
+                    <div class="studio-editor-toolbar">
+                        <span class="editor-tip"><i class="fa-solid fa-keyboard"></i> Tab: 4칸 들여쓰기 | Ctrl+S: 패치 저장</span>
+                        <div class="editor-tools-right">
+                            <button type="button" id="btn-studio-reset" class="btn-studio-tool" title="디스크 원본으로 되돌리기">
+                                <i class="fa-solid fa-rotate-left"></i> 원본 복원
+                            </button>
+                        </div>
+                    </div>
+                    <div class="studio-textarea-wrap">
+                        <textarea id="studio-editor-textarea" spellcheck="false" placeholder="파일을 선택하면 소스코드가 여기에 표시됩니다..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Diff View -->
+                <div id="studio-view-diff" class="studio-view-panel">
+                    <div class="studio-diff-toolbar">
+                        <span id="studio-diff-stats" class="diff-stats">🟢 +0줄 / 🔴 -0줄</span>
+                        <button type="button" id="btn-studio-refresh-diff" class="btn-studio-tool">
+                            <i class="fa-solid fa-arrows-rotate"></i> Diff 새로고침
+                        </button>
+                    </div>
+                    <div class="studio-diff-wrap">
+                        <pre id="studio-diff-container" class="studio-diff-pre"><code class="diff-content">코드를 수정한 뒤 [🔍 Diff 비교] 탭을 누르면 원본과의 차이점이 표시됩니다.</code></pre>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="modal-footer studio-modal-footer">
+            <div class="studio-footer-left">
+                <span id="studio-status-msg" class="studio-status">준비됨</span>
+                <button type="button" id="btn-studio-rollback" class="btn-studio-danger" title="가장 최근 백업 시점으로 파일 복원">
+                    <i class="fa-solid fa-rotate-left"></i> <span>이전 백업 롤백</span>
+                </button>
+            </div>
+            <div class="studio-footer-right">
+                <button type="button" id="btn-studio-preview-diff" class="btn-secondary">
+                    <i class="fa-solid fa-code-compare"></i> <span>Diff 미리보기</span>
+                </button>
+                <button type="button" id="btn-studio-apply-patch" class="btn-primary studio-btn-save">
+                    <i class="fa-solid fa-floppy-disk"></i> <span>패치 적용 (Save & Patch)</span>
+                </button>
+                <button type="button" id="btn-studio-run-test" class="btn-studio-accent" title="단위 테스트 실행">
+                    <i class="fa-solid fa-flask"></i> <span>테스트 검증 (/test)</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

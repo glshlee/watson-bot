@@ -289,6 +289,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 updateConnectionUI("online");
                 const data = await res.json();
                 appendMessage("assistant", data.ai_response);
+                if (data.action_type === "tool_studio_open" || data.action_type === "tool_code_edit") {
+                    window.WatsonCodeStudio?.openStudio(data.target_file);
+                }
                 await loadSessions();
                 await loadDevStatus();
             } else {
@@ -321,6 +324,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    window.appendDevChatMessage = appendMessage;
+
     sendBtn?.addEventListener("click", () => sendMessage());
     chatInput?.addEventListener("keydown", (e) => {
         if (devPaletteController?.isOpen?.()) return;
@@ -343,12 +348,26 @@ document.addEventListener("DOMContentLoaded", () => {
         onTriggerCommand: (cmd) => sendMessage(cmd),
     });
 
-    // Interactive Git Wizard & Action Button Delegation (ADR-055)
+    // Interactive Git Wizard & Code Studio Action Delegation (ADR-055, ADR-058)
     chatMessages?.addEventListener("click", (e) => {
+        const studioBtn = e.target.closest("[data-open-studio]");
+        if (studioBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const filePath = studioBtn.dataset.openStudio;
+            window.WatsonCodeStudio?.openStudio(filePath);
+            return;
+        }
+
         const btn = e.target.closest(".dev-btn-action");
         if (!btn) return;
         e.preventDefault();
         e.stopPropagation();
+
+        if (btn.dataset.openStudio) {
+            window.WatsonCodeStudio?.openStudio(btn.dataset.openStudio);
+            return;
+        }
 
         const commitCmd = btn.dataset.commitCmd;
         const pushCmd = btn.dataset.pushCmd;
@@ -358,9 +377,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Roadmap & Skills Quick Header Buttons (ADR-057)
+    // Roadmap, Skills & Studio Quick Header Buttons (ADR-057, ADR-058)
     const btnDevRoadmapQuick = document.getElementById("btn-dev-roadmap-quick");
     const btnDevSkillsQuick = document.getElementById("btn-dev-skills-quick");
+    const btnDevStudioQuick = document.getElementById("btn-dev-studio-quick");
 
     btnDevRoadmapQuick?.addEventListener("click", () => {
         sendMessage("/roadmap");
@@ -368,6 +388,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     btnDevSkillsQuick?.addEventListener("click", () => {
         sendMessage("/skills");
+    });
+
+    btnDevStudioQuick?.addEventListener("click", () => {
+        window.WatsonCodeStudio?.openStudio();
     });
 
     // New Dev Session

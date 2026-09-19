@@ -5,7 +5,7 @@
         <div class="palette-header-left">
             <i class="fa-solid fa-code palette-header-icon dev-icon"></i>
             <span class="palette-title">DevBot 명령어 & 도구</span>
-            <span class="palette-count-badge dev-badge" id="dev-palette-count">18개</span>
+            <span class="palette-count-badge dev-badge" id="dev-palette-count">23개</span>
         </div>
         <div class="palette-header-right">
             <span class="palette-hint desktop-only"><kbd>↑</kbd><kbd>↓</kbd> 탐색</span>
@@ -132,6 +132,71 @@
                         <span class="item-cmd">/setup</span>
                     </div>
                     <div class="item-desc">셀프호스팅 배포 7단계 상태 및 필수 바이너리 점검 (ADR-046)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 💻 자율 코딩 스튜디오 (Coding Studio - ADR-058) -->
+        <div class="palette-group" data-group="studio">
+            <div class="palette-group-title"><i class="fa-solid fa-laptop-code"></i> 코딩 스튜디오 (Coding Studio)</div>
+            <div class="palette-item" data-cmd="/studio">
+                <span class="item-icon studio"><i class="fa-solid fa-laptop-code"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">웹 코딩 스튜디오</span>
+                        <span class="item-cmd">/studio [파일경로]</span>
+                    </div>
+                    <div class="item-desc">브라우저 인플레이스 코드 에디터 및 Diff 프리뷰 모달 열기</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/implement ">
+                <span class="item-icon impl"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">자율 코드 구현</span>
+                        <span class="item-cmd">/implement [요청]</span>
+                    </div>
+                    <div class="item-desc">자연어 지시로 워크스페이스 코드 수술적 구현 & 단위 테스트 검증</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/files">
+                <span class="item-icon files"><i class="fa-solid fa-folder-tree"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">파일 트리 탐색</span>
+                        <span class="item-cmd">/files [디렉토리]</span>
+                    </div>
+                    <div class="item-desc">워크스페이스 파일 목록, 크기 및 라인 수 탐색</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/code app/services/coding_studio_service.py">
+                <span class="item-icon code"><i class="fa-solid fa-file-code"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">소스코드 열람</span>
+                        <span class="item-cmd">/code [파일경로]</span>
+                    </div>
+                    <div class="item-desc">소스코드 실시간 구문 하이라이트 및 안전 열람</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/heal">
+                <span class="item-icon heal"><i class="fa-solid fa-heart-pulse"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">테스트 자가 치유</span>
+                        <span class="item-cmd">/heal</span>
+                    </div>
+                    <div class="item-desc">단위 테스트 결함 자동 진단 및 자가 치유(Self-Healing) 제안</div>
+                </div>
+            </div>
+            <div class="palette-item" data-cmd="/rollback ">
+                <span class="item-icon rollback"><i class="fa-solid fa-rotate-left"></i></span>
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="item-name">백업 롤백 복원</span>
+                        <span class="item-cmd">/rollback [파일경로]</span>
+                    </div>
+                    <div class="item-desc">이전 백업 시점으로 파일 안전 원상 복구</div>
                 </div>
             </div>
         </div>

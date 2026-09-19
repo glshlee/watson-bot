@@ -621,9 +621,21 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] DevBot 커맨드 팔레트 18종 확장 및 헤더 원터치 퀵 버튼(`[🗺️ 로드맵]`, `[🧩 스킬]`) 연동
 - [x] 단위 테스트(`tests/test_dev_agent.py`), 린트(`ruff`), 정적 타입 검사(`mypy`) 및 `./scripts/smoke_test.sh` 전수 검증 완료
 
-### Phase 57: 웹 기반 자율 코딩 스튜디오 (Web Autonomous Coding Studio)
-- [ ] DevBot 웹 콘솔에서 자연어 코드 수정 요청 시 실시간 diff 프리뷰 및 파일 편집 인터페이스
-- [ ] 테스트 자동 실행 및 오류 발생 시 자가 치유(Self-Healing) 엔지니어링 루프
+### Phase 57: 웹 기반 자율 코딩 스튜디오 (Web Autonomous Coding Studio - ADR-058) - ✅ 완료
+- [x] 보안 경로 해석기(`resolve_safe_path`) 및 디렉토리 탈출(Path Traversal), 민감 파일(`.env`, `.git`, `watson.db`) 접근 차단
+- [x] 워크스페이스 소스 파일 트리 재귀 탐색(`list_workspace_files`) 및 라인 슬라이싱 코드 열람(`read_code_file`)
+- [x] Python `difflib` 기반 Unified Diff 프리뷰 생성(`generate_diff_preview`)
+- [x] 타임스탬프 자동 백업(`.backups/`) 기반 안전 코드 패치(`apply_code_patch`) 및 0초 롤백 복원(`rollback_file`)
+- [x] Pytest 실행 오류 정규식 분석 및 자가 치유(Self-Healing) 진단 엔진(`diagnose_test_failure`)
+- [x] 인브라우저 웹 코딩 스튜디오 모달(`#code-studio-modal` & `code_studio_modal.js`):
+  - 좌측 파일 트리 사이드바(실시간 검색 및 새로고침) + 상단 탭 전환(코드 에디터 vs Diff 프리뷰)
+  - 고정밀 모노스페이스 에디터: Tab 키 들여쓰기(2스페이스), `Ctrl+S` 즉시 패치 저장, 실시간 Unified Diff 비교, 인플레이스 패치 적용, 원클릭 롤백 및 비동기 단위 테스트 실행
+- [x] DevBot AI 자율 코드 구현 엔진(`_handle_autonomous_implementation`):
+  - 자연어 구현/수정 요청("구현해줘", "코드 수정해줘", `/implement`, `/patch`) 시 대상 파일에 수술적 패치(Surgical Patch) 자동 적용, 단위 테스트 자동 검증, 실시간 Unified Diff 및 툴체인 연계 카드 반환
+  - 치환 대상 불일치 시 웹 스튜디오(`tool_studio_open`) 자동 오픈 안전 폴백
+- [x] DevBot 명령어 `/studio`, `/implement`, `/patch`, `/files`, `/code`, `/rollback`, `/heal` 라우팅 및 REST API 5종 엔드포인트 구현
+- [x] DevBot 상단 헤더 원터치 `[💻 스튜디오]` 퀵 버튼 및 커맨드 팔레트 23종 확장 통합
+- [x] 단위 테스트(`tests/test_coding_studio_service.py`, `tests/test_dev_agent.py`), 린트/타입 검사 및 `./scripts/smoke_test.sh` 전수 검증 완료
 
 ### Phase 58: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
 - [ ] `User` 모델 및 테넌트별 저장소/컨텍스트 격리 (`/data/tenants/{user_id}/`)

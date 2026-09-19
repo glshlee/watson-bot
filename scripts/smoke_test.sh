@@ -936,6 +936,53 @@ else
     exit 1
 fi
 
+# 8-9. /files & /code 코딩 스튜디오 커맨드 검증 (ADR-058)
+DEV_FILES=$(run_curl -s -X POST "$SERVER_URL/api/dev/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_dev_session", "message": "/files app/routers"}')
+if echo "$DEV_FILES" | grep -q '"action_type":"tool_files_list"' && echo "$DEV_FILES" | grep -q 'web_router.py'; then
+    echo "  ✅ 8-9. DevBot /files Command Passed"
+else
+    echo "  ❌ 8-9. DevBot /files Failed: $DEV_FILES"
+    exit 1
+fi
+
+DEV_CODE=$(run_curl -s -X POST "$SERVER_URL/api/dev/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "smoke_dev_session", "message": "/code app/main.py"}')
+if echo "$DEV_CODE" | grep -q '"action_type":"tool_code_view"' && echo "$DEV_CODE" | grep -q 'FastAPI'; then
+    echo "  ✅ 8-10. DevBot /code Command Passed"
+else
+    echo "  ❌ 8-10. DevBot /code Failed: $DEV_CODE"
+    exit 1
+fi
+
+# 8-11. /api/dev/code/tree & /api/dev/code/file REST API 검증 (ADR-058)
+DEV_TREE_API=$(run_curl -s "$SERVER_URL/api/dev/code/tree?subpath=app/services")
+if echo "$DEV_TREE_API" | grep -q 'coding_studio_service.py' && echo "$DEV_TREE_API" | grep -q 'total_files'; then
+    echo "  ✅ 8-11. GET /api/dev/code/tree API Passed"
+else
+    echo "  ❌ 8-11. GET /api/dev/code/tree Failed: $DEV_TREE_API"
+    exit 1
+fi
+
+DEV_FILE_API=$(run_curl -s "$SERVER_URL/api/dev/code/file?filepath=app/main.py&start_line=1&end_line=15")
+if echo "$DEV_FILE_API" | grep -q '"success":true' && echo "$DEV_FILE_API" | grep -q 'language'; then
+    echo "  ✅ 8-12. GET /api/dev/code/file API Passed"
+else
+    echo "  ❌ 8-12. GET /api/dev/code/file Failed: $DEV_FILE_API"
+    exit 1
+fi
+
+# 8-13. /api/dev/code/self-heal REST API 검증 (ADR-058)
+DEV_HEAL_API=$(run_curl -s -X POST "$SERVER_URL/api/dev/code/self-heal")
+if echo "$DEV_HEAL_API" | grep -q 'diagnosis' && echo "$DEV_HEAL_API" | grep -q 'test_passed'; then
+    echo "  ✅ 8-13. POST /api/dev/code/self-heal API Passed"
+else
+    echo "  ❌ 8-13. POST /api/dev/code/self-heal Failed: $DEV_HEAL_API"
+    exit 1
+fi
+
 # Clean up smoke dev session
 run_curl -s -X DELETE "$SERVER_URL/api/sessions/smoke_dev_session" > /dev/null 2>&1 || true
 

@@ -540,6 +540,29 @@
 * **콘솔 UI 및 커맨드 팔레트 확장**:
   * DevBot 콘솔 상단 헤더에 `[🗺️ 로드맵]`, `[🧩 스킬]` 원터치 퀵 액션 배지 신설 및 커맨드 팔레트 18종 도구로 확장.
 
+### 3.55. 💻 웹 기반 자율 코딩 스튜디오 및 자가 치유 루프 (Web Autonomous Coding Studio & Self-Healing Loop - ADR-058)
+* **인브라우저 웹 코딩 스튜디오 모달 (`#code-studio-modal` & `code_studio_modal.js`)**:
+  * 브라우저에서 워크스페이스 내 소스코드를 직접 열람하고 편집할 수 있는 IDE급 모달 제공.
+  * 좌측 파일 트리 사이드바(실시간 검색 및 새로고침) + 상단 탭(코드 에디터 vs Diff 프리뷰) 지원.
+  * 고정밀 모노스페이스 에디터: Tab 키 들여쓰기(2스페이스), `Ctrl+S` 즉시 패치 저장, 실시간 Unified Diff 비교, 인플레이스 패치 적용, 원클릭 롤백 및 비동기 단위 테스트 실행 완비.
+* **DevBot AI 자율 코드 구현 엔진 (`_handle_autonomous_implementation`)**:
+  * DevBot 콘솔(`/dev`) 대화창에서 자연어 구현/수정 요청("구현해줘", "코드 수정해줘", `/implement`, `/patch`) 시, 단순 텍스트 조언을 넘어 워크스페이스 내 파일에 수술적 패치(Surgical Patch)를 자동 생성 및 실제 디스크에 적용.
+  * 패치 적용 즉시 자동 백업(`.backups/`) 생성, `pytest` 단위 테스트 자동 검증, 실시간 Unified Diff 및 툴체인 연계 카드(`format_patch_card`) 반환.
+  * 치환 대상 불일치 시 자동으로 웹 스튜디오(`tool_studio_open`)를 실행하여 사용자가 브라우저에서 즉시 수동 확인/편집할 수 있도록 안전 폴백 제공.
+* **보안 경로 격리 및 안전 탐색 (`CodingStudioService`)**:
+  * `resolve_safe_path`를 통해 상위 디렉토리 탈출(Path Traversal: `../../etc/passwd`)을 원천 차단하고, `.env`, `.git`, `venv`, `watson.db`, `.watson.pid` 등 민감 디렉토리 및 파일 접근을 엄격히 방어.
+  * 워크스페이스 내 소스코드 파일 트리를 재귀 탐색하여 파일 크기, 라인 수, 언어 감지 메타데이터를 제공하는 `/files [디렉토리]` 및 `GET /api/dev/code/tree` 제공.
+* **소스코드 실시간 열람 및 마크다운 카드**:
+  * 라인 슬라이싱(`start_line`, `end_line`) 지원 소스코드 열람 API(`GET /api/dev/code/file`) 및 구문 하이라이트된 마크다운 카드 출력(`/code [파일경로]`).
+* **Unified Diff 프리뷰, 안전 패치 및 0초 롤백**:
+  * Python `difflib` 기반 변경점 비교 프리뷰(`dry_run=true`) 및 `.backups/{rel_path}.{timestamp}.bak` 자동 백업 후 안전하게 코드를 패치(`POST /api/dev/code/patch`).
+  * 최근 백업 시점으로 원본 파일을 무손실 복구하는 `/rollback [파일경로]` 및 `POST /api/dev/code/rollback`.
+* **자가 치유(Self-Healing) 진단 엔진**:
+  * Pytest 실행 오류 정규식 분석을 통해 예외 유형, 실패 파일/라인 번호, 함수명을 자동 도출하고 맞춤 해결책을 제안하는 `/heal` 및 `POST /api/dev/code/self-heal`.
+* **DevBot UI 및 커맨드 팔레트 확장**:
+  * DevBot 상단 헤더에 `[💻 스튜디오]`(`#btn-dev-studio-quick`) 원터치 퀵 버튼 배치.
+  * 커맨드 팔레트(`command_palette_dev.html`)에 코딩 스튜디오 그룹(6종) 신설 및 총 23개 도구 팔레트로 확장 통합.
+
 ---
 
 

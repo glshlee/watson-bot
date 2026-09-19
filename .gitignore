@@ -11,5 +11,8 @@ config/*.json
 !config/telegram_commands.json.example
 tunnel.log
 tunnel_url.txt
+.backups/
+*.bak
+
 
 

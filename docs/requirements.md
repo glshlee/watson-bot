@@ -333,6 +333,17 @@
 - **FR-56.4**: `docs/roadmap.md` 문서를 실시간 분석(`parse_roadmap_data()`)하여 전체 진척도, 완료율(%), 진행바, 진행 중/예정 마일스톤 및 최근 완료 하이라이트를 산출하고, `/roadmap` 명령어 및 REST API(`GET /api/dev/roadmap`)로 대화형 리포트를 제공해야 한다.
 - **FR-56.5**: DevBot 콘솔 UI 상단 헤더에 `[🗺️ 로드맵]` 및 `[🧩 스킬]` 원터치 퀵 버튼을 제공하고, 커맨드 팔레트(`command_palette_dev.html`)에 18종 도구로 확장 통합해야 한다.
 
+### FR-57: 웹 기반 자율 코딩 스튜디오 및 자가 치유 엔지니어링 루프 (ADR-058)
+- **FR-57.1**: `CodingStudioService`를 통해 워크스페이스 외부 경로 탈출(Path Traversal)을 원천 차단하고 `.env`, `.git`, `venv`, `watson.db` 등 민감 디렉토리 및 설정 파일 접근을 엄격히 방어해야 한다.
+- **FR-57.2**: 워크스페이스 내 소스코드 파일 트리를 재귀 탐색하여 파일명, 상대 경로, 크기, 라인 수 및 언어 메타데이터를 반환하는 `/files [디렉토리]` 및 `GET /api/dev/code/tree`를 제공해야 한다.
+- **FR-57.3**: 소스코드 파일을 안전하게 읽고 구문 하이라이트된 마크다운 카드로 출력하는 `/code [파일경로]` 및 `GET /api/dev/code/file`을 제공해야 한다.
+- **FR-57.4**: Python `difflib` 기반 Unified Diff를 생성하고 변경 전 타임스탬프 기반 자동 백업(`.backups/`)을 생성한 후 안전하게 패치를 적용하는 `POST /api/dev/code/patch`를 제공해야 한다.
+- **FR-57.5**: 최근 백업 시점으로 파일을 무손실 즉시 복원하는 `/rollback [파일경로]` 및 `POST /api/dev/code/rollback`을 제공해야 한다.
+- **FR-57.6**: 단위 테스트 실패 시 정규식 기반 에러 분석으로 예외 유형, 실패 파일/라인, 함수명을 도출하여 자가 치유(Self-Healing) 진단 리포트를 생성하는 `/heal` 및 `POST /api/dev/code/self-heal`을 제공해야 한다.
+- **FR-57.7**: 브라우저에서 파일 트리 탐색, 탭 전환, Tab 키 들여쓰기(2스페이스), `Ctrl+S` 즉시 패치 저장, 실시간 Unified Diff 비교, 인플레이스 패치 적용, 롤백 및 테스트를 완비한 웹 코딩 스튜디오 모달(`#code-studio-modal`)을 제공해야 한다.
+- **FR-57.8**: DevBot 콘솔에서 자연어 구현/수정 요청("구현해줘", "코드 수정해줘", `/implement`, `/patch`) 수신 시, 워크스페이스 내 대상 파일에 수술적 패치를 자동 적용하고 단위 테스트 검증, 실시간 Unified Diff 및 툴체인 연계 카드를 반환하는 AI 자율 코드 구현 엔진(`_handle_autonomous_implementation`)을 제공해야 한다.
+- **FR-57.9**: DevBot 콘솔 상단 헤더에 `[💻 스튜디오]` 원터치 퀵 버튼을 신설하고, 커맨드 팔레트(`command_palette_dev.html`)에 코딩 스튜디오 6종 도구(`/studio`, `/implement`, `/files`, `/code`, `/heal`, `/rollback`)를 제공하여 23개 도구 팔레트로 확장 통합해야 한다.
+
 ---
 
 
@@ -412,4 +423,6 @@
 | **FR-54** | `app/services/dev_agent_service.py`, `app/templates/modals/command_palette_dev.html`, `app/templates/dev.html`, `app/static/css/dev.css`, `app/static/js/dev.js` | Pytest 단위 테스트(`test_dev_agent.py`) & cURL 스모크 테스트(8-1 ~ 8-4) |
 | **FR-55** | `scripts/service.sh`, `scripts/start.sh`, `scripts/stop.sh`, `scripts/restart.sh`, `scripts/status.sh`, `app.py`, `systemd/watson.service` | `./scripts/service.sh status` & `./scripts/smoke_test.sh` 라이브 검증 |
 | **FR-56** | `.agents/skills/dev-workflow/SKILL.md`, `app/services/dev_agent_service.py`, `app/routers/web_router.py`, `app/templates/modals/command_palette_dev.html`, `app/templates/dev.html`, `app/static/js/dev.js` | Pytest 단위 테스트(`test_dev_agent.py`) & cURL 스모크 테스트(8-5 ~ 8-8) |
+| **FR-57** | `app/services/coding_studio_service.py`, `app/services/dev_agent_service.py`, `app/routers/web_router.py`, `app/templates/modals/command_palette_dev.html`, `app/templates/dev.html`, `app/static/js/dev.js`, `app/static/css/dev.css` | Pytest 단위 테스트(`test_coding_studio_service.py`, `test_dev_agent.py`) & cURL 스모크 테스트(8-9 ~ 8-13) |
+
 
