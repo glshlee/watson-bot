@@ -3,10 +3,10 @@
    Modular Architecture (ADR-048 / Phase 1-2)
    ========================================================================== */
 
-@import url('variables.css');
-@import url('layout.css');
-@import url('chat.css');
-@import url('modals.css');
-@import url('portal.css');
-@import url('dev.css');
-@import url('responsive.css');
+@import url('variables.css?v=1.6.2');
+@import url('layout.css?v=1.6.2');
+@import url('chat.css?v=1.6.2');
+@import url('modals.css?v=1.6.2');
+@import url('portal.css?v=1.6.2');
+@import url('dev.css?v=1.6.2');
+@import url('responsive.css?v=1.6.2');

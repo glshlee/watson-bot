@@ -75,11 +75,13 @@
         margin-bottom: 6px;
         gap: 8px;
         align-items: center;
+        flex-wrap: nowrap;
     }
 
     .header-left {
         gap: 8px;
         min-width: auto;
+        flex: 0 0 auto !important;
         flex-shrink: 0 !important;
         display: flex;
         align-items: center;

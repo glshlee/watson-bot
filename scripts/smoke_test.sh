@@ -9,8 +9,8 @@ else
     echo "🚀 Starting Watson API Full Live Curl Smoke Test (Isolated Sandbox ADR-062)..."
 fi
 
-# 1. Isolated test port (default 8001) so live production (8000) is never touched (ADR-062)
-SMOKE_PORT="${SMOKE_PORT:-8001}"
+# 1. Isolated test port (default 8009) so live production (8000) and dev server (8001) are never touched (ADR-062)
+SMOKE_PORT="${SMOKE_PORT:-8009}"
 SERVER_URL="http://127.0.0.1:$SMOKE_PORT"
 
 AUTH_FLAGS=()

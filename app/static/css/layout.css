@@ -507,15 +507,18 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
     margin-bottom: 14px;
-    gap: 12px;
+    gap: 8px 16px;
 }
 
 .header-left {
     display: flex;
     align-items: center;
     gap: 12px;
-    min-width: 0;
+    flex: 1 1 220px;
+    min-width: 180px;
+    overflow: hidden;
 }
 
 .mobile-menu-btn {
@@ -540,29 +543,63 @@
     border-color: var(--accent-purple);
 }
 
+.header-title {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+}
+
 .header-title h1 {
-    font-size: 1.4rem;
+    font-size: 1.3rem;
     font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
 }
 
 .header-title p {
     color: var(--text-secondary);
-    font-size: 0.85rem;
+    font-size: 0.82rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 2px 0 0 0;
 }
 
 .user-profile {
     display: flex;
     align-items: center;
-    gap: 10px;
-    flex-shrink: 0;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
 }
 
 .badge {
     background: rgba(59, 130, 246, 0.15);
     color: var(--accent-blue);
-    padding: 6px 12px;
+    padding: 5px 10px;
     border-radius: 20px;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+@media (max-width: 1440px) {
+    .badge-engine,
+    .badge-push,
+    .user-profile > .avatar {
+        display: none !important;
+    }
+
+    #gtd-path-text {
+        max-width: 110px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: inline-block;
+        vertical-align: bottom;
+    }
 }
 
 .badge-push {
