@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     # Telegram Configuration
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_ALLOWED_CHAT_IDS: str = ""  # Comma separated
+    DISABLE_TELEGRAM_POLLING: bool = False  # 개발/테스트 격리 모드 시 폴링 및 스케줄러 비활성화 (ADR-062)
     
     # LLM Configuration (Gemini / OpenAI / Custom)
     LLM_API_KEY: str = ""

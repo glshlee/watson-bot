@@ -10,23 +10,25 @@
 
 ## 2. 의사결정 (Decision)
 
-### 2.1 로컬 경량 개발 루프 (Fast Dev Loop) 전환
+### 2.1 로컬 경량 개발 루프 (Fast Dev Loop) 및 백그라운드 워커 격리
 1. **일상 코드 수정 시 전체 검증 생략**:
    * 개발 진행 중에는 전체 `pytest` 및 `smoke_test.sh` 실행 의무를 해제한다.
    * 수정된 파일에 대한 `ruff check <file>`, `mypy <file>` 및 직결된 단일 테스트 파일(`pytest tests/test_xxx.py`)만 타겟 실행하여 1~3초 내에 피드백을 얻는다.
-2. **운영 프로세스 재시작 지양**:
-   * 단순 코드 수정 단계에서는 운영 서버(`8000`번 포트)를 재시작하지 않는다. 필요 시 개발용 별도 포트(`8001`, 텔레그램 폴링 비활성화)로 확인한다.
+2. **로컬 개발계(`8001` 포트)와 원격 운영계(`8000` 포트) 충돌 원천 차단**:
+   * `DISABLE_TELEGRAM_POLLING=1` 환경변수 활성화 시 `app/main.py`의 `lifespan`에서 **텔레그램 봇 폴링(`start_polling`)과 정기 브리핑 스케줄러(`briefing_scheduler.start`)를 동시에 비활성화**한다.
+   * 이를 통해 로컬 Mac에서 개발 서버(`./scripts/service.sh dev-start`)나 스모크 테스트를 실행하더라도 원격 운영 서버의 텔레그램 봇(`getUpdates` 409 Conflict)이나 아침/저녁 능동 푸시 스케줄러에 어떠한 간섭도 발생하지 않도록 보장한다.
 
-### 2.2 Pre-Push 통합 빌드/테스트 게이트 (`scripts/gate.sh` & Git Hook)
+### 2.2 Pre-Push 통합 빌드/테스트 게이트 (`scripts/gate.sh` & Git Hook) 및 격리 샌드박스 스모크 테스트
 1. **푸시/배포 시점 단일 게이트 운영**:
-   * 로컬 개발을 완료하고 원격 저장소에 푸시(`git push`)하거나 운영 환경에 배포(`scripts/deploy.sh`)하는 단계에서만 통합 품질 게이트(`scripts/gate.sh`)를 가동한다.
+   * 로컬 개발을 완료하고 원격 저장소에 푸시(`git push`)하는 단계에서만 통합 품질 게이트(`scripts/gate.sh`)를 가동한다.
+   * 원격 운영 서버에서는 이미 로컬 Pre-Push 게이트를 통과한 코드를 `./scripts/deploy.sh`(`git pull --rebase --autostash` ➔ `./scripts/service.sh restart`)로 신속하게 무중단 반영한다.
 2. **게이트 검증 파이프라인**:
    * `Step 1`: `ruff check .` (전체 코드 린트)
    * `Step 2`: `mypy app/` (전체 정적 타입 검사)
-   * `Step 3`: `pytest` (전체 단위 테스트)
-   * `Step 4`: 스모크 검증 (`./scripts/smoke_test.sh --quick` 또는 전체 스모크 검증)
+   * `Step 3`: `pytest -q` (전체 단위 테스트)
+   * `Step 4`: 격리 스모크 검증 (`./scripts/smoke_test.sh --quick`) — 포트 `8001`에 `DISABLE_TELEGRAM_POLLING=1` 및 임시 SQLite DB(`DATABASE_URL`), 임시 설정 파일(`WATSON_GTD_CONFIG_FILE`, `WATSON_COMMUTE_CONFIG_FILE`)로 최신 코드를 독립 기동하여 5초 내 핵심 API를 검증하고 자동 종료한다.
 3. **Git `pre-push` 훅 연동**:
-   * `git push` 실행 시 자동으로 `scripts/gate.sh`가 트리거되어, 검증을 통과하지 못한 코드는 원격 저장소 푸시 및 운영 반영이 차단(Fail-Fast)되도록 구성한다.
+   * `./scripts/gate.sh --install-hook`으로 `.git/hooks/pre-push`를 자동 구성하여, 검증을 통과하지 못한 코드는 원격 저장소 푸시가 차단(Fail-Fast)되도록 보장한다 (`SKIP_GATE=1` 우회 플래그 지원).
 
 ### 2.3 하네스 규약 문서화 (`.agents/rules/release_gate.md`)
 * 에이전트가 작업 시 이 규칙을 최우선으로 참조하도록 `.agents/rules/release_gate.md`를 신설하고, `AGENTS.md` 및 `.agents/skills/dev-workflow/SKILL.md`의 과도한 매 수정 검증 강제 조항을 **"경량 개발 + 푸시/배포 게이트"** 체계로 개정한다.

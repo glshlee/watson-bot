@@ -316,16 +316,69 @@ install_systemd() {
     echo -e "  실행 명령: ${CYAN}./scripts/service.sh start${RESET}"
 }
 
+dev_start_service() {
+    local dev_port="${DEV_PORT:-8001}"
+    local dev_pid_file="$DIR/.watson_dev.pid"
+    local dev_log_file="$DIR/watson_dev.log"
+
+    echo -e "${BOLD}🛠️ Watson 로컬 개발 서버(Dev Mode) 시작 (Port: $dev_port, DISABLE_TELEGRAM_POLLING=1)${RESET}"
+    if lsof -ti :"$dev_port" >/dev/null 2>&1; then
+        echo -e "${YELLOW}⚠️ 포트 $dev_port 에서 이미 개발 서버가 실행 중입니다.${RESET}"
+        return 0
+    fi
+
+    DISABLE_TELEGRAM_POLLING=1 nohup "$VENV_PYTHON" -m uvicorn app.main:app \
+        --host 127.0.0.1 \
+        --port "$dev_port" \
+        --reload >> "$dev_log_file" 2>&1 &
+    local new_pid=$!
+    echo "$new_pid" > "$dev_pid_file"
+    echo -e "  📌 개발 서버 PID: ${CYAN}$new_pid${RESET} (텔레그램 폴링/스케줄러 비활성화)"
+    for _ in {1..20}; do
+        if curl -s -m 1 "http://127.0.0.1:$dev_port/api/health" | grep -q '"status":"ok"'; then
+            echo -e "${GREEN}✅ 개발 서버 정상 가동: http://127.0.0.1:$dev_port${RESET}"
+            return 0
+        fi
+        sleep 0.5
+    done
+    echo -e "${RED}❌ 개발 서버 헬스체크 실패. 로그 확인 ($dev_log_file)${RESET}"
+    return 1
+}
+
+dev_stop_service() {
+    local dev_port="${DEV_PORT:-8001}"
+    local dev_pid_file="$DIR/.watson_dev.pid"
+    echo -e "${BOLD}🛑 Watson 로컬 개발 서버(Port: $dev_port) 중지${RESET}"
+    if [ -f "$dev_pid_file" ]; then
+        local pid
+        pid=$(cat "$dev_pid_file" 2>/dev/null || true)
+        if [ -n "$pid" ]; then
+            kill -TERM "$pid" 2>/dev/null || true
+        fi
+        rm -f "$dev_pid_file"
+    fi
+    local port_pids
+    port_pids=$(lsof -ti :"$dev_port" 2>/dev/null || true)
+    if [ -n "$port_pids" ]; then
+        kill -TERM $port_pids 2>/dev/null || true
+        sleep 0.5
+        kill -9 $port_pids 2>/dev/null || true
+    fi
+    echo -e "${GREEN}✅ 로컬 개발 서버가 중지되었습니다.${RESET}"
+}
+
 print_help() {
     echo -e "${BOLD}Watson 24/7 AI Agent 비동기 서비스 제어 스크립트${RESET}"
-    echo -e "사용법: $0 {start|stop|restart|status|logs|install-systemd}"
+    echo -e "사용법: $0 {start|stop|restart|status|logs|dev-start|dev-stop|install-systemd}"
     echo ""
     echo "명령어 목록:"
-    echo "  start           : Watson 서비스를 비동기(Background)로 가동 (systemd 또는 daemon)"
-    echo "  stop            : 가동 중인 Watson 서비스를 안전하게 중지"
-    echo "  restart         : Watson 서비스를 비동기로 재시작"
+    echo "  start           : Watson 운영 서비스를 비동기(Background)로 가동 (포트 8000)"
+    echo "  stop            : 가동 중인 Watson 운영 서비스를 안전하게 중지"
+    echo "  restart         : Watson 운영 서비스를 비동기로 재시작"
     echo "  status          : 서비스 실행 여부, PID, 헬스체크 및 터널 URL 점검"
     echo "  logs [N]        : 최근 로그 N줄 조회 (기본값: 50줄, 포그라운드 블로킹 없음)"
+    echo "  dev-start       : 로컬 개발 전용 서버 가동 (포트 8001, 텔레그램 폴링/스케줄러 OFF - ADR-062)"
+    echo "  dev-stop        : 로컬 개발 전용 서버 중지 (포트 8001)"
     echo "  install-systemd : systemd에 watson.service 등록/갱신"
     echo ""
     echo "단축 스크립트:"
@@ -350,6 +403,12 @@ case "${1:-}" in
         ;;
     logs)
         logs_service "$@"
+        ;;
+    dev-start)
+        dev_start_service
+        ;;
+    dev-stop)
+        dev_stop_service
         ;;
     install-systemd)
         install_systemd

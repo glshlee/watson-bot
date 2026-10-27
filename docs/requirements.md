@@ -354,6 +354,14 @@
 - **FR-59.2**: `gtd_file_patterns` 정규식을 고도화하여 "gtd inbox 확인", "inbox 확인", "수집함 확인", "inbox.md 확인", "next_actions.md 확인", "inbox 보여줘" 등 다양한 구어체 직접 열람 발화를 100% `gtd_inspect`로 직접 라우팅해야 한다.
 - **FR-59.3**: `is_briefing_cmd`를 정규화하여 "/briefing", "브리핑", "브리핑 해줘", "오늘 브리핑" 등 명시적 브리핑 요청은 결정론적으로 브리핑 엔진(`task_briefing`)으로 정확히 라우팅해야 한다.
 
+### FR-60: 슬래시(/) 명령어 전용 라우팅 및 비-슬래시 자연어 LLM 100% 전면 위임 (ADR-061)
+- **FR-60.1**: 슬래시(`/`)로 시작하는 명시적 명령어에 한해서만 `_handle_slash_command` 결정론적 라우팅을 수행하고, 비-슬래시 자연어는 100% LLM 의도 판별 프로토콜(`[INTENT: ...]`)로 위임해야 한다.
+
+### FR-61: 개발/운영 프로세스 분리 및 Pre-Push 품질 게이트 (ADR-062)
+- **FR-61.1**: 일상 코드 수정 시 수정 파일에 대한 타겟 `ruff check`, `mypy`, 단일 `pytest`만 실행하는 로컬 경량 개발 루프(Fast Dev Loop)를 적용해야 한다.
+- **FR-61.2**: `DISABLE_TELEGRAM_POLLING=1` 설정 시 `app/main.py`에서 텔레그램 폴링과 브리핑 스케줄러를 동시 비활성화하고, `WATSON_GTD_CONFIG_FILE` 및 `WATSON_COMMUTE_CONFIG_FILE` 환경변수 격리를 지원하여 원격 운영 서버 및 로컬 설정 오염을 원천 차단해야 한다.
+- **FR-61.3**: `./scripts/gate.sh`를 통해 4단계 통합 품질 게이트(`ruff` ➔ `mypy` ➔ `pytest` ➔ `8001` 포트 격리 `./scripts/smoke_test.sh --quick`)와 Git `pre-push` 훅을 제공하고, 원격 운영 서버 무중단 배포를 위한 `./scripts/deploy.sh`를 제공해야 한다.
+
 ---
 
 
@@ -436,6 +444,7 @@
 | **FR-56** | `.agents/skills/dev-workflow/SKILL.md`, `app/services/dev_agent_service.py`, `app/routers/web_router.py`, `app/templates/modals/command_palette_dev.html`, `app/templates/dev.html`, `app/static/js/dev.js` | Pytest 단위 테스트(`test_dev_agent.py`) & cURL 스모크 테스트(8-5 ~ 8-8) |
 | **FR-57** | `app/services/coding_studio_service.py`, `app/services/dev_agent_service.py`, `app/routers/web_router.py`, `app/templates/modals/command_palette_dev.html`, `app/templates/dev.html`, `app/static/js/dev.js`, `app/static/css/dev.css` | Pytest 단위 테스트(`test_coding_studio_service.py`, `test_dev_agent.py`) & cURL 스모크 테스트(8-9 ~ 8-13) |
 | **FR-58** | `app/services/llm/intent_analyzer.py`, `app/services/llm/category_extractor.py`, `app/services/gtd_service.py`, `tests/test_llm_provider.py`, `tests/test_agent_service.py` | Pytest 단위 테스트(`test_llm_provider.py`, `test_agent_service.py`) & cURL 라이브 검증 |
-| **FR-59** | `app/services/llm/intent_analyzer.py`, `app/services/llm/prompt_builder.py`, `app/services/llm_provider.py` | Pytest 단위 테스트(`test_llm_provider.py`) & cURL 라이브 검증 (ADR-061) |
+| **FR-59, FR-60** | `app/services/llm/intent_analyzer.py`, `app/services/llm/prompt_builder.py`, `app/services/llm_provider.py` | Pytest 단위 테스트(`test_llm_provider.py`) & cURL 라이브 검증 (ADR-060, ADR-061) |
+| **FR-61** | `app/main.py`, `app/config.py`, `scripts/gate.sh`, `scripts/deploy.sh`, `scripts/smoke_test.sh`, `scripts/service.sh`, `.agents/rules/release_gate.md` | `./scripts/gate.sh` 4단계 통합 품질 게이트 검증 (ADR-062) |
 
 

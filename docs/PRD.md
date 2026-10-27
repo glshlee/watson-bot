@@ -589,6 +589,15 @@
   * 시스템 프롬프트에 `[INTENT: ...]` 태그 출력 지침을 주입하고, LLM이 맥락·스킬을 추론하여 출력한 태그를 `_parse_llm_intent_result`에서 파싱하여 백엔드 액션과 사용자 대화로 분리.
   * 시맨틱 스마트 폴백(`get_smart_fallback`)을 통해 Fast Mode 및 오프라인 환경에서도 100% 동일한 프로토콜 및 초고속 단위 테스트(145개 46초) 보장.
 
+### 3.59. 🚦 개발/운영 프로세스 분리 및 Pre-Push 품질 게이트 (Dev/Prod Separation & Pre-Push Quality Gate - ADR-062)
+* **로컬 경량 개발 루프 (Fast Dev Loop)**:
+  * 일상 코드 수정 시 전체 `pytest`나 `smoke_test.sh` 실행을 생략하고, 수정 파일 대상 `ruff check <file>`, `mypy <file>`, 타겟 단위 테스트(`pytest tests/test_xxx.py`)만 실행하여 에이전트 개발 비용 및 대기 시간 80% 이상 단축.
+* **백그라운드 워커 완벽 격리 (`DISABLE_TELEGRAM_POLLING=1`)**:
+  * 로컬 개발 서버(`./scripts/service.sh dev-start`, 포트 `8001`) 및 격리 스모크 테스트 기동 시 텔레그램 봇 폴링(`start_polling`)과 정기 브리핑 스케줄러(`briefing_scheduler.start`)를 동시 비활성화하여 원격 운영 서버의 텔레그램 봇과 `409 Conflict` 충돌 및 중복 푸시 발송을 원천 차단.
+* **Pre-Push 통합 품질 게이트 (`./scripts/gate.sh`) 및 원격 운영 배포 (`./scripts/deploy.sh`)**:
+  * 커밋/푸시(`git push`) 시점에 4단계 게이트(`ruff check .` ➔ `mypy app/` ➔ `pytest -q` ➔ `8001` 포트 격리 샌드박스 `./scripts/smoke_test.sh --quick`)를 자동 실행하고 실패 시 즉시 차단(Fail-Fast).
+  * 원격 운영 서버에서는 `./scripts/deploy.sh`를 통해 로컬 게이트 검증 완료 코드를 `git pull` 후 무중단 재시작 반영.
+
 ---
 
 

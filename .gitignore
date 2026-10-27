@@ -13,6 +13,9 @@ tunnel.log
 tunnel_url.txt
 .backups/
 *.bak
+attachments/
+.watson*.pid
+watson*.log
 
 
 

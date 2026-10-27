@@ -410,25 +410,26 @@ docker compose logs -f
 
 ---
 
-### 방법 3: 비동기 서비스 제어 스크립트 실행 (추천 ⭐️ - ADR-056)
+### 방법 3: 비동기 서비스 제어 및 로컬/운영 분리 배포 (추천 ⭐️ - ADR-056, ADR-062)
 
-Watson 백엔드를 터미널 블로킹 없이 백그라운드에서 비동기로 안전하게 실행 및 제어합니다:
+Watson 백엔드를 터미널 블로킹 없이 백그라운드에서 비동기로 안전하게 실행 및 제어하며, 로컬 개발 환경(Mac)과 원격 운영 서버(Linux)를 완벽히 분리합니다:
 
 ```bash
-# 1. 비동기 서비스 시작 (systemd 또는 백그라운드 데몬)
-./scripts/service.sh start
-# 또는 단축 스크립트
-./scripts/start.sh
+# 1. [로컬 개발 시] 로컬 개발 전용 서버 시작 (포트 8001, 텔레그램 폴링/스케줄러 OFF로 원격 봇 충돌 방지)
+./scripts/service.sh dev-start
+./scripts/service.sh dev-stop
 
-# 2. 서비스 상태 점검 (PID, 포트, 헬스체크, 터널 URL)
-./scripts/service.sh status
-# 또는
-./scripts/status.sh
+# 2. [커밋/푸시 직전] Pre-Push 4단계 통합 품질 게이트 (Ruff + Mypy + Pytest + 8001 격리 스모크)
+./scripts/gate.sh
+./scripts/gate.sh --install-hook  # Git pre-push 훅 자동 연동
 
-# 3. 최근 로그 확인 (Non-blocking)
+# 3. [원격 운영 서버] 최신 코드 Pull 및 무중단 재시작 배포 (포트 8000)
+./scripts/deploy.sh
+
+# 4. 운영 서비스 직접 제어 및 상태/로그 점검
+./scripts/service.sh start    # 또는 ./scripts/start.sh
+./scripts/service.sh status   # 또는 ./scripts/status.sh
 ./scripts/service.sh logs 50
-
-# 4. 서비스 재시작 및 중지
 ./scripts/service.sh restart  # 또는 ./scripts/restart.sh
 ./scripts/service.sh stop     # 또는 ./scripts/stop.sh
 ```

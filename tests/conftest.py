@@ -3,10 +3,19 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from app.config import settings
+from app.db.database import init_db
 from app.services.dev_agent_service import DevAgentService
 from app.services.git_service import GitService
 from app.services.llm_provider import LLMProvider
 from app.services.telegram_service import TelegramService
+
+
+@pytest.fixture(scope="session", autouse=True)
+def ensure_test_db_schema():
+    """로컬/CI 테스트 실행 전 SQLite 스키마 및 신규 컬럼(pending_log, agent_type) 자동 마이그레이션을 보장합니다."""
+    init_db()
+    TelegramService.reset_to_default_commands()
+    yield
 
 
 @pytest.fixture(autouse=True)

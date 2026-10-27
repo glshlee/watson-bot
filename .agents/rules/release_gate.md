@@ -22,20 +22,20 @@
 로컬 개발이 완료되어 **사용자가 커밋/푸시(`git push`) 또는 통합 검증을 요청한 시점**에만 전체 빌드 및 품질 게이트(`./scripts/gate.sh`)를 1회 실행한다.
 1. **게이트 실행 시점**:
    - `git push` 실행 시 (Git `pre-push` 훅 자동 연동 또는 `./scripts/gate.sh` 명시적 호출)
-   - 운영계 배포(`./scripts/deploy.sh`) 직전
+   - 운영계 배포(`./scripts/deploy.sh --with-gate`) 직전
 2. **게이트 필수 통과 기준 (4단계 검증)**:
    - **[Step 1] 정적 코드 품질 (Lint)**: `ruff check .` 통과
    - **[Step 2] 정적 타입 무결성 (Type Check)**: `mypy app/` 통과
-   - **[Step 3] 전체 단위 테스트 (Unit Tests)**: `pytest` 전체 통과
-   - **[Step 4] 샌드박스 스모크 테스트 (Smoke Test)**: 운영 서버를 건드리지 않는 격리 환경(또는 `--quick` 헬스/핵심 API 검증) 통과
+   - **[Step 3] 전체 단위 테스트 (Unit Tests)**: `pytest -q` 전체 통과
+   - **[Step 4] 격리 샌드박스 스모크 테스트 (Smoke Test)**: `./scripts/smoke_test.sh --quick` (포트 `8001`, `DISABLE_TELEGRAM_POLLING=1`, 임시 SQLite DB/GTD 설정 파일 격리 기동으로 운영 서버 및 원격 텔레그램 봇과 100% 무접촉 검증)
 3. **실패 시 차단 (Fail-Fast)**:
    - 위 단계 중 하나라도 실패하면 `git push` 및 운영 배포를 즉시 중단하고, 해당 오류를 수정한 뒤 게이트를 재실행한다.
 
-### Phase 3: 개발계(Dev) / 운영계(Prod) 실행 분리 및 배포 (Release & Deploy)
-1. **운영계 (Production — 포트 `8000`)**:
-   - 24/7 가동되는 텔레그램 봇 폴링 및 웹 서비스는 검증이 완료된 상태에서 `./scripts/deploy.sh`(또는 `./scripts/service.sh restart`)를 통해서만 반영한다.
-2. **개발계 (Development — 포트 `8001`, 선택적 기동)**:
-   - 개발 중 로컬 웹 UI나 API 동작을 수동 확인해야 할 때는 텔레그램 폴링을 비활성화(`DISABLE_TELEGRAM_POLLING=1`)하고 별도 포트(`8001`)로 기동하여 운영 봇과의 충돌을 원천 차단한다.
+### Phase 3: 로컬 개발계(Dev) / 원격 운영계(Prod) 실행 분리 및 배포 (Release & Deploy)
+1. **원격 운영계 (Production — 포트 `8000`)**:
+   - 24/7 가동되는 원격 운영 서버의 텔레그램 봇 폴링 및 웹 서비스는 로컬에서 `gate.sh`를 통과해 푸시된 코드를 `./scripts/deploy.sh`(`git pull --rebase --autostash` ➔ `./scripts/service.sh restart`)를 통해서만 무중단 반영한다.
+2. **로컬 개발계 (Development — 포트 `8001`, 선택적 기동)**:
+   - 개발 중 로컬 웹 UI나 API 동작을 수동 확인해야 할 때는 `./scripts/service.sh dev-start` (`DISABLE_TELEGRAM_POLLING=1`로 텔레그램 폴링 및 브리핑 스케줄러 동시 비활성화, 포트 `8001`)로 기동하여 원격 운영 봇과의 `409 Conflict` 충돌 및 중복 브리핑 발송을 원천 차단한다.
 
 ---
 

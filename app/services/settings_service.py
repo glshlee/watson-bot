@@ -14,8 +14,8 @@ class SettingsService:
     웹 UI 및 API를 통해 동적으로 GTD 경로를 변경하고 영속화합니다.
     """
 
-    def __init__(self, config_file: str = "config/gtd_config.json"):
-        self.config_file = config_file
+    def __init__(self, config_file: str | None = None):
+        self.config_file = config_file or os.environ.get("WATSON_GTD_CONFIG_FILE") or "config/gtd_config.json"
 
     def get_gtd_path(self) -> str:
         """

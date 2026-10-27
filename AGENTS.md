@@ -7,11 +7,10 @@
 본 하네스는 특정 AI 플랫폼에 종속되지 않고 Antigravity, Gemini, Claude, OpenAI 등 모든 AI 엔진에서 완벽히 작동하는 **`.agents/` 범용 하네스 표준**을 준수합니다.
 
 ### 1. Essential Commands (수행 명령어)
-* **의존성 설치**: `pip install -r requirements.txt` (또는 `poetry install`)
-* **서비스 비동기 실행 및 제어 (직접 실행 금지)**: `./scripts/service.sh {start|stop|restart|status|logs}` (또는 `./scripts/start.sh`)
-* **단위 및 스모크 테스트**: `pytest`
-* **cURL 라이브 API 검증 (필수)**: `./scripts/smoke_test.sh` (또는 `curl -X POST "http://localhost:8000/api/chat" ...`)
-* **타입 검사 및 코드 린트**: `mypy . && ruff check .`
+* **의존성 설치**: `pip install -r requirements.txt` | **서비스 비동기 제어**: `./scripts/service.sh {start|stop|restart|status|logs|dev-start|dev-stop}`
+* **로컬 경량 개발 루프 (일상 수정 시)**: `ruff check <file> && mypy <file> && pytest tests/test_<target>.py` (전체 테스트/스모크 생략)
+* **Pre-Push 통합 품질 게이트 (푸시/배포 직전 1회)**: `./scripts/gate.sh` (`ruff` + `mypy` + `pytest` + 격리 `./scripts/smoke_test.sh --quick`)
+* **원격 운영계 배포**: `./scripts/deploy.sh` (`git pull --rebase --autostash` ➔ `./scripts/service.sh restart`)
 
 ### 2. Multi-Agent & Skill System (.agents/)
 * **서브 에이전트 분담 (`.agents/agents/`)**:
@@ -25,8 +24,8 @@
   * `session-memory/SKILL.md`: 텔레그램/웹 대시보드 대화 세션 맥락 관리 스킬
   * `markdown-lifelog/SKILL.md`: 마크다운 템플릿 변환 및 Append/Edit 스킬
 * **하네스 진화 및 동기화 규칙 (`.agents/rules/`)**:
-  * `evolution.md`: 💡 실행 실패 시 ADR 작성 및 하네스/스킬 자동 업그레이드 규칙
-  * `spec_alignment.md`: 기획-코드 100% 동기화 및 cURL 검증 루프 규칙
+  * `release_gate.md`: 🚦 로컬 경량 개발 루프(Fast Dev Loop) 및 Pre-Push 품질 게이트/운영 분리 규칙 (ADR-062)
+  * `evolution.md`: 💡 실행 실패 시 ADR 작성 및 하네스/스킬 자동 업그레이드 | `spec_alignment.md`: 기획-코드 100% 동기화 규칙
 
 ### 3. Hard Constraints (필수 준수 규칙)
 * **Spec-Code & README Alignment**: 모든 기획 문서(`docs/PRD.md`, `docs/requirements.md`, `docs/roadmap.md`) 및 사용자 안내서(`README.md`)와 구현 코드는 100% 일치할 것.
@@ -87,12 +86,10 @@
 * **GTD 구어체 태스크 등록 & 브리핑 가드레일 (ADR-059)**: "gtd에 추가" 등 구어체 축약어 수용, "고객확인" 속 '확인'의 브리핑 오탐 차단 및 금융 태스크(💳) 개인 섹션 자동 라우팅 보장.
 * **브리핑 가로채기 철거 & GTD 열람 라우팅 (ADR-060)**: briefing_triggers에서 gtd/inbox/수집함 철거로 저녁 회고 오탐 차단, "gtd inbox 확인" 등 파일 직접 조회를 100% gtd_inspect로 라우팅할 것.
 * **슬래시 명령어 전용 라우팅 & 자연어 100% LLM 위임 (ADR-061)**: 슬래시(/) 명령어 전용 즉각 라우터 외 800여 줄 정규식 가로채기를 전면 철거하고 모든 자연어를 100% LLM(Intent Protocol)으로 위임할 것.
-* **Explicit User Commit Trigger Only (에이전트 코드 커밋 수칙)**: 코드 수정 및 기능 구현 후 Git 커밋(`git commit`)은 에이전트가 임의로 자동 실행하지 않으며, 오직 **사용자가 명시적으로 "커밋해" 지시를 내렸을 때만** 수행할 것.
-* **Curl-Based Live Verification (필수)**: 모든 코드 수정 후 반드시 `./scripts/smoke_test.sh` cURL 테스트를 실행하여 실제 라이브 API 수신 및 500 에러 부재를 검증할 것.
-* **Self-Verification & Evolution Loop**: 코드 변경 시 `pytest`/`mypy`/`ruff` 및 cURL 검증 수행 후 실패 시 `evolution.md` 지침에 따라 하네스 자가 진화 집행.
+* **개발/운영 분리 & Pre-Push 품질 게이트 (ADR-062)**: 일상 코드 수정 시 타겟 파일 `ruff`/`mypy`/`pytest`만 실행(Fast Dev Loop)하여 비용을 절감하고, 커밋/푸시 직전에만 `./scripts/gate.sh`(8001 포트 격리 스모크, `DISABLE_TELEGRAM_POLLING=1` 포함)를 1회 실행하며, 에이전트는 사용자가 명시적으로 "커밋해" 지시할 때만 커밋할 것.
 ### 4. Progressive Disclosure (상세 문서 참조)
 * **제품 기획서 개요**: `docs/PRD.md` | **기능 요구사항**: `docs/requirements.md`
-* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-061)
+* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-062)
 ---
 ## 🛠 1. 기술 스택 & 프로젝트 구조 요약
 * **Tech Stack**: Python (v3.10+), FastAPI, SQLAlchemy, SQLite, Jinja2/HTML5/CSS3/JS, pytest, mypy, ruff

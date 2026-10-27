@@ -98,31 +98,36 @@ def test_agent_service_daily_logs_orchestration():
         shutil.rmtree(temp_dir)
 
 
-def test_settings_api():
+def test_settings_api(monkeypatch):
+    temp_dir = tempfile.mkdtemp()
+    temp_cfg = os.path.join(temp_dir, "isolated_gtd_config.json")
+    monkeypatch.setenv("WATSON_GTD_CONFIG_FILE", temp_cfg)
+    monkeypatch.setenv("DISABLE_TELEGRAM_POLLING", "1")
     client = TestClient(app)
 
-    # 1. GET /api/settings/gtd-path
-    res = client.get("/api/settings/gtd-path")
-    assert res.status_code == 200
-    data = res.json()
-    assert "gtd_path" in data
-    assert "is_git_repo" in data
-
-    # 2. POST /api/settings/gtd-path with temp dir
-    temp_dir = tempfile.mkdtemp()
     try:
+        # 1. GET /api/settings/gtd-path
+        res = client.get("/api/settings/gtd-path")
+        assert res.status_code == 200
+        data = res.json()
+        assert "gtd_path" in data
+        assert "is_git_repo" in data
+
+        # 2. POST /api/settings/gtd-path with temp dir
+        target_gtd_dir = os.path.join(temp_dir, "target_gtd")
         post_res = client.post(
             "/api/settings/gtd-path",
-            json={"path": temp_dir, "create_if_missing": True},
+            json={"path": target_gtd_dir, "create_if_missing": True},
         )
         assert post_res.status_code == 200
         post_data = post_res.json()
         assert post_data["success"] is True
-        assert post_data["data"]["gtd_path"] == os.path.abspath(temp_dir)
+        assert post_data["data"]["gtd_path"] == os.path.abspath(target_gtd_dir)
+        assert os.path.exists(temp_cfg)
 
         # Verify GET reflects new path
         get_res = client.get("/api/settings/gtd-path")
         assert get_res.status_code == 200
-        assert get_res.json()["gtd_path"] == os.path.abspath(temp_dir)
+        assert get_res.json()["gtd_path"] == os.path.abspath(target_gtd_dir)
     finally:
         shutil.rmtree(temp_dir)

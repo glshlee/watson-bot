@@ -660,7 +660,15 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] 시맨틱 스마트 폴백(`get_smart_fallback`)을 통해 Fast Mode 및 오프라인 환경에서도 100% 동일한 프로토콜 및 초고속 단위 테스트(145개 46초) 보장
 - [x] 단위 테스트 145개 전수 통과, 린트/타입 검사 및 `./scripts/smoke_test.sh` 라이브 검증 완료
 
-### Phase 61: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
+### Phase 61: 개발/운영 프로세스 분리 및 Pre-Push 품질 게이트 도입 (ADR-062) - ✅ 완료
+- [x] 로컬 경량 개발 루프(Fast Dev Loop) 및 푸시 품질 게이트 하네스 규칙(`.agents/rules/release_gate.md`, `ADR-062`) 수립
+- [x] `app/main.py` 및 `app/config.py`에 `DISABLE_TELEGRAM_POLLING=1` 지원 (텔레그램 폴링 및 브리핑 스케줄러 동시 비활성화로 원격 운영 봇과 `409 Conflict` 충돌 차단)
+- [x] `SettingsService`(`WATSON_GTD_CONFIG_FILE`) 및 `CommuteConfigService`(`WATSON_COMMUTE_CONFIG_FILE`) 환경변수 설정 파일 격리 지원
+- [x] `scripts/smoke_test.sh` 개편: 포트 `8001` 완전 격리 샌드박스 기동 및 5초 초고속 `--quick` 모드 신설
+- [x] `scripts/gate.sh` (4단계 Pre-Push 품질 게이트 + `--install-hook` Git `pre-push` 훅 자동 설치) 및 `scripts/deploy.sh` (원격 운영계 무중단 배포) 신설
+- [x] `scripts/service.sh`에 로컬 개발 서버 전용 `dev-start` / `dev-stop` (포트 `8001`) 명령어 추가
+
+### Phase 62: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
 - [ ] `User` 모델 및 테넌트별 저장소/컨텍스트 격리 (`/data/tenants/{user_id}/`)
 - [ ] 단일 텔레그램 봇 기반 다중 사용자 라우팅 및 계정 바인딩 (`/start [연동코드]`)
 - [ ] 사용자 GitHub PAT 및 외부 API 키 AES-256 (Fernet) 암호화 보관

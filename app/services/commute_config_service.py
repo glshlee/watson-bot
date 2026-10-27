@@ -41,7 +41,7 @@ class CommuteConfigService:
     }
 
     def __init__(self, config_file: str | None = None):
-        self.config_file = config_file or self.CONFIG_FILE
+        self.config_file = config_file or os.environ.get("WATSON_COMMUTE_CONFIG_FILE") or self.CONFIG_FILE
         self._ensure_config_file()
 
     def _ensure_config_file(self) -> None:

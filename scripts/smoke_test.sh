@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 set -e
 
-echo "🚀 Starting Watson API Live Curl Smoke Test..."
+QUICK_MODE=0
+if [ "${1:-}" = "--quick" ] || [ "${1:-}" = "-q" ]; then
+    QUICK_MODE=1
+    echo "🚀 Starting Watson API Quick Smoke Test (--quick, Isolated Sandbox ADR-062)..."
+else
+    echo "🚀 Starting Watson API Full Live Curl Smoke Test (Isolated Sandbox ADR-062)..."
+fi
 
-# 1. Check if server is running on port 8000
-SERVER_URL="http://localhost:8000"
+# 1. Isolated test port (default 8001) so live production (8000) is never touched (ADR-062)
+SMOKE_PORT="${SMOKE_PORT:-8001}"
+SERVER_URL="http://127.0.0.1:$SMOKE_PORT"
 
 AUTH_FLAGS=()
 AUTH_TEST=0
@@ -22,22 +29,45 @@ run_curl() {
     curl -s -H "X-Fast-Mode: true" "${AUTH_FLAGS[@]}" "$@"
 }
 
+TMP_SMOKE_DB=$(mktemp /tmp/watson_smoke_db_XXXXXX.db)
+TMP_SMOKE_GTD_CFG=$(mktemp /tmp/watson_smoke_gtd_cfg_XXXXXX.json)
+echo "{}" > "$TMP_SMOKE_GTD_CFG"
+TMP_SMOKE_COMMUTE_CFG=$(mktemp /tmp/watson_smoke_commute_cfg_XXXXXX.json)
+if [ -f config/commute_config.json ]; then
+    cp -f config/commute_config.json "$TMP_SMOKE_COMMUTE_CFG"
+else
+    rm -f "$TMP_SMOKE_COMMUTE_CFG"
+fi
+
 SERVER_READY=0
-for i in {1..10}; do
-    if curl -s -o /dev/null "$SERVER_URL/"; then
-        SERVER_READY=1
-        break
-    fi
-    sleep 1
-done
+if curl -s -m 1 -o /dev/null "$SERVER_URL/api/health" 2>/dev/null; then
+    SERVER_READY=1
+fi
 
 if [ "$SERVER_READY" -eq 0 ]; then
-    echo "⚠️ Server is not running on port 8000. Launching temporary test server..."
-    source venv/bin/activate
-    python -m uvicorn app.main:app --port 8000 &
+    echo "⚙️ Launching isolated sandbox test server on port $SMOKE_PORT (DISABLE_TELEGRAM_POLLING=1)..."
+    VENV_PY="./venv/bin/python3"
+    if [ ! -f "$VENV_PY" ]; then
+        VENV_PY="python3"
+    fi
+    DISABLE_TELEGRAM_POLLING=1 \
+    DATABASE_URL="sqlite:///$TMP_SMOKE_DB" \
+    WATSON_GTD_CONFIG_FILE="$TMP_SMOKE_GTD_CFG" \
+    WATSON_COMMUTE_CONFIG_FILE="$TMP_SMOKE_COMMUTE_CFG" \
+    "$VENV_PY" -m uvicorn app.main:app --host 127.0.0.1 --port "$SMOKE_PORT" --log-level warning &
     SERVER_PID=$!
-    sleep 3
     TRAP_EXIT=1
+    for _ in {1..30}; do
+        if curl -s -m 1 -o /dev/null "$SERVER_URL/api/health" 2>/dev/null; then
+            SERVER_READY=1
+            break
+        fi
+        sleep 0.3
+    done
+    if [ "$SERVER_READY" -eq 0 ]; then
+        echo "❌ Isolated test server on port $SMOKE_PORT failed to start."
+        exit 1
+    fi
 fi
 
 if [ "$AUTH_TEST" -eq 1 ]; then
@@ -124,6 +154,7 @@ cleanup() {
   if [ -n "$TMP_TEST_GTD" ] && [ -d "$TMP_TEST_GTD" ]; then
     rm -rf "$TMP_TEST_GTD" || true
   fi
+  rm -f "$TMP_SMOKE_DB" "$TMP_SMOKE_GTD_CFG" "$TMP_SMOKE_COMMUTE_CFG" 2>/dev/null || true
   if [ "$TRAP_EXIT" = "1" ] && [ -n "$SERVER_PID" ]; then
     echo "Cleaning up temporary test server (PID: $SERVER_PID)..."
     kill "$SERVER_PID" 2>/dev/null || true
@@ -175,6 +206,33 @@ if echo "$CHAT_RES4" | grep -q '"intent":"log_explicit"'; then
 else
     echo "  ❌ 3-4. Direct Command Failed. Response: $CHAT_RES4"
     exit 1
+fi
+
+if [ "$QUICK_MODE" -eq 1 ]; then
+    echo "  3-Q1. Testing GTD Task Addition (ADR-059/061)..."
+    QUICK_GTD=$(run_curl -X POST "$SERVER_URL/api/chat" \
+      -H "Content-Type: application/json" \
+      -d '{"session_id": "smoke_butler_session", "message": "트래블월렛 고객확인 gtd에 추가", "auto_push": false}')
+    if echo "$QUICK_GTD" | grep -q '"intent":"log_explicit"'; then
+        echo "  ✅ 3-Q1. Quick GTD Task Addition Passed"
+    else
+        echo "  ❌ 3-Q1. Quick GTD Task Addition Failed. Response: $QUICK_GTD"
+        exit 1
+    fi
+
+    echo "  3-Q2. Testing DevBot /status (ADR-019)..."
+    QUICK_DEV=$(run_curl -X POST "$SERVER_URL/api/dev/chat" \
+      -H "Content-Type: application/json" \
+      -d '{"session_id": "smoke_dev_session", "message": "/status"}')
+    if echo "$QUICK_DEV" | grep -q '"action_type":"git_status"'; then
+        echo "  ✅ 3-Q2. Quick DevBot /status Passed"
+    else
+        echo "  ❌ 3-Q2. Quick DevBot /status Failed. Response: $QUICK_DEV"
+        exit 1
+    fi
+
+    echo "🎉 Quick Curl Smoke Tests (--quick) Passed Successfully!"
+    exit 0
 fi
 
 echo "  3-5. Testing Task Briefing (오늘 해야할 일 정리해줘 - ADR-008)..."

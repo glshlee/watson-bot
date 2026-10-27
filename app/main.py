@@ -34,17 +34,27 @@ async def lifespan(app: FastAPI):
 
     init_db()
 
+    disable_bg = settings.DISABLE_TELEGRAM_POLLING or os.environ.get(
+        "DISABLE_TELEGRAM_POLLING", ""
+    ).lower() in ("1", "true", "yes")
+
     telegram_service = TelegramService()
     polling_task = None
-    if telegram_service.is_configured():
+    if disable_bg:
+        logger.info(
+            "🛠️ Isolated/Dev mode (DISABLE_TELEGRAM_POLLING=1): Background Telegram polling & scheduler disabled."
+        )
+    elif telegram_service.is_configured():
         logger.info("🤖 Starting background Telegram Bot polling task...")
         polling_task = asyncio.create_task(telegram_service.start_polling())
     else:
         logger.info("ℹ️ Telegram bot token not set. Running in Web Dashboard mode only.")
 
-    logger.info("⏰ Starting background Briefing Scheduler task (08:30 / 20:00 KST)...")
     app.state.briefing_scheduler = briefing_scheduler
-    scheduler_task = asyncio.create_task(briefing_scheduler.start())
+    scheduler_task = None
+    if not disable_bg:
+        logger.info("⏰ Starting background Briefing Scheduler task (08:30 / 20:00 KST)...")
+        scheduler_task = asyncio.create_task(briefing_scheduler.start())
 
     yield
 

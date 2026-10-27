@@ -4,7 +4,7 @@ import re
 import subprocess
 from typing import Any
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 from sqlalchemy.orm import Session
 
 from app.config import get_now

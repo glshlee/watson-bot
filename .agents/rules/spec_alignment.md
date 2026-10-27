@@ -15,5 +15,6 @@
    - 기능 추가, 아키텍처 변경, CLI/환경변수/디렉토리 설정 옵션이 변경될 때마다 사용자 대면 문서인 `README.md`를 즉시 갱신한다.
    - 모든 작업 마무리 시 `README.md`의 사용 예시, 아키텍처 다이어그램, 배포 가이드가 최신 상태인지 필수로 교차 점검한다.
 
-4. **자가 검증 루프 (Self-Verification & Live Curl Testing)**
-   - 코드 작성 완료 후 `pytest`, `mypy .`, `ruff check .`뿐만 아니라 **실제 라이브 서버 cURL 검증 스크립트 (`./scripts/smoke_test.sh`)**를 직접 실행하여 단 1개의 500 에러나 수신 오류도 없음을 증명한다.
+4. **2단계 검증 루프 (Fast Dev Loop & Pre-Push Gate — ADR-062)**
+   - 일상 코드 수정 중(Fast Dev Loop)에는 수정된 파일의 `ruff check <file>`, `mypy <file>` 및 직결된 단일 `pytest tests/test_xxx.py`만 실행하여 비용을 절감한다.
+   - 개발 완료 후 커밋/푸시 직전(Pre-Push Gate)에는 반드시 `./scripts/gate.sh`(`ruff check .`, `mypy app/`, 전체 `pytest`, 격리 샌드박스 `./scripts/smoke_test.sh --quick`)를 1회 실행하여 단 1개의 오류도 없음을 증명한다.

@@ -390,7 +390,10 @@ def test_telegram_commands_endpoints():
         assert post_data["commands_count"] == len(TelegramService.DEFAULT_COMMANDS)
 
     # POST /api/telegram/commands (ADR-041)
-    with patch.object(TelegramService, "set_my_commands", new_callable=AsyncMock, return_value=True):
+    with (
+        patch.object(TelegramService, "is_configured", return_value=True),
+        patch.object(TelegramService, "set_my_commands", new_callable=AsyncMock, return_value=True),
+    ):
         update_payload = {
             "commands": [
                 {"command": "today", "description": "오늘 일일 로그 확인", "enabled": True},
