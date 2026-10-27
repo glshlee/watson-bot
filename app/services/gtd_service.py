@@ -71,8 +71,12 @@ class GTDService:
         target_idx = -1
 
         # 1. 문맥 맞춤형 섹션 우선 탐색 (ADR-014)
-        # (1-1) 개인 생활 / 건강 / 여행 / 맛집 / 구매
-        if any(k in content_lower for k in ["여행", "맛집", "어죽", "게국지", "와이프", "가족", "개인", "생활", "건강", "병원", "초음파", "구매", "장보기", "휴지", "원두", "모래", "독서", "은퇴", "교육", "personal"]):
+        # (1-1) 개인 생활 / 건강 / 여행 / 맛집 / 구매 / 금융 (ADR-014, ADR-059)
+        if any(k in content_lower for k in [
+            "여행", "맛집", "어죽", "게국지", "와이프", "가족", "개인", "생활", "건강", "병원", "초음파",
+            "구매", "장보기", "휴지", "원두", "모래", "독서", "은퇴", "교육", "personal",
+            "월렛", "트래블월렛", "카드", "은행", "계좌", "환전", "금융", "고객확인", "본인인증", "인증", "페이",
+        ]):
             for i, line in enumerate(lines):
                 if re.search(r"^##\s*.*?(개인|생활|건강|personal)", line, re.IGNORECASE):
                     target_idx = i
@@ -121,8 +125,8 @@ class GTDService:
         if not task_item.startswith("- ["):
             task_item = f"- [ ] {task_item}"
 
-        # 캡처 뱃지 부여 (순수 텍스트 캡처 시 *(Watson 캡처)* 부여, 이미 이모지/포맷팅 포함 시 유지)
-        if not any(marker in task_item for marker in ["*(Watson 캡처)*", "🚗", "🍲", "✈️", "🛒", "💊", "🏥", "🏢", "💻", "🚨"]):
+        # 캡처 뱃지 부여 (순수 텍스트 캡처 시 *(Watson 캡처)* 부여, 이미 이모지/포맷팅 포함 시 유지 - ADR-059)
+        if not any(marker in task_item for marker in ["*(Watson 캡처)*", "🚗", "🍲", "✈️", "🛒", "💊", "🏥", "🏢", "💻", "🚨", "💳", "📊", "📌", "📖"]):
             task_item = f"{task_item} *(Watson 캡처)*"
 
         task_item = f"{task_item.strip()}\n"

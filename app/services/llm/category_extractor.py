@@ -75,7 +75,13 @@ def extract_actionable_task(text: str) -> str:
         w_item = work_match.group(1).strip()
         return f"{w_item} 진행{due_tag} 📊"
 
-    # 5. 문장의 핵심 어절 추출
+    # 5. 금융 / 카드 / 월렛 / 환전 / 인증 (ADR-059)
+    if any(k in cleaned for k in ["월렛", "카드", "은행", "계좌", "환전", "금융", "고객확인", "본인인증", "인증", "페이"]):
+        pure_finance = re.sub(r"(?:gtd|인박스|할일|기록|추가|등록|메모).*$", "", cleaned).strip()
+        if pure_finance:
+            return f"{pure_finance}{due_tag} 💳"
+
+    # 6. 문장의 핵심 어절 추출
     sentences = [s.strip() for s in re.split(r"[\n.!?]", cleaned) if len(s.strip()) > 3]
     if sentences:
         candidate = sentences[-1]

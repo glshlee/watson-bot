@@ -101,6 +101,13 @@ def test_append_to_gtd_inbox_smart_section_routing():
         # Check that the task was inserted under personal section
         personal_idx = next(i for i, l in enumerate(lines) if "개인 생활" in l)
         assert "- [ ] 서산 여행 계획 및 맛집 방문 (용현집, 어죽) 🚗🍲\n" == lines[personal_idx + 1]
+
+        # Test travelwallet customer verification task (ADR-059)
+        service.append_to_gtd_inbox("트래블월렛 고객확인 💳")
+        with open(inbox_file, "r", encoding="utf-8") as f:
+            lines2 = f.readlines()
+        personal_idx2 = next(i for i, l in enumerate(lines2) if "개인 생활" in l)
+        assert "- [ ] 트래블월렛 고객확인 💳\n" == lines2[personal_idx2 + 1]
     finally:
         shutil.rmtree(temp_dir)
 

@@ -637,8 +637,32 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] DevBot 상단 헤더 원터치 `[💻 스튜디오]` 퀵 버튼 및 커맨드 팔레트 23종 확장 통합
 - [x] 단위 테스트(`tests/test_coding_studio_service.py`, `tests/test_dev_agent.py`), 린트/타입 검사 및 `./scripts/smoke_test.sh` 전수 검증 완료
 
-### Phase 58: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
+### Phase 58: GTD 구어체 태스크 등록 정밀화 및 브리핑 오탐 가드레일 (ADR-059) - ✅ 완료
+- [x] 단일 후미 기록 패턴(`single_end_pattern`)에 `추가`, `등록`, `기록`, `넣어`, `메모` 등 구어체 축약어 확충
+- [x] "고객확인", "본인확인", "신원확인", "계좌확인" 등 복합명사 내부의 "확인" 키워드를 브리핑 트리거 매칭에서 분리 격리
+- [x] `has_write_directive` 가드레일 강제로 쓰기/편집 지시어 포함 발화의 `task_briefing` 오작동 차단
+- [x] `extract_actionable_task` 내 금융/카드/월렛/환전/인증 패턴 신설 및 `💳` 이모지 배지 부여
+- [x] `gtd_service.append_to_gtd_inbox` 내 개인 생활 섹션 매핑 키워드 및 마커 확장
+- [x] `test_heatmap_service.py` 날짜 경과 취약점 보정 및 단위 테스트(`test_llm_provider.py`, `test_agent_service.py`), 린트/타입 검사, `./scripts/smoke_test.sh` 전수 검증 완료
+
+### Phase 59: 브리핑 키워드 가로채기 철거 및 GTD 파일 직접 열람 라우팅 정규화 (ADR-060) - ✅ 완료
+- [x] 의도 분석기(`intent_analyzer.py`)의 `briefing_triggers`에서 단순 저장소 명칭(`gtd`, `수집함`, `인박스`, `다음 행동`) 전면 삭제
+- [x] "gtd inbox 확인", "inbox 확인" 등 수집함/GTD 확인 발화의 저녁 일과 회고 브리핑(`task_briefing_evening`) 오탐 가로채기 원천 차단
+- [x] `gtd_file_patterns` 정규식 고도화: "gtd inbox 확인", "inbox 확인", "수집함 확인", "inbox.md 확인", "next_actions.md 확인", "inbox 보여줘" 100% `gtd_inspect` 직접 라우팅
+- [x] `is_briefing_cmd` 정규화: "/briefing", "브리핑", "브리핑 해줘", "오늘 브리핑" 등 명시적 브리핑 요청의 결정론적 수용
+- [x] 신규 단위 테스트(`test_llm_provider_gtd_inspect_and_briefing_separation`) 추가, 전체 145개 단위 테스트 100% 통과, 린트/타입 검사 및 `./scripts/smoke_test.sh` 전수 검증 완료
+
+### Phase 60: 슬래시(/) 명령어 전용 라우팅 및 비-슬래시 자연어 LLM 100% 전면 위임 (ADR-061) - ✅ 완료
+- [x] 슬래시(`/`)로 시작하는 명시적 명령어 전용 결정론적 라우터(`_handle_slash_command`) 구현
+- [x] `intent_analyzer.py` 내 800여 라인의 자연어 정규식 가로채기 폭포수 전면 철거 (949줄 ➔ 537줄, 43.4% 경량화)
+- [x] 비-슬래시 모든 자연어 입력을 사전 정규식 필터 없이 100% `call_ai_engine_func` (LLM AI 엔진)으로 직접 라우팅
+- [x] `build_system_prompt()`에 `[의도 판별 및 행동 프로토콜 (Intent Protocol - ADR-061)]` 지침 주입 및 태그 파싱(`_parse_llm_intent_result`) 연동
+- [x] 시맨틱 스마트 폴백(`get_smart_fallback`)을 통해 Fast Mode 및 오프라인 환경에서도 100% 동일한 프로토콜 및 초고속 단위 테스트(145개 46초) 보장
+- [x] 단위 테스트 145개 전수 통과, 린트/타입 검사 및 `./scripts/smoke_test.sh` 라이브 검증 완료
+
+### Phase 61: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
 - [ ] `User` 모델 및 테넌트별 저장소/컨텍스트 격리 (`/data/tenants/{user_id}/`)
 - [ ] 단일 텔레그램 봇 기반 다중 사용자 라우팅 및 계정 바인딩 (`/start [연동코드]`)
 - [ ] 사용자 GitHub PAT 및 외부 API 키 AES-256 (Fernet) 암호화 보관
 - [ ] 사용자별 타임존 및 출근/브리핑 시각 맞춤형 동적 스케줄러 큐 구축
+

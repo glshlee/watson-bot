@@ -344,7 +344,18 @@
 - **FR-57.8**: DevBot 콘솔에서 자연어 구현/수정 요청("구현해줘", "코드 수정해줘", `/implement`, `/patch`) 수신 시, 워크스페이스 내 대상 파일에 수술적 패치를 자동 적용하고 단위 테스트 검증, 실시간 Unified Diff 및 툴체인 연계 카드를 반환하는 AI 자율 코드 구현 엔진(`_handle_autonomous_implementation`)을 제공해야 한다.
 - **FR-57.9**: DevBot 콘솔 상단 헤더에 `[💻 스튜디오]` 원터치 퀵 버튼을 신설하고, 커맨드 팔레트(`command_palette_dev.html`)에 코딩 스튜디오 6종 도구(`/studio`, `/implement`, `/files`, `/code`, `/heal`, `/rollback`)를 제공하여 23개 도구 팔레트로 확장 통합해야 한다.
 
+### FR-58: GTD 구어체 태스크 등록 정밀화 및 브리핑 오탐 가드레일 (ADR-059)
+- **FR-58.1**: `single_end_pattern`을 통해 `추가`, `등록`, `기록`, `넣어`, `메모` 등 구어체 축약 명령을 수용하고, "트래블월렛 고객확인 gtd에 추가"와 같은 구어체 발화를 0.05초 내 `log_explicit`로 직결 등록해야 한다.
+- **FR-58.2**: 복합명사 내부 "확인" 키워드 격리 및 `has_write_directive` 가드레일을 통해 태스크 등록 발화가 브리핑(`task_briefing`)으로 오작동하는 것을 원천 차단해야 한다.
+- **FR-58.3**: 금융/카드/월렛 도메인 태스크에 `💳` 이모지 배지를 부여하고, `gtd/inbox.md`의 `## 🧘 개인 생활 & 건강 (02_personal)` 섹션으로 자동 라우팅해야 한다.
+
+### FR-59: 브리핑 키워드 가로채기 철거 및 GTD 파일 직접 열람 라우팅 정규화 (ADR-060)
+- **FR-59.1**: 의도 분석기(`intent_analyzer.py`)의 `briefing_triggers`에서 단순 저장소/파일 명칭(`gtd`, `수집함`, `인박스`, `다음 행동`)을 전면 삭제하여 "gtd inbox 확인", "수집함 확인" 등이 엉뚱하게 저녁 일과 회고 브리핑(`task_briefing`)으로 전환되는 키워드 가로채기를 원천 차단해야 한다.
+- **FR-59.2**: `gtd_file_patterns` 정규식을 고도화하여 "gtd inbox 확인", "inbox 확인", "수집함 확인", "inbox.md 확인", "next_actions.md 확인", "inbox 보여줘" 등 다양한 구어체 직접 열람 발화를 100% `gtd_inspect`로 직접 라우팅해야 한다.
+- **FR-59.3**: `is_briefing_cmd`를 정규화하여 "/briefing", "브리핑", "브리핑 해줘", "오늘 브리핑" 등 명시적 브리핑 요청은 결정론적으로 브리핑 엔진(`task_briefing`)으로 정확히 라우팅해야 한다.
+
 ---
+
 
 
 ## 2. 비기능 요구사항 (Non-Functional Requirements)
@@ -424,5 +435,7 @@
 | **FR-55** | `scripts/service.sh`, `scripts/start.sh`, `scripts/stop.sh`, `scripts/restart.sh`, `scripts/status.sh`, `app.py`, `systemd/watson.service` | `./scripts/service.sh status` & `./scripts/smoke_test.sh` 라이브 검증 |
 | **FR-56** | `.agents/skills/dev-workflow/SKILL.md`, `app/services/dev_agent_service.py`, `app/routers/web_router.py`, `app/templates/modals/command_palette_dev.html`, `app/templates/dev.html`, `app/static/js/dev.js` | Pytest 단위 테스트(`test_dev_agent.py`) & cURL 스모크 테스트(8-5 ~ 8-8) |
 | **FR-57** | `app/services/coding_studio_service.py`, `app/services/dev_agent_service.py`, `app/routers/web_router.py`, `app/templates/modals/command_palette_dev.html`, `app/templates/dev.html`, `app/static/js/dev.js`, `app/static/css/dev.css` | Pytest 단위 테스트(`test_coding_studio_service.py`, `test_dev_agent.py`) & cURL 스모크 테스트(8-9 ~ 8-13) |
+| **FR-58** | `app/services/llm/intent_analyzer.py`, `app/services/llm/category_extractor.py`, `app/services/gtd_service.py`, `tests/test_llm_provider.py`, `tests/test_agent_service.py` | Pytest 단위 테스트(`test_llm_provider.py`, `test_agent_service.py`) & cURL 라이브 검증 |
+| **FR-59** | `app/services/llm/intent_analyzer.py`, `app/services/llm/prompt_builder.py`, `app/services/llm_provider.py` | Pytest 단위 테스트(`test_llm_provider.py`) & cURL 라이브 검증 (ADR-061) |
 
 

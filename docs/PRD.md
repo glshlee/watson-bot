@@ -563,7 +563,34 @@
   * DevBot 상단 헤더에 `[💻 스튜디오]`(`#btn-dev-studio-quick`) 원터치 퀵 버튼 배치.
   * 커맨드 팔레트(`command_palette_dev.html`)에 코딩 스튜디오 그룹(6종) 신설 및 총 23개 도구 팔레트로 확장 통합.
 
+### 3.56. 💳 GTD 구어체 태스크 등록 정밀화 및 브리핑 오탐 가드레일 (Refined GTD Task Registration & Briefing Guardrails - ADR-059)
+* **단일 후미 기록 패턴 구어체 축약어 지원**:
+  * `single_end_pattern`을 확장하여 `추가`, `등록`, `기록`, `넣어`, `메모` 등 구어체 축약 종결어를 인식하고, "트래블월렛 고객확인 gtd에 추가"와 같은 축약형 발화를 0.05초 내에 `log_explicit`로 직결.
+* **브리핑 트리거 오탐 방지 이중 가드레일**:
+  * "고객확인", "본인확인", "신원확인", "계좌확인" 등 복합명사 내부의 "확인" 키워드를 브리핑 트리거 매칭에서 분리 격리.
+  * `has_write_directive` 가드레일을 통해 쓰기/편집 지시어가 포함된 발화의 브리핑(`task_briefing`) 오작동을 원천 차단.
+* **금융/카드/월렛 태스크 정제 및 개인 섹션 자동 라우팅**:
+  * `extract_actionable_task`에 금융 도메인 패턴을 신설하여 태스크 명칭 훼손 없이 `💳` 이모지 배지 부여.
+  * `gtd_service.append_to_gtd_inbox`의 `## 🧘 개인 생활 & 건강 (02_personal)` 섹션 매핑 키워드에 월렛/금융/인증/카드/환전을 확충하고 중복 마커 방지 적용.
+
+### 3.57. 🔍 브리핑 키워드 가로채기 철거 및 GTD 파일 직접 열람 라우팅 정규화 (Briefing Regex Interception Dismantle & GTD Inspection Routing - ADR-060)
+* **브리핑 키워드 가로채기(Regex Interception) 전면 철거**:
+  * 의도 분석기(`intent_analyzer.py`)의 `briefing_triggers`에서 단순 저장소/파일 명칭(`gtd`, `수집함`, `인박스`, `다음 행동`)을 전면 삭제하여 "gtd inbox 확인", "수집함 확인" 등이 엉뚱하게 500자 저녁 일과 회고 브리핑(`task_briefing`)으로 전환되는 결함을 원천 차단.
+  * 브리핑 요청은 오직 일정/브리핑 전용 키워드(`해야할 일`, `할일`, `일정`, `스케줄`, `브리핑`) 및 명시적 브리핑 커맨드(`is_briefing_cmd`)에 한해서만 결정론적으로 수용.
+* **GTD 파일 직접 열람 정규식 고도화 (`gtd_file_patterns`)**:
+  * "gtd inbox 확인", "inbox 확인", "수집함 확인", "inbox.md 확인", "next_actions 확인", "inbox 보여줘" 등 다양한 구어체 직접 조회 발화를 100% `gtd_inspect`로 직접 라우팅하여 0.01초 내 실제 마크다운 원본 및 태스크 현황 반환.
+
+### 3.58. 🤖 슬래시(/) 명령어 전용 라우팅 및 비-슬래시 자연어 LLM 100% 전면 위임 (Slash Command Exclusivity & Total LLM Intent Protocol Delegation - ADR-061)
+* **슬래시(/) 명령어 결정론적 고속 라우팅 (`_handle_slash_command`)**:
+  * 사용자가 명시적으로 슬래시(`/`)로 시작하는 명령어(`/today`, `/gtd`, `/dday`, `/briefing`, `/schedule`, `/sync`, `/commit`, `/push`, `/log`, `/done`, `/search`, `/weekly`, `/vision`, `/edit`, `/heatmap`, `/location`, `/commute`, `/bus`, `/weather`, `/air`, `/url`, `/status`)를 요청한 경우에만 결정론적 0.001초 즉각 라우팅 집행.
+* **비-슬래시 모든 자연어 100% LLM AI 엔진 위임**:
+  * `intent_analyzer.py`에 누적되어 있던 800여 라인의 정규식 가로채기 폭포수를 완전 철거하고, 자연어 발화는 어떠한 사전 필터 없이 100% `call_ai_engine_func` (LLM AI 엔진)으로 전달.
+* **LLM 의도 판별 프로토콜 (Intent Protocol)**:
+  * 시스템 프롬프트에 `[INTENT: ...]` 태그 출력 지침을 주입하고, LLM이 맥락·스킬을 추론하여 출력한 태그를 `_parse_llm_intent_result`에서 파싱하여 백엔드 액션과 사용자 대화로 분리.
+  * 시맨틱 스마트 폴백(`get_smart_fallback`)을 통해 Fast Mode 및 오프라인 환경에서도 100% 동일한 프로토콜 및 초고속 단위 테스트(145개 46초) 보장.
+
 ---
+
 
 
 ## 4. 시스템 아키텍처 개요 (System Architecture Overview)

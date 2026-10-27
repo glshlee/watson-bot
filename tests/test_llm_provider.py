@@ -171,3 +171,59 @@ def test_llm_provider_negative_feedback_and_yoga_guard():
     res_yoga = provider.analyze_and_respond("오늘 저녁에 요가 수업 다녀왔어")
     assert res_yoga.intent == "log_suggest"
     assert res_yoga.category == "Workout & Health"
+
+
+def test_gtd_task_addition_and_briefing_guard():
+    """'트래블월렛 고객확인 gtd에 추가' 등 구어체 태스크 등록 및 브리핑 오탐 가드레일 검증 (ADR-059)."""
+    provider = LLMProvider()
+
+    # 1. '트래블월렛 고객확인 gtd에 추가' ➔ 브리핑 오탐 없이 log_explicit 정상 등록
+    res_wallet = provider.analyze_and_respond("트래블월렛 고객확인 gtd에 추가")
+    assert res_wallet.intent == "log_explicit"
+    assert res_wallet.category == "GTD Inbox"
+    assert "트래블월렛 고객확인" in (res_wallet.log_content or "")
+    assert "💳" in (res_wallet.log_content or "")
+
+    # 2. 다양한 약식 지시어 (등록, 추가, 넣어 등)
+    res_doc = provider.analyze_and_respond("본인확인 서류 제출 gtd에 등록")
+    assert res_doc.intent == "log_explicit"
+    assert res_doc.category == "GTD Inbox"
+    assert "본인확인" in (res_doc.log_content or "")
+
+    # 3. 순수 브리핑 요청은 정상적으로 task_briefing으로 동작
+    res_briefing = provider.analyze_and_respond("오늘 gtd 할일 확인해줘")
+    assert res_briefing.intent in ("task_briefing", "task_briefing_morning", "task_briefing_evening")
+
+
+def test_llm_provider_gtd_inspect_and_briefing_separation():
+    """'gtd inbox 확인' 등 수집함/GTD 직접 조회와 브리핑 분리 검증 (ADR-060)."""
+    provider = LLMProvider()
+
+    # 1. 파일 직접 열람 구어체 질의 ➔ gtd_inspect (브리핑 오탐 원천 차단)
+    for q in [
+        "gtd inbox 확인",
+        "inbox 확인",
+        "gtd 확인",
+        "수집함 확인",
+        "인박스 확인",
+        "inbox 보여줘",
+        "gtd 파일 보여줘",
+        "inbox.md 확인",
+        "next_actions 확인",
+        "다음 행동 확인",
+    ]:
+        res = provider.analyze_and_respond(q)
+        assert res.intent == "gtd_inspect", f"Expected gtd_inspect for '{q}', got '{res.intent}'"
+
+    # 2. 명시적 브리핑 요청 ➔ task_briefing
+    for b in [
+        "/briefing",
+        "브리핑",
+        "브리핑 해줘",
+        "오늘 할 일 브리핑해줘",
+        "오늘 해야할 일 정리해줘",
+    ]:
+        res_b = provider.analyze_and_respond(b)
+        assert res_b.intent in ("task_briefing", "task_briefing_morning", "task_briefing_evening"), f"Expected briefing for '{b}', got '{res_b.intent}'"
+
+

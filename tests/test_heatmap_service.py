@@ -78,11 +78,11 @@ def test_heatmap_service_scan(temp_gtd_env):
 
 def test_heatmap_data_and_streaks(temp_gtd_env):
     service = HeatmapService(base_dir=temp_gtd_env)
-    data = service.get_heatmap_data(days=30)
+    data = service.get_heatmap_data(days=60)
 
     assert "days" in data
     assert "summary" in data
-    assert len(data["days"]) == 30
+    assert len(data["days"]) == 60
 
     summary = data["summary"]
     assert summary["total_days_logged"] == 3
