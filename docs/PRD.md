@@ -595,8 +595,15 @@
 * **백그라운드 워커 완벽 격리 (`DISABLE_TELEGRAM_POLLING=1`)**:
   * 로컬 개발 서버(`./scripts/service.sh dev-start`, 포트 `8001`) 및 격리 스모크 테스트 기동 시 텔레그램 봇 폴링(`start_polling`)과 정기 브리핑 스케줄러(`briefing_scheduler.start`)를 동시 비활성화하여 원격 운영 서버의 텔레그램 봇과 `409 Conflict` 충돌 및 중복 푸시 발송을 원천 차단.
 * **Pre-Push 통합 품질 게이트 (`./scripts/gate.sh`) 및 원격 운영 배포 (`./scripts/deploy.sh`)**:
-  * 커밋/푸시(`git push`) 시점에 4단계 게이트(`ruff check .` ➔ `mypy app/` ➔ `pytest -q` ➔ `8001` 포트 격리 샌드박스 `./scripts/smoke_test.sh --quick`)를 자동 실행하고 실패 시 즉시 차단(Fail-Fast).
+  * 커밋/푸시(`git push`) 시점에 4단계 게이트(`ruff check .` ➔ `mypy app/` ➔ `pytest -q` ➔ `8009` 포트 격리 샌드박스 `./scripts/smoke_test.sh --quick`)를 자동 실행하고 실패 시 즉시 차단(Fail-Fast).
   * 원격 운영 서버에서는 `./scripts/deploy.sh`를 통해 로컬 게이트 검증 완료 코드를 `git pull` 후 무중단 재시작 반영.
+
+### 3.60. ✨ 웹 콘솔 상단 헤더 미니멀화 및 `[⚙️ 설정]` 드롭다운 팝오버 통합 (Header Minimalization & Unified Settings Popover - ADR-063)
+* **상단 헤더 핵심 배지 슬림화**:
+  * `/watson` 상단 바의 우측 배지를 10개에서 핵심 4종(`🏠 에이전트 허브`, `📅 연속 기록 & 에디터`, `🕒 실시간 KST 시계`, `🎛️ 설정 ▾`)으로 60% 감축하여 타이틀 영역 침범 및 겹침(Overlap) 원천 해소.
+* **통합 설정/도구 드롭다운 팝오버 (`#header-settings-dropdown`)**:
+  * `GTD 저장소 경로`, `출근길 날씨 & 버스 설정`, `텔레그램 봇 메뉴 설정`, `현재 세션 대화 비우기`(및 DevBot의 `개발 로드맵`, `하네스 스킬`)를 글래스모피즘 팝오버 메뉴로 통합하고 기존 DOM ID 바인딩을 100% 보존.
+  * `gtd_modal.js`의 `#gtd-path-text` 바인딩을 보완하여 실시간 GTD 경로 및 Git 연동 상태 즉시 표시.
 
 ---
 

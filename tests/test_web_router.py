@@ -163,4 +163,24 @@ def test_briefing_scheduler_endpoints():
     assert "sent_count" in trigger_data["data"]
 
 
+def test_header_settings_popover_dom_elements():
+    """ADR-063: /watson 및 /dev 상단 헤더 설정 드롭다운 팝오버 DOM 렌더링 및 기존 배지 ID 보존 검증."""
+    res_watson = client.get("/watson")
+    assert res_watson.status_code == 200
+    assert 'id="btn-header-settings"' in res_watson.text
+    assert 'id="header-settings-dropdown"' in res_watson.text
+    assert 'id="gtd-storage-badge"' in res_watson.text
+    assert 'id="commute-settings-badge"' in res_watson.text
+    assert 'id="telegram-menu-badge"' in res_watson.text
+    assert 'id="clear-chat-btn"' in res_watson.text
+
+    res_dev = client.get("/dev")
+    assert res_dev.status_code == 200
+    assert 'id="btn-header-settings"' in res_dev.text
+    assert 'id="header-settings-dropdown"' in res_dev.text
+    assert 'id="btn-dev-roadmap-quick"' in res_dev.text
+    assert 'id="btn-dev-skills-quick"' in res_dev.text
+
+
+
 

@@ -2,22 +2,26 @@
    Modal Components (GTD, Schedule, Commute, Telegram, Heatmap & Editor)
    ========================================================================== */
 
-/* GTD Directory Badge and Modal Styles (ADR-007) */
-.gtd-badge {
+/* GTD Directory Badge and Modal Styles (ADR-007, ADR-063) */
+.gtd-badge:not(.settings-dropdown-item) {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: rgba(59, 130, 246, 0.15) !important;
-    border: 1px solid rgba(59, 130, 246, 0.4) !important;
-    color: #60a5fa !important;
-    padding: 6px 12px !important;
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    color: #60a5fa;
+    padding: 6px 12px;
     font-size: 0.82rem;
 }
 
-.gtd-badge.git-active {
-    background: rgba(16, 185, 129, 0.15) !important;
-    border-color: rgba(16, 185, 129, 0.4) !important;
-    color: #34d399 !important;
+.gtd-badge.git-active:not(.settings-dropdown-item) {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.4);
+    color: #34d399;
+}
+
+.settings-dropdown-item.gtd-badge.git-active .settings-item-sub {
+    color: #34d399;
 }
 
 .gtd-edit-btn {
@@ -356,10 +360,10 @@
     box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
 }
 
-.btn-clear-chat {
-    background: rgba(239, 68, 68, 0.12) !important;
-    border: 1px solid rgba(239, 68, 68, 0.3) !important;
-    color: #f87171 !important;
+.btn-clear-chat:not(.settings-dropdown-item) {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #f87171;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -367,10 +371,10 @@
     transition: all 0.2s ease;
 }
 
-.btn-clear-chat:hover {
-    background: rgba(239, 68, 68, 0.25) !important;
-    color: #ffffff !important;
-    border-color: #ef4444 !important;
+.btn-clear-chat:not(.settings-dropdown-item):hover {
+    background: rgba(239, 68, 68, 0.25);
+    color: #ffffff;
+    border-color: #ef4444;
 }
 
 

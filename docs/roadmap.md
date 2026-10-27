@@ -664,11 +664,16 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] 로컬 경량 개발 루프(Fast Dev Loop) 및 푸시 품질 게이트 하네스 규칙(`.agents/rules/release_gate.md`, `ADR-062`) 수립
 - [x] `app/main.py` 및 `app/config.py`에 `DISABLE_TELEGRAM_POLLING=1` 지원 (텔레그램 폴링 및 브리핑 스케줄러 동시 비활성화로 원격 운영 봇과 `409 Conflict` 충돌 차단)
 - [x] `SettingsService`(`WATSON_GTD_CONFIG_FILE`) 및 `CommuteConfigService`(`WATSON_COMMUTE_CONFIG_FILE`) 환경변수 설정 파일 격리 지원
-- [x] `scripts/smoke_test.sh` 개편: 포트 `8001` 완전 격리 샌드박스 기동 및 5초 초고속 `--quick` 모드 신설
+- [x] `scripts/smoke_test.sh` 개편: 포트 `8009` 완전 격리 샌드박스 기동 및 5초 초고속 `--quick` 모드 신설
 - [x] `scripts/gate.sh` (4단계 Pre-Push 품질 게이트 + `--install-hook` Git `pre-push` 훅 자동 설치) 및 `scripts/deploy.sh` (원격 운영계 무중단 배포) 신설
 - [x] `scripts/service.sh`에 로컬 개발 서버 전용 `dev-start` / `dev-stop` (포트 `8001`) 명령어 추가
 
-### Phase 62: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
+### Phase 62: 웹 콘솔 상단 헤더 미니멀화 및 `[⚙️ 설정]` 드롭다운 팝오버 통합 (ADR-063) - ✅ 완료
+- [x] `/watson` 및 `/dev` 상단 헤더 우측 배지를 핵심 4~5종으로 슬림화하고 환경 설정/관리 항목을 `[⚙️ 설정 ▾]` / `[⚙️ 도구 ▾]` 글래스모피즘 팝오버 드롭다운(`#header-settings-dropdown`)으로 통합
+- [x] `app/static/js/utils/modal.js`에 `initHeaderSettingsDropdown()` 구현 (토글, 항목 선택 시 자동 닫힘, 외부 클릭 Light Dismiss, `Escape` 닫기)
+- [x] `app/static/js/modules/gtd_modal.js`의 `#gtd-path-text` DOM ID 폴백 보완으로 실시간 GTD 경로 표시 정상화
+
+### Phase 63: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
 - [ ] `User` 모델 및 테넌트별 저장소/컨텍스트 격리 (`/data/tenants/{user_id}/`)
 - [ ] 단일 텔레그램 봇 기반 다중 사용자 라우팅 및 계정 바인딩 (`/start [연동코드]`)
 - [ ] 사용자 GitHub PAT 및 외부 API 키 AES-256 (Fernet) 암호화 보관
