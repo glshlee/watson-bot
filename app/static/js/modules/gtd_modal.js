@@ -5,7 +5,7 @@
     let gtdInitialized = false;
 
     async function loadGTDStatus() {
-        const gtdPathText = document.getElementById("gtd-path-display");
+        const gtdPathText = document.getElementById("gtd-path-display") || document.getElementById("gtd-path-text");
         const gtdStorageBadge = document.getElementById("gtd-storage-badge");
         const gtdPathInput = document.getElementById("gtd-path-input");
         const gtdModalStatus = document.getElementById("gtd-modal-status");

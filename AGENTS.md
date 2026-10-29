@@ -86,10 +86,11 @@
 * **GTD 구어체 태스크 등록 & 브리핑 가드레일 (ADR-059)**: "gtd에 추가" 등 구어체 축약어 수용, "고객확인" 속 '확인'의 브리핑 오탐 차단 및 금융 태스크(💳) 개인 섹션 자동 라우팅 보장.
 * **브리핑 가로채기 철거 & GTD 열람 라우팅 (ADR-060)**: briefing_triggers에서 gtd/inbox/수집함 철거로 저녁 회고 오탐 차단, "gtd inbox 확인" 등 파일 직접 조회를 100% gtd_inspect로 라우팅할 것.
 * **슬래시 명령어 전용 라우팅 & 자연어 100% LLM 위임 (ADR-061)**: 슬래시(/) 명령어 전용 즉각 라우터 외 800여 줄 정규식 가로채기를 전면 철거하고 모든 자연어를 100% LLM(Intent Protocol)으로 위임할 것.
-* **개발/운영 분리 & Pre-Push 품질 게이트 (ADR-062)**: 일상 코드 수정 시 타겟 파일 `ruff`/`mypy`/`pytest`만 실행(Fast Dev Loop)하여 비용을 절감하고, 커밋/푸시 직전에만 `./scripts/gate.sh`(8001 포트 격리 스모크, `DISABLE_TELEGRAM_POLLING=1` 포함)를 1회 실행하며, 에이전트는 사용자가 명시적으로 "커밋해" 지시할 때만 커밋할 것.
+* **개발/운영 분리 & Pre-Push 품질 게이트 (ADR-062)**: 일상 코드 수정 시 타겟 파일 `ruff`/`mypy`/`pytest`만 실행(Fast Dev Loop)하여 비용을 절감하고, 커밋/푸시 직전에만 `./scripts/gate.sh`(격리 스모크, `DISABLE_TELEGRAM_POLLING=1` 포함)를 1회 실행하며, 에이전트는 사용자가 명시적으로 "커밋해" 지시할 때만 커밋할 것.
+* **상단 헤더 미니멀화 & 설정 팝오버 통합 (ADR-063)**: 웹 콘솔(`/watson`, `/dev`) 상단 헤더는 핵심 배지(허브/잔디/시계)만 노출하고, GTD 경로·출근·텔레그램 메뉴·대화 비우기 등은 `[⚙️ 설정]` 드롭다운(`#header-settings-dropdown`)으로 통합하여 타이틀 겹침을 원천 차단할 것.
 ### 4. Progressive Disclosure (상세 문서 참조)
 * **제품 기획서 개요**: `docs/PRD.md` | **기능 요구사항**: `docs/requirements.md`
-* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-062)
+* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-063)
 ---
 ## 🛠 1. 기술 스택 & 프로젝트 구조 요약
 * **Tech Stack**: Python (v3.10+), FastAPI, SQLAlchemy, SQLite, Jinja2/HTML5/CSS3/JS, pytest, mypy, ruff

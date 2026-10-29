@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Watson - 24/7 AI Agent Console</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/static/css/style.css?v=1.6.2">
+    <link rel="stylesheet" href="/static/css/style.css?v=1.6.3">
 </head>
 <body>
     <div class="app-container">
@@ -83,31 +83,66 @@
                     <a href="/" class="badge btn-hub-home" title="에이전트 허브 대시보드로 이동">
                         <i class="fa-solid fa-house"></i> <span class="desktop-only">에이전트 허브</span>
                     </a>
-                    <button id="clear-chat-btn" class="badge btn-clear-chat" title="현재 세션 대화 내용 비우기">
-                        <i class="fa-solid fa-broom"></i> <span class="desktop-only">대화 비우기</span>
-                    </button>
-                    <div id="header-clock-badge" class="badge header-clock-badge desktop-only" title="현재 한국 표준시 (KST, Asia/Seoul)">
-                        <i class="fa-solid fa-clock"></i> <span id="header-live-clock">--:-- KST</span>
-                    </div>
                     <div id="heatmap-badge" class="badge heatmap-badge" title="클릭하여 연간 잔디 및 마크다운 일일 로그 편집기 열기">
                         <i class="fa-solid fa-calendar-check"></i> <span id="heatmap-streak-text">연속: -일</span>
                         <button id="open-editor-header-btn" class="editor-edit-btn" title="일일 로그 에디터 열기"><i class="fa-solid fa-pen-to-square"></i></button>
                     </div>
-                    <div id="commute-settings-badge" class="badge commute-badge" title="클릭하여 출근길 날씨 & 버스 브리핑 설정">
-                        <i class="fa-solid fa-bus"></i> <span id="commute-status-text">출근: 07:30</span>
-                        <button id="change-commute-btn" class="commute-edit-btn" title="출근 브리핑 설정"><i class="fa-solid fa-gear"></i></button>
+                    <div id="header-clock-badge" class="badge header-clock-badge desktop-only" title="현재 한국 표준시 (KST, Asia/Seoul)">
+                        <i class="fa-solid fa-clock"></i> <span id="header-live-clock">--:-- KST</span>
                     </div>
-                    <div id="telegram-menu-badge" class="badge telegram-badge" title="클릭하여 텔레그램 봇 메뉴 명령어 설정">
-                        <i class="fa-brands fa-telegram"></i> <span id="telegram-menu-text">메뉴: 14개</span>
-                        <button id="open-telegram-menu-btn" class="telegram-edit-btn" title="텔레그램 메뉴 설정"><i class="fa-solid fa-gear"></i></button>
+
+                    <!-- Unified Header Settings Popover Menu (ADR-063) -->
+                    <div class="header-settings-wrapper" id="header-settings-wrapper">
+                        <button type="button" id="btn-header-settings" class="badge btn-header-settings" title="환경 설정 및 세션 관리 메뉴">
+                            <i class="fa-solid fa-sliders"></i> <span class="desktop-only">설정</span>
+                            <i class="fa-solid fa-chevron-down settings-caret desktop-only"></i>
+                        </button>
+                        <div id="header-settings-dropdown" class="header-settings-dropdown hidden">
+                            <div class="settings-dropdown-header">
+                                <span><i class="fa-solid fa-gear"></i> 환경 설정 & 관리</span>
+                                <span class="settings-engine-pill"><i class="fa-solid fa-code-commit"></i> AGY · Auto Push</span>
+                            </div>
+                            <div class="settings-dropdown-list">
+                                <div id="gtd-storage-badge" class="settings-dropdown-item gtd-badge" title="클릭하여 GTD 작업 디렉토리 설정">
+                                    <div class="settings-item-icon gtd-icon"><i class="fa-solid fa-folder-tree"></i></div>
+                                    <div class="settings-item-body">
+                                        <span class="settings-item-title">GTD 저장소 경로</span>
+                                        <span id="gtd-path-text" class="settings-item-sub">GTD: 로딩 중...</span>
+                                    </div>
+                                    <button id="change-gtd-btn" class="gtd-edit-btn settings-item-arrow" title="GTD 저장소 변경"><i class="fa-solid fa-chevron-right"></i></button>
+                                </div>
+
+                                <div id="commute-settings-badge" class="settings-dropdown-item commute-badge" title="클릭하여 출근길 날씨 & 버스 브리핑 설정">
+                                    <div class="settings-item-icon commute-icon"><i class="fa-solid fa-bus"></i></div>
+                                    <div class="settings-item-body">
+                                        <span class="settings-item-title">출근길 날씨 & 버스 설정</span>
+                                        <span id="commute-status-text" class="settings-item-sub">출근: 07:30</span>
+                                    </div>
+                                    <button id="change-commute-btn" class="commute-edit-btn settings-item-arrow" title="출근 브리핑 설정"><i class="fa-solid fa-chevron-right"></i></button>
+                                </div>
+
+                                <div id="telegram-menu-badge" class="settings-dropdown-item telegram-badge" title="클릭하여 텔레그램 봇 메뉴 명령어 설정">
+                                    <div class="settings-item-icon telegram-icon"><i class="fa-brands fa-telegram"></i></div>
+                                    <div class="settings-item-body">
+                                        <span class="settings-item-title">텔레그램 봇 메뉴 설정</span>
+                                        <span id="telegram-menu-text" class="settings-item-sub">메뉴: 14개</span>
+                                    </div>
+                                    <button id="open-telegram-menu-btn" class="telegram-edit-btn settings-item-arrow" title="텔레그램 메뉴 설정"><i class="fa-solid fa-chevron-right"></i></button>
+                                </div>
+
+                                <div class="settings-dropdown-divider"></div>
+
+                                <button type="button" id="clear-chat-btn" class="settings-dropdown-item settings-item-danger btn-clear-chat" title="현재 세션 대화 내용 비우기">
+                                    <div class="settings-item-icon danger-icon"><i class="fa-solid fa-broom"></i></div>
+                                    <div class="settings-item-body">
+                                        <span class="settings-item-title">현재 세션 대화 비우기</span>
+                                        <span class="settings-item-sub">현재 창 메시지 초기화</span>
+                                    </div>
+                                    <i class="fa-solid fa-chevron-right settings-item-arrow"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <div id="gtd-storage-badge" class="badge gtd-badge" title="클릭하여 GTD 작업 디렉토리 설정">
-                        <i class="fa-solid fa-folder-tree"></i> <span id="gtd-path-text">GTD: 로딩 중...</span>
-                        <button id="change-gtd-btn" class="gtd-edit-btn" title="GTD 저장소 변경"><i class="fa-solid fa-gear"></i></button>
-                    </div>
-                    <span class="badge badge-engine desktop-only">AGY / LLM</span>
-                    <span class="badge badge-push desktop-only" title="1기록 1커밋 Auto Git Push 활성화"><i class="fa-solid fa-code-commit"></i> Auto Push</span>
-                    <i class="fa-brands fa-github avatar desktop-only"></i>
                 </div>
             </header>
 
@@ -159,16 +194,16 @@
         </main>
     </div>
 
-    <!-- Modular JavaScript Bundle (ADR-050, ADR-054) -->
-    <script src="/static/js/utils/api.js?v=1.5.2"></script>
-    <script src="/static/js/utils/date.js?v=1.5.2"></script>
-    <script src="/static/js/utils/modal.js?v=1.5.2"></script>
-    <script src="/static/js/modules/gtd_modal.js?v=1.5.2"></script>
-    <script src="/static/js/modules/schedule_modal.js?v=1.5.2"></script>
-    <script src="/static/js/modules/commute_modal.js?v=1.5.2"></script>
-    <script src="/static/js/modules/telegram_modal.js?v=1.5.2"></script>
-    <script src="/static/js/modules/editor_modal.js?v=1.5.2"></script>
-    <script src="/static/js/modules/command_palette.js?v=1.5.2"></script>
-    <script src="/static/js/main.js?v=1.5.2"></script>
+    <!-- Modular JavaScript Bundle (ADR-050, ADR-054, ADR-063) -->
+    <script src="/static/js/utils/api.js?v=1.6.3"></script>
+    <script src="/static/js/utils/date.js?v=1.6.3"></script>
+    <script src="/static/js/utils/modal.js?v=1.6.3"></script>
+    <script src="/static/js/modules/gtd_modal.js?v=1.6.3"></script>
+    <script src="/static/js/modules/schedule_modal.js?v=1.6.3"></script>
+    <script src="/static/js/modules/commute_modal.js?v=1.6.3"></script>
+    <script src="/static/js/modules/telegram_modal.js?v=1.6.3"></script>
+    <script src="/static/js/modules/editor_modal.js?v=1.6.3"></script>
+    <script src="/static/js/modules/command_palette.js?v=1.6.3"></script>
+    <script src="/static/js/main.js?v=1.6.3"></script>
 </body>
 </html>

@@ -104,23 +104,18 @@
     }
 
     .user-profile {
-        gap: 4px;
+        gap: 6px;
         flex: 1;
         min-width: 0;
         display: flex;
         align-items: center;
         justify-content: flex-end;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
+        overflow: visible;
         padding: 2px 0;
     }
 
-    .user-profile::-webkit-scrollbar {
-        display: none;
-    }
-
-    .user-profile .badge {
+    .user-profile > .badge,
+    .header-settings-wrapper > .badge {
         width: 34px !important;
         min-width: 34px !important;
         max-width: 34px !important;
@@ -135,19 +130,16 @@
         cursor: pointer;
     }
 
-    /* Hide long badge text and sub-buttons on mobile to keep 34x34px icon cards */
-    .user-profile .badge span:not(.desktop-only),
-    .user-profile .badge button {
+    /* Hide long badge text and sub-buttons on mobile top-bar badges only */
+    .user-profile > .badge span:not(.desktop-only),
+    .user-profile > .badge button,
+    .header-settings-wrapper > .badge span:not(.desktop-only) {
         display: none !important;
     }
 
-    .user-profile a.badge,
-    .user-profile button.badge,
-    .gtd-badge,
-    .telegram-badge,
-    .heatmap-badge,
-    .commute-badge,
-    .dev-branch-badge {
+    .user-profile > a.badge,
+    .user-profile > button.badge,
+    .user-profile > .heatmap-badge {
         width: 34px !important;
         min-width: 34px !important;
         max-width: 34px !important;
@@ -331,15 +323,6 @@
 }
 
 @media (max-width: 400px) {
-    .gtd-badge {
-        max-width: 85px !important;
-        padding: 0 5px !important;
-    }
-
-    #gtd-path-text {
-        max-width: 35px;
-    }
-
     .message {
         max-width: 95%;
     }

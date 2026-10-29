@@ -360,7 +360,11 @@
 ### FR-61: 개발/운영 프로세스 분리 및 Pre-Push 품질 게이트 (ADR-062)
 - **FR-61.1**: 일상 코드 수정 시 수정 파일에 대한 타겟 `ruff check`, `mypy`, 단일 `pytest`만 실행하는 로컬 경량 개발 루프(Fast Dev Loop)를 적용해야 한다.
 - **FR-61.2**: `DISABLE_TELEGRAM_POLLING=1` 설정 시 `app/main.py`에서 텔레그램 폴링과 브리핑 스케줄러를 동시 비활성화하고, `WATSON_GTD_CONFIG_FILE` 및 `WATSON_COMMUTE_CONFIG_FILE` 환경변수 격리를 지원하여 원격 운영 서버 및 로컬 설정 오염을 원천 차단해야 한다.
-- **FR-61.3**: `./scripts/gate.sh`를 통해 4단계 통합 품질 게이트(`ruff` ➔ `mypy` ➔ `pytest` ➔ `8001` 포트 격리 `./scripts/smoke_test.sh --quick`)와 Git `pre-push` 훅을 제공하고, 원격 운영 서버 무중단 배포를 위한 `./scripts/deploy.sh`를 제공해야 한다.
+- **FR-61.3**: `./scripts/gate.sh`를 통해 4단계 통합 품질 게이트(`ruff` ➔ `mypy` ➔ `pytest` ➔ 격리 `./scripts/smoke_test.sh --quick`)와 Git `pre-push` 훅을 제공하고, 원격 운영 서버 무중단 배포를 위한 `./scripts/deploy.sh`를 제공해야 한다.
+
+### FR-62: 웹 콘솔 상단 헤더 미니멀화 및 `[⚙️ 설정]` 드롭다운 팝오버 통합 (ADR-063)
+- **FR-62.1**: `/watson` 및 `/dev` 상단 헤더 우측의 환경 설정 및 부가 액션 배지들을 `#header-settings-dropdown` 팝오버 메뉴로 통합하여 상단 바 상시 노출 배지를 4~5개 이내로 미니멀화하고 타이틀 겹침을 방지해야 한다.
+- **FR-62.2**: 드롭다운 내부 항목(`#gtd-storage-badge`, `#commute-settings-badge`, `#telegram-menu-badge`, `#clear-chat-btn`, `#btn-dev-roadmap-quick`, `#btn-dev-skills-quick`)의 기존 DOM ID를 100% 유지하고, 외부 클릭 및 `Escape` 키로 닫히는 팝오버 제어(`initHeaderSettingsDropdown`)를 제공해야 한다.
 
 ---
 
@@ -446,5 +450,7 @@
 | **FR-58** | `app/services/llm/intent_analyzer.py`, `app/services/llm/category_extractor.py`, `app/services/gtd_service.py`, `tests/test_llm_provider.py`, `tests/test_agent_service.py` | Pytest 단위 테스트(`test_llm_provider.py`, `test_agent_service.py`) & cURL 라이브 검증 |
 | **FR-59, FR-60** | `app/services/llm/intent_analyzer.py`, `app/services/llm/prompt_builder.py`, `app/services/llm_provider.py` | Pytest 단위 테스트(`test_llm_provider.py`) & cURL 라이브 검증 (ADR-060, ADR-061) |
 | **FR-61** | `app/main.py`, `app/config.py`, `scripts/gate.sh`, `scripts/deploy.sh`, `scripts/smoke_test.sh`, `scripts/service.sh`, `.agents/rules/release_gate.md` | `./scripts/gate.sh` 4단계 통합 품질 게이트 검증 (ADR-062) |
+| **FR-62** | `app/templates/index.html`, `app/templates/dev.html`, `app/static/css/layout.css`, `app/static/css/modals.css`, `app/static/css/responsive.css`, `app/static/js/utils/modal.js`, `app/static/js/modules/gtd_modal.js` | Pytest 단위 테스트(`test_web_router.py`) & 브라우저 헤더/팝오버 렌더링 검증 (ADR-063) |
+
 
 
