@@ -673,7 +673,14 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] `app/static/js/utils/modal.js`에 `initHeaderSettingsDropdown()` 구현 (토글, 항목 선택 시 자동 닫힘, 외부 클릭 Light Dismiss, `Escape` 닫기)
 - [x] `app/static/js/modules/gtd_modal.js`의 `#gtd-path-text` DOM ID 폴백 보완으로 실시간 GTD 경로 표시 정상화
 
-### Phase 63: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
+### Phase 63: 로컬 우선 기록(Local-First) 및 일괄 커밋·야간 자동 푸시 워크플로우 (ADR-064) - ✅ 완료
+- [x] `SupervisorService.process_user_request` 및 `ChatRequest` 기본값을 `auto_push=False`로 전환하여 일상 일기/GTD 기록·완료·제거 시 로컬 마크다운에만 0.01초 즉시 반영
+- [x] `GitService`에 `get_dirty_files()`, `build_batch_commit_message()` 및 `push(auto_commit_dirty=True)` 구현으로 `/commit` 일괄 커밋 및 `/push` 시 미커밋 파일 자동 일괄 커밋 후 푸시 지원
+- [x] `BriefingScheduler`에 매일 밤 `23:30 KST`(`NIGHTLY_PUSH_TIME`) 야간 자동 일괄 커밋·푸시 루틴(`dispatch_nightly_git_sync`) 및 무변경 시 자동 스킵 구현
+- [x] 단위 테스트(`test_supervisor_service.py`, `test_briefing_scheduler.py`) 추가 및 품질 게이트 전수 검증 완료
+
+### Phase 64: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
+
 - [ ] `User` 모델 및 테넌트별 저장소/컨텍스트 격리 (`/data/tenants/{user_id}/`)
 - [ ] 단일 텔레그램 봇 기반 다중 사용자 라우팅 및 계정 바인딩 (`/start [연동코드]`)
 - [ ] 사용자 GitHub PAT 및 외부 API 키 AES-256 (Fernet) 암호화 보관

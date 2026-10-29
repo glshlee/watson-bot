@@ -88,9 +88,11 @@
 * **슬래시 명령어 전용 라우팅 & 자연어 100% LLM 위임 (ADR-061)**: 슬래시(/) 명령어 전용 즉각 라우터 외 800여 줄 정규식 가로채기를 전면 철거하고 모든 자연어를 100% LLM(Intent Protocol)으로 위임할 것.
 * **개발/운영 분리 & Pre-Push 품질 게이트 (ADR-062)**: 일상 코드 수정 시 타겟 파일 `ruff`/`mypy`/`pytest`만 실행(Fast Dev Loop)하여 비용을 절감하고, 커밋/푸시 직전에만 `./scripts/gate.sh`(격리 스모크, `DISABLE_TELEGRAM_POLLING=1` 포함)를 1회 실행하며, 에이전트는 사용자가 명시적으로 "커밋해" 지시할 때만 커밋할 것.
 * **상단 헤더 미니멀화 & 설정 팝오버 통합 (ADR-063)**: 웹 콘솔(`/watson`, `/dev`) 상단 헤더는 핵심 배지(허브/잔디/시계)만 노출하고, GTD 경로·출근·텔레그램 메뉴·대화 비우기 등은 `[⚙️ 설정]` 드롭다운(`#header-settings-dropdown`)으로 통합하여 타이틀 겹침을 원천 차단할 것.
+* **로컬 우선 기록 & 일괄 커밋·야간 자동 푸시 (ADR-064)**: 평상시 일기/GTD 추가·완료·제거 시 로컬 마크다운에만 즉시 반영(`auto_push=False`)하고, `/commit` 시 일괄 커밋, `/push` 시 미커밋 자동 커밋 후 원격 푸시하며, 매일 밤 `23:30 KST` 스케줄러가 하루치 변경분을 자동 일괄 커밋·푸시할 것.
 ### 4. Progressive Disclosure (상세 문서 참조)
 * **제품 기획서 개요**: `docs/PRD.md` | **기능 요구사항**: `docs/requirements.md`
-* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-063)
+* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-064)
+
 ---
 ## 🛠 1. 기술 스택 & 프로젝트 구조 요약
 * **Tech Stack**: Python (v3.10+), FastAPI, SQLAlchemy, SQLite, Jinja2/HTML5/CSS3/JS, pytest, mypy, ruff

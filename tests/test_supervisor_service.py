@@ -434,6 +434,58 @@ def test_supervisor_log_status_inspect_workflow(db_session):
         shutil.rmtree(temp_dir)
 
 
+def test_local_first_batch_commit_and_push_workflow(db_session):
+    """ADR-064: 평상시 로컬 우선 기록 후 모아서 일괄 커밋(/commit) 및 원격 푸시(/push) 워크플로우 검증."""
+    import git
+
+    temp_dir = tempfile.mkdtemp()
+    try:
+        repo = git.Repo.init(temp_dir)
+        os.makedirs(os.path.join(temp_dir, "gtd"), exist_ok=True)
+        os.makedirs(os.path.join(temp_dir, "logs", "daily"), exist_ok=True)
+        inbox_file = os.path.join(temp_dir, "gtd", "inbox.md")
+        with open(inbox_file, "w", encoding="utf-8") as f:
+            f.write("# 📥 Inbox\n\n## 🧘 개인 생활 & 건강 (02_personal)\n")
+        repo.git.add(A=True)
+        repo.index.commit("chore: initial gtd repo")
+
+        supervisor = SupervisorService(db=db_session, base_dir=temp_dir, fast_mode=True)
+
+        # 1. 평상시 명령 2회: 로컬 파일만 수정되고 즉시 커밋되지 않아야 함 (is_dirty == True)
+        res1 = supervisor.process_user_request(
+            session_id="batch_sess",
+            user_message="/log 아침 스트레칭 15분 완료",
+            channel="web",
+        )
+        assert res1["intent"] == "log_explicit"
+        assert res1["git_pushed"] is False
+
+        res2 = supervisor.process_user_request(
+            session_id="batch_sess",
+            user_message="트래블월렛 고객확인 gtd에 추가",
+            channel="web",
+        )
+        assert res2["intent"] == "log_explicit"
+        assert res2["git_pushed"] is False
+
+        dirty_files = supervisor.git_service.get_dirty_files()
+        assert len(dirty_files) == 2
+
+        # 2. 사용자가 "커밋해" 명령 시 2개 파일이 한 번에 일괄 커밋되어야 함
+        res_commit = supervisor.process_user_request(
+            session_id="batch_sess",
+            user_message="커밋해",
+            channel="web",
+        )
+        assert res_commit["intent"] == "repo_commit"
+        assert "2개 파일" in res_commit["ai_response"]
+        assert supervisor.git_service.get_dirty_files() == []
+        assert "batch update 2 file(s)" in str(repo.head.commit.message)
+    finally:
+        shutil.rmtree(temp_dir)
+
+
+
 
 
 

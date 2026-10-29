@@ -21,7 +21,6 @@ from app.config import get_now
 from app.db.database import get_db
 from app.routers.briefing_router import TriggerPushRequest
 from app.services.agent_service import AgentService
-from app.services.git_service import GitService
 from app.services.heatmap_service import HeatmapService
 from app.services.search_service import SearchService
 from app.services.session_service import SessionService
@@ -174,19 +173,14 @@ async def upload_and_log_image(
 
     if auto_confirm:
         agent_service = AgentService(base_dir=gtd_path)
-        git_service = GitService(repo_path=gtd_path)
 
-        filepath = agent_service.append_or_update_lifelog(
+        agent_service.append_or_update_lifelog(
             content=analysis.markdown_content,
             category=analysis.suggested_category,
             date_obj=now,
         )
         if analysis.gtd_task:
             agent_service.append_to_gtd_inbox(analysis.gtd_task)
-
-        date_str = now.strftime("%Y-%m-%d")
-        commit_msg = f"docs(lifelog): [{analysis.suggested_category}] {analysis.summary[:30]} ({date_str}) [{session_id}]"
-        git_service.sync_and_commit_push(commit_message=commit_msg, file_path=filepath)
 
         session_service.add_message(
             session_id=session_id,
@@ -196,15 +190,16 @@ async def upload_and_log_image(
         session_service.add_message(
             session_id=session_id,
             role="assistant",
-            content=f"📷 사진 시각 분석 완료 및 라이프로그 반영:\n\n{analysis.markdown_content}",
+            content=f"📷 사진 시각 분석 완료 및 라이프로그 로컬 반영:\n\n{analysis.markdown_content}",
         )
 
         return {
             "status": "success",
             "logged": True,
-            "message": f"라이프로그 [{analysis.suggested_category}]에 안전하게 기록 및 푸시되었습니다.",
+            "message": f"라이프로그 [{analysis.suggested_category}]에 로컬 저장되었습니다. (/commit·/push 또는 밤 23:30 자동 백업)",
             "data": vision_service.to_dict(analysis),
         }
+
     else:
         draft_card = vision_service.format_draft_card(analysis)
         session_service.set_pending_log(

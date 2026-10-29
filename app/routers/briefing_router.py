@@ -53,7 +53,7 @@ async def trigger_briefing_push(
     request: Request,
     payload: TriggerPushRequest | None = None,
 ):
-    """텔레그램 브리핑 푸시 즉시 발송/테스트 엔드포인트 (ADR-026)."""
+    """텔레그램 브리핑 푸시 및 야간 자동 백업 즉시 발송/테스트 엔드포인트 (ADR-026, ADR-064)."""
     from app.services.briefing_scheduler import BriefingScheduler
 
     scheduler: BriefingScheduler | None = getattr(request.app.state, "briefing_scheduler", None)
@@ -61,5 +61,9 @@ async def trigger_briefing_push(
         scheduler = BriefingScheduler()
     mode = payload.mode if payload else "auto"
     target_chat_ids = [payload.chat_id] if payload and payload.chat_id else None
-    result = await scheduler.dispatch_briefing(mode=mode, target_chat_ids=target_chat_ids)
+    if mode == "nightly_push":
+        result = await scheduler.dispatch_nightly_git_sync(target_chat_ids=target_chat_ids)
+    else:
+        result = await scheduler.dispatch_briefing(mode=mode, target_chat_ids=target_chat_ids)
     return {"status": "success", "data": result}
+

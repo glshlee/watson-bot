@@ -16,7 +16,8 @@ class ChatRequest(BaseModel):
     session_id: str = "web_default_session"
     message: str
     category: str = "Daily Notes & Diary"
-    auto_push: bool = True
+    auto_push: bool = False
+
 
 
 class DevChatRequest(BaseModel):
