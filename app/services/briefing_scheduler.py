@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from typing import Any
 
 from app.config import get_now
@@ -13,11 +14,12 @@ logger = logging.getLogger("watson.briefing_scheduler")
 
 class BriefingScheduler:
     """
-    왓슨 텔레그램 정기 브리핑 자동 푸시 스케줄러 (ADR-026).
+    왓슨 텔레그램 정기 브리핑 및 야간 자동 Git 백업 스케줄러 (ADR-026, ADR-064).
     
     한국 표준시(KST)를 기준으로 매일:
     - 🌅 아침 08:30 KST: 오늘의 집중 우선순위 Top 3 및 일정 아침 브리핑 자동 발송
     - 🌇 저녁 20:00 KST: 오늘 완료 하이라이트 요약 및 미완료 과제 이월(Rollover) 저녁 회고 자동 발송
+    - 🌙 야간 23:30 KST: 하루 동안 로컬에 축적된 미커밋 라이프로그/GTD 변경분 일괄 커밋 및 원격 자동 푸시 (ADR-064)
     
     수신 대상: settings.TELEGRAM_ALLOWED_CHAT_IDS 에 등록된 모든 사용자.
     """
@@ -26,14 +28,18 @@ class BriefingScheduler:
         self,
         telegram_service: TelegramService | None = None,
         check_interval_seconds: int = 20,
+        nightly_push_time: str | None = None,
     ):
         self.telegram_service = telegram_service or TelegramService()
         self.check_interval_seconds = check_interval_seconds
+        self.nightly_push_time: str = nightly_push_time or os.getenv("NIGHTLY_PUSH_TIME", "23:30") or "23:30"
         self.is_running = False
+
         self.last_dispatched: dict[str, str | None] = {
             "morning": None,
             "evening": None,
             "weekly": None,
+            "nightly_push": None,
         }
 
     def get_scheduler_status(self) -> dict[str, Any]:
@@ -46,6 +52,7 @@ class BriefingScheduler:
             "morning_time": "08:30 KST",
             "evening_time": "20:00 KST",
             "weekly_time": "매주 일요일 21:00 KST",
+            "nightly_push_time": f"{self.nightly_push_time} KST",
             "last_dispatched": self.last_dispatched,
             "telegram_configured": self.telegram_service.is_configured(),
             "recipients": self.telegram_service.allowed_chat_ids,
@@ -60,7 +67,8 @@ class BriefingScheduler:
 
         self.is_running = True
         logger.info(
-            f"⏰ BriefingScheduler started. Monitoring Morning (08:30 KST) and Evening (20:00 KST). "
+            f"⏰ BriefingScheduler started. Monitoring Morning (08:30 KST), Evening (20:00 KST), "
+            f"and Nightly Git Auto-Push ({self.nightly_push_time} KST). "
             f"Allowed recipients: {self.telegram_service.allowed_chat_ids}"
         )
 
@@ -68,6 +76,12 @@ class BriefingScheduler:
             try:
                 now = get_now()
                 today_str = now.strftime("%Y-%m-%d")
+
+                nhour, nmin = 23, 30
+                try:
+                    nhour, nmin = map(int, self.nightly_push_time.split(":"))
+                except ValueError:
+                    nhour, nmin = 23, 30
 
                 # 🌅 Morning Briefing Check: 08:30 KST
                 if now.hour == 8 and now.minute == 30 and self.last_dispatched.get("morning") != today_str:
@@ -87,8 +101,17 @@ class BriefingScheduler:
                     self.last_dispatched["weekly"] = today_str
                     asyncio.create_task(self.dispatch_weekly_review())
 
+                # 🌙 Nightly Auto-Commit & Push Check: 23:30 KST (ADR-064)
+                elif now.hour == nhour and now.minute == nmin and self.last_dispatched.get("nightly_push") != today_str:
+                    logger.info(
+                        f"🌙 Time matched {self.nightly_push_time} KST. Running Nightly Git Batch Commit & Auto-Push for {today_str}..."
+                    )
+                    self.last_dispatched["nightly_push"] = today_str
+                    asyncio.create_task(self.dispatch_nightly_git_sync())
+
                 # 🚌 Commute Briefing Check: commute_cfg['send_time'] KST (ADR-030)
                 else:
+
                     try:
                         from app.services.commute_config_service import (
                             CommuteConfigService,
@@ -379,3 +402,98 @@ class BriefingScheduler:
             }
         finally:
             db.close()
+
+    async def dispatch_nightly_git_sync(
+        self,
+        target_chat_ids: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """
+        매일 밤 지정 시각(기본 23:30 KST)에 GTD 저장소의 미커밋 로컬 작업(is_dirty)과
+        미푸시 커밋(ahead_count)을 검사하여 일괄 커밋 및 원격 GitHub 자동 푸시를 수행합니다 (ADR-064).
+        변경사항이 없는 경우에는 불필요한 커밋/알림 없이 조용히 스킵합니다.
+        """
+        db = SessionLocal()
+        try:
+            supervisor = SupervisorService(db=db)
+            git_service = supervisor.git_service
+            if not git_service.is_git_repo:
+                return {
+                    "status": "skipped",
+                    "reason": "not_git_repo",
+                    "committed": False,
+                    "pushed": False,
+                    "dirty_files": [],
+                    "sent_count": 0,
+                }
+
+            dirty_files = git_service.get_dirty_files()
+            remote_info = git_service.get_remote_info()
+            ahead_count = int(remote_info.get("ahead_count", 0))
+
+            if not dirty_files and ahead_count == 0:
+                logger.info("🌙 Nightly Git Sync: Working tree clean and 0 commits ahead. Skipping.")
+                return {
+                    "status": "skipped",
+                    "reason": "no_changes",
+                    "committed": False,
+                    "pushed": False,
+                    "dirty_files": [],
+                    "sent_count": 0,
+                }
+
+            commit_msg = git_service.build_batch_commit_message(
+                dirty_files=dirty_files,
+                prefix="docs(auto-backup)",
+            )
+            pushed, push_msg = git_service.push(
+                auto_commit_dirty=True,
+                commit_message=commit_msg,
+            )
+
+            sent_count = 0
+            successful_recipients: list[str] = []
+            recipients = target_chat_ids or self.telegram_service.allowed_chat_ids
+
+            if pushed and self.telegram_service.is_configured() and recipients:
+                files_str = ", ".join(f"`{os.path.basename(f)}`" for f in dirty_files[:5])
+                files_line = f"• **일괄 커밋 파일 ({len(dirty_files)}건)**: {files_str}\n" if dirty_files else ""
+                notify_text = (
+                    f"🌙 **[왓슨 야간 자동 백업 완료 ({self.nightly_push_time} KST)]**\n\n"
+                    f"오늘 하루 로컬에 기록된 라이프로그 및 GTD 변경사항을 모아서 GitHub 원격 저장소에 안전하게 일괄 백업(Commit & Push)했습니다.\n\n"
+                    f"{files_line}"
+                    f"• **결과**: {push_msg}"
+                )
+                for cid in recipients:
+                    try:
+                        sent = await self.telegram_service.send_message(
+                            chat_id=cid,
+                            text=notify_text,
+                            parse_mode="Markdown",
+                        )
+                        if sent:
+                            sent_count += 1
+                            successful_recipients.append(str(cid))
+                            session_id = f"telegram:{cid}"
+                            supervisor.session_service.get_or_create_session(session_id=session_id, channel="telegram")
+                            supervisor.session_service.add_message(
+                                session_id=session_id,
+                                role="assistant",
+                                content=notify_text,
+                            )
+                    except Exception as e:  # noqa: BLE001
+                        logger.error(f"Failed to send nightly backup notification to chat_id={cid}: {e}")
+
+            return {
+                "status": "success" if pushed else "error",
+                "mode": "nightly_push",
+                "committed": bool(dirty_files),
+                "pushed": pushed,
+                "dirty_files": dirty_files,
+                "message": push_msg,
+                "sent_count": sent_count,
+                "recipients": successful_recipients,
+                "timestamp": get_now().isoformat(),
+            }
+        finally:
+            db.close()
+

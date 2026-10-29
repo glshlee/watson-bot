@@ -366,6 +366,12 @@
 - **FR-62.1**: `/watson` 및 `/dev` 상단 헤더 우측의 환경 설정 및 부가 액션 배지들을 `#header-settings-dropdown` 팝오버 메뉴로 통합하여 상단 바 상시 노출 배지를 4~5개 이내로 미니멀화하고 타이틀 겹침을 방지해야 한다.
 - **FR-62.2**: 드롭다운 내부 항목(`#gtd-storage-badge`, `#commute-settings-badge`, `#telegram-menu-badge`, `#clear-chat-btn`, `#btn-dev-roadmap-quick`, `#btn-dev-skills-quick`)의 기존 DOM ID를 100% 유지하고, 외부 클릭 및 `Escape` 키로 닫히는 팝오버 제어(`initHeaderSettingsDropdown`)를 제공해야 한다.
 
+### FR-63: 로컬 우선 기록(Local-First) 및 일괄 커밋·야간 자동 푸시 워크플로우 (ADR-064)
+- **FR-63.1**: 일상 라이프로그 기록 및 GTD 할 일 추가/완료/삭제 시 원격 Git 커밋/푸시를 즉시 수행하지 않고 로컬 마크다운 파일에만 즉시 반영(`auto_push=False` 기본값)해야 한다.
+- **FR-63.2**: `/commit`("커밋해") 실행 시 누적된 미커밋 파일들을 감지하여 일괄 커밋(`build_batch_commit_message`)을 생성하고, `/push`("푸시해줘") 실행 시 미커밋 로컬 파일이 존재하면 자동으로 먼저 일괄 커밋한 뒤 원격 푸시(`push(auto_commit_dirty=True)`)를 수행해야 한다.
+- **FR-63.3**: `BriefingScheduler`는 매일 밤 `23:30 KST`(`NIGHTLY_PUSH_TIME`)에 미커밋 파일 또는 미푸시 커밋이 존재할 경우 자동으로 일괄 커밋 및 원격 GitHub 푸시(`dispatch_nightly_git_sync`)를 집행해야 한다.
+
+
 ---
 
 
@@ -451,6 +457,8 @@
 | **FR-59, FR-60** | `app/services/llm/intent_analyzer.py`, `app/services/llm/prompt_builder.py`, `app/services/llm_provider.py` | Pytest 단위 테스트(`test_llm_provider.py`) & cURL 라이브 검증 (ADR-060, ADR-061) |
 | **FR-61** | `app/main.py`, `app/config.py`, `scripts/gate.sh`, `scripts/deploy.sh`, `scripts/smoke_test.sh`, `scripts/service.sh`, `.agents/rules/release_gate.md` | `./scripts/gate.sh` 4단계 통합 품질 게이트 검증 (ADR-062) |
 | **FR-62** | `app/templates/index.html`, `app/templates/dev.html`, `app/static/css/layout.css`, `app/static/css/modals.css`, `app/static/css/responsive.css`, `app/static/js/utils/modal.js`, `app/static/js/modules/gtd_modal.js` | Pytest 단위 테스트(`test_web_router.py`) & 브라우저 헤더/팝오버 렌더링 검증 (ADR-063) |
+| **FR-63** | `app/services/git_service.py`, `app/services/supervisor_service.py`, `app/services/briefing_scheduler.py`, `app/services/briefing_service.py`, `app/routers/chat_router.py`, `app/routers/briefing_router.py` | Pytest 단위 테스트(`test_supervisor_service.py`, `test_briefing_scheduler.py`) 검증 (ADR-064) |
+
 
 
 

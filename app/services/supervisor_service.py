@@ -38,7 +38,7 @@ class SupervisorService:
         user_message: str,
         category: str = "Daily Notes & Diary",
         channel: str = "web",
-        auto_push: bool = True,
+        auto_push: bool = False,
     ) -> dict[str, Any]:
         # 1. DB 세션 생성 및 보류 기록/히스토리 조회
         self.session_service.get_or_create_session(session_id=session_id, channel=channel)
@@ -59,9 +59,9 @@ class SupervisorService:
         filepath = None
         push_success = False
 
-        # 4. 의도별 분기 처리
+        # 4. 의도별 분기 처리 (ADR-064: Local-First 로컬 우선 기록 정책)
         if intent_res.intent == "log_dual" or intent_res.is_dual_log:
-            # (A-1) 복합 기록 (데일리 로그 + GTD 인박스 동시 반영 - ADR-014)
+            # (A-1) 복합 기록 (데일리 로그 + GTD 인박스 로컬 즉시 반영 - ADR-014, ADR-064)
             content_to_log = intent_res.log_content or user_message
             target_cat = "Daily Notes & Diary"
             daily_filepath = self.agent_service.append_or_update_lifelog(
@@ -82,7 +82,7 @@ class SupervisorService:
             self.session_service.clear_pending_log(session_id=session_id)
 
         elif intent_res.intent in ["log_confirm", "log_explicit"]:
-            # (A-2) 승인되었거나 직접 요청된 유의미한 라이프로그 -> 마크다운 기록 & Git 커밋 (옵션 A)
+            # (A-2) 승인되었거나 직접 요청된 유의미한 라이프로그 -> 로컬 마크다운 즉시 기록 (ADR-064)
             content_to_log = intent_res.log_content or user_message
             target_cat = category if category != "Daily Notes & Diary" else (intent_res.category or category)
 
@@ -120,26 +120,26 @@ class SupervisorService:
         final_response = intent_res.ai_response
 
         if intent_res.intent == "gtd_remove":
-            # (A-3) GTD 태스크 삭제/제거 (ADR-020)
+            # (A-3) GTD 태스크 삭제/제거 -> 로컬 파일 즉시 반영 (ADR-020, ADR-064)
             removed = self.agent_service.find_and_remove_matching_tasks(user_message)
             if removed:
                 bullets = "\n".join(f"• {t}" for t in removed)
-                date_str = get_now().strftime("%Y-%m-%d")
-                commit_msg = f"fix(gtd): remove {len(removed)} completed tasks ({date_str}) [{session_id}]"
                 push_res = ""
                 if auto_push:
+                    date_str = get_now().strftime("%Y-%m-%d")
+                    commit_msg = f"fix(gtd): remove {len(removed)} completed tasks ({date_str}) [{session_id}]"
                     p_success, p_msg = self.git_service.commit(commit_msg)
                     if p_success:
-                        p_ok, p_out = self.git_service.push()
+                        p_ok, p_out = self.git_service.push(auto_commit_dirty=False)
                         push_res = f"\n\n🚀 **원격 저장소 반영**: {p_out}"
                         push_success = p_ok
                     else:
                         push_res = f"\n\nℹ️ {p_msg}"
                 else:
-                    self.git_service.commit(commit_msg)
+                    push_res = "\n\n📁 로컬 파일에 즉시 반영되었습니다. (`/commit`·`/push`로 모아서 커밋하거나 밤 23:30에 자동 백업됩니다 🌙)"
 
                 final_response = (
-                    f"🗑️ **GTD 항목 제거 및 동기화 완료**\n\n"
+                    f"🗑️ **GTD 항목 로컬 제거 완료**\n\n"
                     f"요청하신 {len(removed)}개 항목을 GTD 목록(`inbox.md`, `next_actions.md`)에서 안전하게 제거했습니다:\n"
                     f"{bullets}{push_res}"
                 )
@@ -147,7 +147,7 @@ class SupervisorService:
                 final_response = "제거할 일치하는 GTD 항목을 찾지 못했습니다. 현재 등록된 할 일 명칭을 다시 확인해 주세요. 📋"
 
         elif intent_res.intent == "task_complete":
-            # (A-4) GTD 태스크 완료 처리 (ADR-027)
+            # (A-4) GTD 태스크 완료 처리 -> 로컬 파일 즉시 반영 (ADR-027, ADR-032, ADR-064)
             query = intent_res.log_content or ""
             date_str = get_now().strftime("%Y-%m-%d")
             push_res = ""
@@ -156,15 +156,15 @@ class SupervisorService:
                 completed = self.agent_service.complete_matching_tasks([query])
                 if completed:
                     bullets = "\n".join(f"• - [x] {t}" for t in completed)
-                    commit_msg = f"feat(gtd): complete {len(completed)} tasks ({date_str}) [{session_id}]"
                     if auto_push:
+                        commit_msg = f"feat(gtd): complete {len(completed)} tasks ({date_str}) [{session_id}]"
                         p_success, p_msg = self.git_service.commit(commit_msg)
                         if p_success:
-                            p_ok, p_out = self.git_service.push()
+                            p_ok, p_out = self.git_service.push(auto_commit_dirty=False)
                             push_res = f"\n\n🚀 **원격 저장소 반영**: {p_out}"
                             push_success = p_ok
                     else:
-                        self.git_service.commit(commit_msg)
+                        push_res = "\n\n📁 로컬에 즉시 반영되었습니다. (`/commit`·`/push`로 모아서 커밋하거나 밤 23:30에 자동 백업됩니다 🌙)"
                     apology = ""
                     if any(k in user_message for k in ["있다면서", "했잖아", "말했잖아", "말한건데", "아니 이미", "그게 아니라"]):
                         apology = "오해하여 잘못 안내해 드려 죄송합니다! 🙇‍♂️ 기존 GTD 항목을 찾아 즉시 완료 처리했습니다.\n\n"
@@ -180,37 +180,35 @@ class SupervisorService:
                 if res.get("success"):
                     task_name = res["task"]
                     file_name = res["file_name"]
-                    commit_msg = f"feat(gtd): complete top task - {task_name} ({date_str}) [{session_id}]"
                     if auto_push:
+                        commit_msg = f"feat(gtd): complete top task - {task_name} ({date_str}) [{session_id}]"
                         p_success, p_msg = self.git_service.commit(commit_msg)
                         if p_success:
-                            p_ok, p_out = self.git_service.push()
+                            p_ok, p_out = self.git_service.push(auto_commit_dirty=False)
                             push_res = f"\n\n🚀 **원격 저장소 반영**: {p_out}"
                             push_success = p_ok
-                    else:
-                        self.git_service.commit(commit_msg)
                     transferred_msg = f"📁 `{file_name}`에서 완료 후 오늘({date_str}) 데일리 로그로 이관되었습니다." if res.get("transferred_to_daily") else f"📁 대상 파일: `{file_name}`"
                     final_response = (
                         f"🎉 **1순위 태스크 완료!**\n\n"
                         f"- [x] {task_name}\n"
                         f"{transferred_msg}\n"
-                        f"GitHub에 안전하게 커밋 및 푸시되었습니다. 수고하셨습니다! ✨{push_res}"
+                        f"로컬 파일에 즉시 저장되었습니다. (나중에 `/commit`·`/push` 또는 밤 23:30 자동 백업 🌙) ✨{push_res}"
                     )
                 else:
                     final_response = "👏 축하합니다! 현재 등록된 미완료 1순위 태스크가 없습니다. 오늘 할 일을 모두 마치셨거나 수집함이 비어있습니다. 📋"
 
         elif intent_res.intent == "repo_commit":
-            # (D-5) 명시적 로컬 Git 커밋 명령 (ADR-020)
-            date_str = get_now().strftime("%Y-%m-%d")
-            commit_msg = f"docs(gtd): manual commit via watson ({date_str}) [{session_id}]"
-            success, msg = self.git_service.commit(commit_msg)
+            # (D-5) 명시적 로컬 일괄 Git 커밋 명령 (ADR-020, ADR-064)
+            success, msg = self.git_service.commit(commit_message=None)
             if success:
                 push_res = ""
                 if auto_push:
-                    p_ok, p_out = self.git_service.push()
+                    p_ok, p_out = self.git_service.push(auto_commit_dirty=False)
                     push_res = f"\n🚀 **원격 저장소 동기화**: {p_out}"
                     push_success = p_ok
-                final_response = f"✍️ **Git 커밋 완료**\n{msg}{push_res}"
+                else:
+                    push_res = "\n💡 원격 GitHub 반영은 `/push`를 입력하시거나 매일 밤 23:30 자동 백업으로 수행됩니다."
+                final_response = f"✍️ **Git 일괄 커밋 완료**\n{msg}{push_res}"
             else:
                 final_response = f"ℹ️ **Git 커밋 상태**\n{msg}"
 
@@ -231,7 +229,7 @@ class SupervisorService:
                 final_response = f"⚠️ **동기화 주의**: {sync_msg}\n\n{briefing}"
 
         elif intent_res.intent == "repo_push":
-            # (D-4) GTD 레포 원격 푸시 및 상태/원격지 확인 (ADR-011, ADR-020)
+            # (D-4) GTD 레포 원격 푸시(미커밋 변경분 자동 일괄 커밋 포함) 및 상태 확인 (ADR-011, ADR-020, ADR-064)
             is_query = (intent_res.log_content == "query")
             remote_info = self.git_service.get_remote_info()
 
@@ -241,7 +239,12 @@ class SupervisorService:
                 c_hash = remote_info.get("latest_hash", "")
                 c_msg = remote_info.get("latest_commit", "")
                 ahead = remote_info.get("ahead_count", 0)
-                sync_state = "모든 로컬 커밋이 원격 저장소에 완벽히 동기화되어 있습니다. ✅" if ahead == 0 else f"{ahead}개의 로컬 커밋이 푸시 대기 중입니다."
+                dirty_cnt = remote_info.get("dirty_count", 0)
+                sync_state = (
+                    "모든 로컬 커밋이 원격 저장소에 완벽히 동기화되어 있습니다. ✅"
+                    if ahead == 0 and dirty_cnt == 0
+                    else f"미커밋 파일 {dirty_cnt}개 / 푸시 대기 커밋 {ahead}개가 있습니다."
+                )
 
                 final_response = (
                     f"📍 **현재 연결된 원격 GitHub 저장소 정보**\n\n"
@@ -252,7 +255,7 @@ class SupervisorService:
                     f"모든 GTD 및 라이프로그 데이터는 지정하신 위 GitHub 공식 저장소로만 안전하게 푸시 및 백업됩니다. 🔐📦"
                 )
             else:
-                success, push_msg = self.git_service.push()
+                success, push_msg = self.git_service.push(auto_commit_dirty=True)
                 icon = "🚀" if success else "⚠️"
                 url = remote_info.get("url", "")
                 url_mention = f"\n(원격 저장소: `{url}`)" if url else ""

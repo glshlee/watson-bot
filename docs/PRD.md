@@ -605,6 +605,16 @@
   * `GTD 저장소 경로`, `출근길 날씨 & 버스 설정`, `텔레그램 봇 메뉴 설정`, `현재 세션 대화 비우기`(및 DevBot의 `개발 로드맵`, `하네스 스킬`)를 글래스모피즘 팝오버 메뉴로 통합하고 기존 DOM ID 바인딩을 100% 보존.
   * `gtd_modal.js`의 `#gtd-path-text` 바인딩을 보완하여 실시간 GTD 경로 및 Git 연동 상태 즉시 표시.
 
+### 3.61. 🌙 로컬 우선 기록(Local-First) 및 일괄 커밋·야간 자동 푸시 워크플로우 (Local-First, Batch Commit & Nightly Auto-Push - ADR-064)
+* **로컬 우선 즉시 반영 (Local-First Modification)**:
+  * 일기 기록(`log_confirm`, `log_explicit`, `log_dual`) 및 GTD 할 일 추가/완료(`task_complete`)/제거(`gtd_remove`) 시 원격 Git Push를 즉시 실행하지 않고 로컬 마크다운 파일에만 0.01초 내 즉시 반영.
+* **온디맨드 일괄 커밋 (`/commit`) 및 원스톱 푸시 (`/push`)**:
+  * `"커밋해"`, `/commit` 요청 시 작업 트리에 누적된 미커밋 파일들을 감지하여 단일 배치 커밋(`batch update N file(s)`)으로 일괄 커밋.
+  * `"푸시해줘"`, `/push` 요청 시 미커밋 로컬 변경분이 있으면 자동으로 먼저 일괄 커밋한 뒤 원격 GitHub로 안전하게 푸시.
+* **야간 자동 백업 스케줄러 (`23:30 KST`)**:
+  * 매일 밤 `23:30 KST`(`BriefingScheduler.dispatch_nightly_git_sync`)에 GTD 저장소의 미커밋 변경사항 및 미푸시 커밋을 점검하여 자동으로 일괄 커밋 및 GitHub 원격 푸시를 수행(변경사항 없을 시 조용히 스킵).
+
+
 ---
 
 

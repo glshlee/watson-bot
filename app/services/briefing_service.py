@@ -374,10 +374,12 @@ class BriefingService:
 
         from app.services.telegram_service import TelegramService
         telegram_service = TelegramService()
+        nightly_time = f"{os.getenv('NIGHTLY_PUSH_TIME', '23:30')} KST"
         telegram_push = {
             "enabled": bool(telegram_service.is_configured() and telegram_service.allowed_chat_ids),
             "morning_time": "08:30 KST",
             "evening_time": "20:00 KST",
+            "nightly_push_time": nightly_time,
             "recipients": telegram_service.allowed_chat_ids,
             "recipients_count": len(telegram_service.allowed_chat_ids),
         }
@@ -387,8 +389,10 @@ class BriefingService:
             "current_date": f"{date_str} ({weekday_str})",
             "active_mode": active_mode,
             "active_mode_label": "🌅 아침 모드" if active_mode == "morning" else "🌇 저녁 모드",
+            "nightly_push_time": nightly_time,
             "telegram_push": telegram_push,
             "schedules": [
+
                 {
                     "id": "morning",
                     "title": "아침 브리핑 (Morning Briefing)",
@@ -433,8 +437,12 @@ class BriefingService:
             "  * **정기 스케줄 시각**: 매일 **오후 20:00 (8:00 PM) KST**",
             "  * **자동 감지 구간**: `14:00 ~ 04:59 KST`",
             "  * **주요 내용**: 오늘 완료 작업 요약, 미완료 과제 내일 이월(Rollover), 내일 1순위 과제",
+            "* 🌙 **야간 자동 Git 백업 (Nightly Auto-Commit & Push - ADR-064)**",
+            f"  * **정기 스케줄 시각**: 매일 밤 **{info.get('nightly_push_time', '23:30 KST')}**",
+            "  * **주요 내용**: 하루 동안 로컬에 축적된 미커밋 라이프로그/GTD 변경분 일괄 커밋 및 원격 GitHub 자동 푸시",
             "",
             "#### 🔔 **알림 수신 채널 (Notification Channel - ADR-026)**",
+
         ]
 
         if tg_push.get("enabled"):

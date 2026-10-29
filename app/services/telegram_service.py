@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 from app.config import get_now, settings
 from app.db.database import SessionLocal
 from app.services.agent_service import AgentService
-from app.services.git_service import GitService
 from app.services.settings_service import SettingsService
 from app.services.supervisor_service import SupervisorService
 
@@ -381,12 +380,12 @@ class TelegramService:
             session_id = f"telegram:{chat_id}"
 
             if data == "confirm_log":
-                await self.answer_callback_query(cb_id, text="기록을 저장합니다...")
+                await self.answer_callback_query(cb_id, text="기록을 로컬에 저장합니다...")
                 result = supervisor.process_user_request(
                     session_id=session_id,
                     user_message="응 좋아 기록해줘",
                     channel="telegram",
-                    auto_push=True,
+                    auto_push=False,
                 )
                 await self.send_message(chat_id, result["ai_response"])
             elif data == "reject_log":
@@ -404,9 +403,10 @@ class TelegramService:
                     session_id=session_id,
                     user_message="/done",
                     channel="telegram",
-                    auto_push=True,
+                    auto_push=False,
                 )
                 await self.send_message(chat_id, result["ai_response"])
+
             elif data == "action_sync":
                 await self.answer_callback_query(cb_id, text="GTD 저장소 동기화 중...")
                 result = supervisor.process_user_request(
@@ -650,22 +650,17 @@ class TelegramService:
                 supervisor = SupervisorService(db=db)
                 session_service = supervisor.session_service
 
-                # 1) 패스트트랙 (/log 또는 ! 시작 시 즉시 커밋 및 푸시)
+                # 1) 패스트트랙 (/log 또는 ! 시작 시 즉시 로컬 기록 - ADR-064)
                 is_fasttrack = "/log" in caption or caption.startswith("!") or any(cmd in caption for cmd in ["즉시 기록", "바로 기록"])
                 if is_fasttrack:
                     agent_service = AgentService(base_dir=gtd_path)
-                    git_service = GitService(repo_path=gtd_path)
-                    filepath = agent_service.append_or_update_lifelog(
+                    agent_service.append_or_update_lifelog(
                         content=analysis.markdown_content,
                         category=analysis.suggested_category,
                         date_obj=now,
                     )
                     if analysis.gtd_task:
                         agent_service.append_to_gtd_inbox(analysis.gtd_task)
-
-                    date_str = now.strftime("%Y-%m-%d")
-                    commit_msg = f"docs(lifelog): [{analysis.suggested_category}] {analysis.summary[:30]} ({date_str}) [telegram:{chat_id}]"
-                    git_service.sync_and_commit_push(commit_message=commit_msg, file_path=filepath)
 
                     session_service.add_message(
                         session_id=session_id,
@@ -675,7 +670,7 @@ class TelegramService:
                     session_service.add_message(
                         session_id=session_id,
                         role="assistant",
-                        content=f"⚡ **패스트트랙 사진 즉시 기록 완료**\n\n{analysis.markdown_content}",
+                        content=f"⚡ **패스트트랙 사진 즉시 로컬 기록 완료**\n\n{analysis.markdown_content}",
                     )
 
                     await self.send_message(
@@ -684,7 +679,7 @@ class TelegramService:
                         f"• 분류: **{analysis.domain_kr}**\n"
                         f"• 섹션: `## {analysis.suggested_category}`\n\n"
                         f"{analysis.markdown_content}\n\n"
-                        f"오늘 자 라이프로그에 안전하게 기록하고 GitHub에 커밋·푸시했습니다! ✨",
+                        f"오늘 자 라이프로그에 안전하게 로컬 저장되었습니다! (`/commit`·`/push` 또는 밤 23:30 자동 백업 🌙) ✨",
                     )
                 else:
                     # 2) 2단계 사전 검토 초안 카드 제시 (ADR-029, ADR-044)
@@ -727,7 +722,7 @@ class TelegramService:
                 await self.send_message(chat_id, "⚠️ 사진을 다운로드하는 도중 오류가 발생했습니다.")
             return
 
-        # 2-3. 일반 텍스트 대화 ➔ 지능형 비서 파이프라인 연동
+        # 2-3. 일반 텍스트 대화 ➔ 지능형 비서 파이프라인 연동 (ADR-064: Local-First 기본값)
         if text:
             supervisor = SupervisorService(db=db)
             session_id = f"telegram:{chat_id}"
@@ -736,8 +731,9 @@ class TelegramService:
                 session_id=session_id,
                 user_message=text,
                 channel="telegram",
-                auto_push=True,
+                auto_push=False,
             )
+
 
             intent = result.get("intent", "chat_only")
             ai_response = result.get("ai_response", "")

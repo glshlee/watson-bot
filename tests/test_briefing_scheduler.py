@@ -21,9 +21,11 @@ def test_scheduler_status(mock_telegram_service):
     assert status["is_running"] is False
     assert status["morning_time"] == "08:30 KST"
     assert status["evening_time"] == "20:00 KST"
+    assert status["nightly_push_time"] == "23:30 KST"
     assert status["telegram_configured"] is True
     assert status["recipients_count"] == 2
     assert "8023809363" in status["recipients"]
+
 
 
 @pytest.mark.anyio
@@ -86,3 +88,46 @@ async def test_dispatch_briefing_unconfigured():
     assert result["status"] == "skipped"
     assert result["reason"] == "telegram_not_configured"
     assert result["sent_count"] == 0
+
+
+@pytest.mark.anyio
+async def test_dispatch_nightly_git_sync(mock_telegram_service, tmp_path):
+    """ADR-064: 야간 자동 백업(23:30 KST) 일괄 커밋·푸시 및 무변경 시 스킵 동작 검증."""
+    scheduler = BriefingScheduler(telegram_service=mock_telegram_service)
+
+    with patch("app.services.briefing_scheduler.SessionLocal") as mock_session_cls, \
+         patch("app.services.briefing_scheduler.SupervisorService") as mock_sup_cls:
+        mock_db = MagicMock()
+        mock_session_cls.return_value = mock_db
+
+        mock_sup = MagicMock()
+        mock_git = MagicMock()
+        mock_git.is_git_repo = True
+
+        # 1. 변경사항 없을 때 -> skipped (no_changes)
+        mock_git.get_dirty_files.return_value = []
+        mock_git.get_remote_info.return_value = {"ahead_count": 0}
+        mock_sup.git_service = mock_git
+        mock_sup_cls.return_value = mock_sup
+
+        res_skip = await scheduler.dispatch_nightly_git_sync()
+        assert res_skip["status"] == "skipped"
+        assert res_skip["reason"] == "no_changes"
+        assert res_skip["pushed"] is False
+
+        # 2. 미커밋 로컬 파일이 존재할 때 -> 자동 일괄 커밋 + 푸시 + 텔레그램 알림
+        mock_git.get_dirty_files.return_value = ["logs/daily/2026-10-27.md", "gtd/inbox.md"]
+        mock_git.get_remote_info.return_value = {"ahead_count": 0}
+        mock_git.build_batch_commit_message.return_value = "docs(auto-backup): batch update 2 file(s)"
+        mock_git.push.return_value = (True, "원격 저장소(`origin/main`)로 1개의 로컬 커밋을 성공적으로 푸시했습니다!")
+
+        res_push = await scheduler.dispatch_nightly_git_sync()
+        assert res_push["status"] == "success"
+        assert res_push["committed"] is True
+        assert res_push["pushed"] is True
+        assert res_push["sent_count"] == 2
+        mock_git.push.assert_called_once_with(
+            auto_commit_dirty=True,
+            commit_message="docs(auto-backup): batch update 2 file(s)",
+        )
+
