@@ -614,6 +614,12 @@
 * **야간 자동 백업 스케줄러 (`23:30 KST`)**:
   * 매일 밤 `23:30 KST`(`BriefingScheduler.dispatch_nightly_git_sync`)에 GTD 저장소의 미커밋 변경사항 및 미푸시 커밋을 점검하여 자동으로 일괄 커밋 및 GitHub 원격 푸시를 수행(변경사항 없을 시 조용히 스킵).
 
+### 3.62. 🎨 리치 마크다운 뷰어(Rich Markdown Viewer) 및 라이프로그·GTD 타이포그래피 고도화 (ADR-065)
+* **공통 리치 마크다운 렌더러 (`window.WatsonMarkdown.render`)**:
+  * `/watson` 채팅 콘솔 말풍선, 라이프로그/GTD 분할 에디터 실시간 프리뷰(`#editor-preview-content`), 출근길 브리핑 프리뷰(`#commute-preview-content`)에서 원문 마크다운 기호(`###`, `**`, `- [ ]`, `---`) 노출을 제거하고 구조화된 리치 HTML 문서로 렌더링.
+* **GTD 태스크 카드 & 타임스탬프/D-Day 배지 시각화**:
+  * `- [ ]` 미완료 항목과 `- [x]` 완료 항목을 체크박스 아이콘과 취소선이 적용된 카드형 리스트(`.md-task-item`)로 표현하고, `[HH:MM]` 시간 배지(`.md-time-badge`) 및 `~YYYY-MM-DD` 마감일 배지(`.md-due-pill`)를 자동 하이라이팅.
+
 
 ---
 

@@ -679,7 +679,13 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] `BriefingScheduler`에 매일 밤 `23:30 KST`(`NIGHTLY_PUSH_TIME`) 야간 자동 일괄 커밋·푸시 루틴(`dispatch_nightly_git_sync`) 및 무변경 시 자동 스킵 구현
 - [x] 단위 테스트(`test_supervisor_service.py`, `test_briefing_scheduler.py`) 추가 및 품질 게이트 전수 검증 완료
 
-### Phase 64: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
+### Phase 64: 리치 마크다운 뷰어(Rich Markdown Viewer) 및 라이프로그·GTD 타이포그래피 고도화 (ADR-065) - ✅ 완료
+- [x] `app/static/js/utils/modal.js`에 공통 리치 마크다운 파서(`window.WatsonMarkdown.render`) 구현 (헤더, 인용구, 테이블, 코드 블록, 체크리스트, 타임스탬프/마감일 배지 파싱)
+- [x] `/watson` 채팅 콘솔(`main.js`), 라이프로그 분할 에디터 모달(`editor_modal.js`), 출근길 브리핑 프리뷰(`commute_modal.js`)에 리치 마크다운 뷰어 일괄 적용
+- [x] `app/static/css/chat.css`에 `.md-viewer-root`, `.md-task-item`, `.md-time-badge`, `.md-due-pill` 다크 테마 문서 타이포그래피 스타일 구축
+- [x] `tests/test_web_router.py` 정적 에셋 검증 테스트(`test_rich_markdown_viewer_static_assets`) 추가 완료
+
+### Phase 65: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
 
 - [ ] `User` 모델 및 테넌트별 저장소/컨텍스트 격리 (`/data/tenants/{user_id}/`)
 - [ ] 단일 텔레그램 봇 기반 다중 사용자 라우팅 및 계정 바인딩 (`/start [연동코드]`)

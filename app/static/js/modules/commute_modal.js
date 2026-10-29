@@ -288,7 +288,13 @@
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    commutePreviewContent.textContent = data.markdown || "미리보기 생성 실패";
+                    const md = data.markdown || "미리보기 생성 실패";
+                    commutePreviewContent.classList.add("markdown-body");
+                    if (window.WatsonMarkdown && typeof window.WatsonMarkdown.render === "function") {
+                        commutePreviewContent.innerHTML = window.WatsonMarkdown.render(md);
+                    } else {
+                        commutePreviewContent.textContent = md;
+                    }
                     commutePreviewSection.classList.remove("hidden");
                 } else {
                     commutePreviewContent.textContent = "미리보기 요청 실패 (" + res.status + ")";

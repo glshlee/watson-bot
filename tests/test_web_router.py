@@ -182,5 +182,23 @@ def test_header_settings_popover_dom_elements():
     assert 'id="btn-dev-skills-quick"' in res_dev.text
 
 
+def test_rich_markdown_viewer_static_assets():
+    """ADR-065: 리치 마크다운 뷰어(WatsonMarkdown.render) 및 타이포그래피 스타일시트 정적 에셋 검증."""
+    res_modal_js = client.get("/static/js/utils/modal.js")
+    assert res_modal_js.status_code == 200
+    assert "renderRichMarkdown" in res_modal_js.text
+    assert "window.WatsonMarkdown" in res_modal_js.text
+    assert "md-task-list" in res_modal_js.text
+    assert "md-time-badge" in res_modal_js.text
+    assert "md-due-pill" in res_modal_js.text
+
+    res_chat_css = client.get("/static/css/chat.css")
+    assert res_chat_css.status_code == 200
+    assert ".md-viewer-root" in res_chat_css.text
+    assert ".md-task-item" in res_chat_css.text
+    assert ".md-time-badge" in res_chat_css.text
+
+
+
 
 
