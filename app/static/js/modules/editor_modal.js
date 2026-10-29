@@ -7,51 +7,11 @@
     let cachedHeatmapData = null;
 
     function renderMarkdownToHtml(markdown) {
-        if (!markdown) return "<p><em>(작성된 내용이 없습니다)</em></p>";
-        let html = markdown
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
-
-        // Code blocks
-        html = html.replace(/```([\w-]*)\n([\s\S]*?)```/g, (match, lang, code) => {
-            return `<pre><code class="language-${lang}">${code}</code></pre>`;
-        });
-
-        // Inline code
-        html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
-
-        // Headers
-        html = html.replace(/^#### (.*$)/gim, "<h4>$1</h4>");
-        html = html.replace(/^### (.*$)/gim, "<h3>$1</h3>");
-        html = html.replace(/^## (.*$)/gim, "<h2>$1</h2>");
-        html = html.replace(/^# (.*$)/gim, "<h1>$1</h1>");
-
-        // Blockquotes
-        html = html.replace(/^> (.*$)/gim, "<blockquote>$1</blockquote>");
-
-        // Checkboxes
-        html = html.replace(/^[ \t]*-[ \t]+\[[xX]\][ \t]+(.*$)/gim, '<li style="list-style:none;"><input type="checkbox" checked disabled /> $1</li>');
-        html = html.replace(/^[ \t]*-[ \t]+\[ \][ \t]+(.*$)/gim, '<li style="list-style:none;"><input type="checkbox" disabled /> $1</li>');
-
-        // Unordered lists
-        html = html.replace(/^[ \t]*[\*\-][ \t]+(.*$)/gim, "<li>$1</li>");
-
-        // Bold and Italic
-        html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-        html = html.replace(/\*([^*]+)\*/g, "<em>$1</em>");
-
-        // Links
-        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-
-        // Horizontal rules
-        html = html.replace(/^---$/gim, "<hr />");
-
-        // Paragraphs and breaks
-        html = html.replace(/\n\n/g, "</p><p>");
-        html = html.replace(/\n/g, "<br />");
-
-        return `<p>${html}</p>`;
+        if (!markdown) return '<p class="preview-placeholder"><em>(작성된 내용이 없습니다)</em></p>';
+        if (window.WatsonMarkdown && typeof window.WatsonMarkdown.render === "function") {
+            return window.WatsonMarkdown.render(markdown);
+        }
+        return `<p>${String(markdown).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>`;
     }
 
     async function loadHeatmapData() {

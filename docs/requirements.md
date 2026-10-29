@@ -371,6 +371,10 @@
 - **FR-63.2**: `/commit`("커밋해") 실행 시 누적된 미커밋 파일들을 감지하여 일괄 커밋(`build_batch_commit_message`)을 생성하고, `/push`("푸시해줘") 실행 시 미커밋 로컬 파일이 존재하면 자동으로 먼저 일괄 커밋한 뒤 원격 푸시(`push(auto_commit_dirty=True)`)를 수행해야 한다.
 - **FR-63.3**: `BriefingScheduler`는 매일 밤 `23:30 KST`(`NIGHTLY_PUSH_TIME`)에 미커밋 파일 또는 미푸시 커밋이 존재할 경우 자동으로 일괄 커밋 및 원격 GitHub 푸시(`dispatch_nightly_git_sync`)를 집행해야 한다.
 
+### FR-64: 리치 마크다운 뷰어(Rich Markdown Viewer) 및 라이프로그·GTD 타이포그래피 고도화 (ADR-065)
+- **FR-64.1**: `app/static/js/utils/modal.js`에 XSS 이스케이프 및 블록/인라인 파싱을 지원하는 `renderRichMarkdown`(`window.WatsonMarkdown.render`)을 구현하여 헤더(`h1`~`h4`), 인용구, 테이블, 코드 블록, 수평선, 불릿/번호 목록을 불필요한 `<br>` 중첩 없이 렌더링해야 한다.
+- **FR-64.2**: GTD 체크리스트(`- [ ]`, `- [x]`)를 카드형 `.md-task-item`으로, 타임스탬프(`[HH:MM]`)를 `.md-time-badge`로, 마감일(`~YYYY-MM-DD`)을 `.md-due-pill` 배지로 시각화하고 `/watson` 채팅 콘솔(`main.js`), 에디터 모달(`editor_modal.js`), 출근 프리뷰(`commute_modal.js`)에 일괄 적용해야 한다.
+
 
 ---
 
@@ -458,6 +462,7 @@
 | **FR-61** | `app/main.py`, `app/config.py`, `scripts/gate.sh`, `scripts/deploy.sh`, `scripts/smoke_test.sh`, `scripts/service.sh`, `.agents/rules/release_gate.md` | `./scripts/gate.sh` 4단계 통합 품질 게이트 검증 (ADR-062) |
 | **FR-62** | `app/templates/index.html`, `app/templates/dev.html`, `app/static/css/layout.css`, `app/static/css/modals.css`, `app/static/css/responsive.css`, `app/static/js/utils/modal.js`, `app/static/js/modules/gtd_modal.js` | Pytest 단위 테스트(`test_web_router.py`) & 브라우저 헤더/팝오버 렌더링 검증 (ADR-063) |
 | **FR-63** | `app/services/git_service.py`, `app/services/supervisor_service.py`, `app/services/briefing_scheduler.py`, `app/services/briefing_service.py`, `app/routers/chat_router.py`, `app/routers/briefing_router.py` | Pytest 단위 테스트(`test_supervisor_service.py`, `test_briefing_scheduler.py`) 검증 (ADR-064) |
+| **FR-64** | `app/static/js/utils/modal.js`, `app/static/js/main.js`, `app/static/js/modules/editor_modal.js`, `app/static/js/modules/commute_modal.js`, `app/static/css/chat.css` | Pytest 정적 에셋 테스트(`test_web_router.py`) & 브라우저 렌더링 검증 (ADR-065) |
 
 
 

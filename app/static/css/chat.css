@@ -650,4 +650,310 @@ textarea:focus {
     margin: 0;
 }
 
+/* ==========================================================================
+   Rich Markdown Document & Lifelog Viewer Typography (ADR-065)
+   ========================================================================== */
+
+.markdown-body .md-viewer-root,
+.preview-content .md-viewer-root {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 0.94rem;
+    line-height: 1.65;
+    color: var(--text-primary);
+}
+
+/* Headings */
+.md-viewer-root .md-heading {
+    margin: 10px 0 4px 0;
+    font-weight: 700;
+    line-height: 1.35;
+    color: #f8fafc;
+    letter-spacing: -0.01em;
+}
+
+.md-viewer-root .md-heading:first-child {
+    margin-top: 0;
+}
+
+.md-viewer-root .md-h1 {
+    font-size: 1.18rem;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.md-viewer-root .md-h2 {
+    font-size: 1.06rem;
+    padding: 4px 0 6px 10px;
+    border-left: 3px solid var(--accent-purple);
+    background: linear-gradient(90deg, rgba(139, 92, 246, 0.12), transparent);
+    border-radius: 0 6px 6px 0;
+}
+
+.md-viewer-root .md-h3 {
+    font-size: 0.98rem;
+    color: #e2e8f0;
+    padding-bottom: 4px;
+    border-bottom: 1px dashed rgba(148, 163, 184, 0.16);
+}
+
+.md-viewer-root .md-h4 {
+    font-size: 0.92rem;
+    color: #cbd5e1;
+}
+
+/* Paragraphs & Dividers */
+.md-viewer-root .md-paragraph {
+    margin: 0;
+    color: #e2e8f0;
+}
+
+.md-viewer-root .md-hr {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(148, 163, 184, 0.08), rgba(148, 163, 184, 0.28), rgba(148, 163, 184, 0.08));
+    margin: 6px 0;
+}
+
+/* Blockquotes */
+.md-viewer-root .md-blockquote {
+    margin: 4px 0;
+    padding: 8px 12px;
+    border-left: 3px solid #38bdf8;
+    background: rgba(56, 189, 248, 0.08);
+    border-radius: 0 8px 8px 0;
+    color: #bae6fd;
+    font-size: 0.88rem;
+}
+
+/* Bullet & Ordered Lists */
+.md-viewer-root .md-list {
+    list-style: none;
+    margin: 2px 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.md-viewer-root .md-list-item {
+    position: relative;
+    padding-left: 16px;
+    color: #e2e8f0;
+    line-height: 1.55;
+}
+
+.md-viewer-root .md-list:not(.md-ordered-list) .md-list-item::before {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 9px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #818cf8;
+}
+
+.md-viewer-root .md-ordered-item {
+    padding-left: 4px;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.md-viewer-root .md-num-badge {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #a5b4fc;
+    min-width: 18px;
+}
+
+/* GTD Interactive-Style Task Cards (- [ ] & - [x]) */
+.md-viewer-root .md-task-list {
+    list-style: none;
+    margin: 4px 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.md-viewer-root .md-task-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 7px 11px;
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.md-viewer-root .md-task-item.pending:hover {
+    border-color: rgba(129, 140, 248, 0.35);
+    background: rgba(30, 41, 59, 0.65);
+}
+
+.md-viewer-root .md-task-item.done {
+    background: rgba(16, 185, 129, 0.06);
+    border-color: rgba(16, 185, 129, 0.18);
+    opacity: 0.82;
+}
+
+.md-viewer-root .md-checkbox {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+    border-radius: 5px;
+    font-size: 0.78rem;
+    color: #94a3b8;
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    flex-shrink: 0;
+}
+
+.md-viewer-root .md-checkbox.checked {
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.18);
+    border-color: rgba(16, 185, 129, 0.45);
+}
+
+.md-viewer-root .md-task-text {
+    flex: 1;
+    min-width: 0;
+    line-height: 1.5;
+    color: #f1f5f9;
+}
+
+.md-viewer-root .md-task-item.done .md-task-text {
+    text-decoration: line-through;
+    color: #94a3b8;
+}
+
+/* Badges: Timestamp [HH:MM] & Due Date ~YYYY-MM-DD */
+.md-viewer-root .md-time-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    padding: 1px 6px;
+    border-radius: 5px;
+    margin-right: 4px;
+    vertical-align: baseline;
+}
+
+.md-viewer-root .md-due-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: #fbbf24;
+    background: rgba(245, 158, 11, 0.14);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    padding: 1px 6px;
+    border-radius: 5px;
+    margin-left: 4px;
+}
+
+/* Inline Elements: Code, Bold, Links */
+.md-viewer-root .md-inline-code {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.82rem;
+    color: #c4b5fd;
+    background: rgba(139, 92, 246, 0.14);
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    padding: 1px 6px;
+    border-radius: 5px;
+}
+
+.md-viewer-root .md-bold {
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.md-viewer-root .md-link {
+    color: #60a5fa;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.md-viewer-root .md-link:hover {
+    color: #93c5fd;
+}
+
+/* Code Blocks */
+.md-viewer-root .md-code-block-wrapper {
+    margin: 6px 0;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: #0b1120;
+}
+
+.md-viewer-root .md-code-header {
+    padding: 4px 12px;
+    background: rgba(30, 41, 59, 0.85);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+    display: flex;
+    align-items: center;
+}
+
+.md-viewer-root .md-code-lang {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    color: #94a3b8;
+    letter-spacing: 0.04em;
+}
+
+.md-viewer-root .md-code-block {
+    margin: 0;
+    padding: 10px 12px;
+    overflow-x: auto;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: #e2e8f0;
+}
+
+/* Tables */
+.md-viewer-root .md-table-wrapper {
+    overflow-x: auto;
+    margin: 6px 0;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.md-viewer-root .md-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.md-viewer-root .md-table th,
+.md-viewer-root .md-table td {
+    padding: 7px 10px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+    text-align: left;
+}
+
+.md-viewer-root .md-table th {
+    background: rgba(30, 41, 59, 0.8);
+    color: #f8fafc;
+    font-weight: 600;
+}
+
+
 

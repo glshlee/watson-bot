@@ -73,11 +73,8 @@
 * **1-Click 셀프호스팅 배포 패키지 & 셋업 위저드 (ADR-046)**: 대화형 셋업 위저드(./scripts/setup_wizard.sh)로 7단계 초기 환경 자동 구성(-y/--dry-run/--check 지원), 시스템 준비 상태 진단(/api/system/setup-status, /setup), 초경량 헬스체크 및 올인원 Docker Compose 패키징을 보장할 것.
 * **웹 콘솔 KST 동기화 & 실시간 시계 배지 (ADR-047)**: 세션/메시지 생성·갱신 및 직렬화 시 KST(+09:00) 타임존을 강제하여 "9시간 전" 왜곡을 해소하고, 웹 콘솔 상단 헤더에 초 단위 실시간 디지털 시계 배지([⏰ KST]) 및 에디터 자정 경계 보정, 출근 스케줄 능동 푸시를 보장할 것.
 * **단위 테스트 초고속화 & 템플릿 컴포넌트 모듈화 (ADR-048)**: 테스트 실행 시 외부 LLM CLI/중첩 툴체인을 격리 모킹하여 초고속(14분➔2분) 검증 환경을 구축하고, 웹 모달을 컴포넌트 템플릿(`app/templates/modals/`)으로 분리하여 템플릿 경량화(574➔183라인)와 유지보수성을 보장할 것.
-* **프론트엔드 CSS 컴포넌트 모듈화 (ADR-049)**: 단일 모놀리식 style.css(3,423라인)를 7개 도메인별 CSS 모듈로 분할하고 메인 파일을 @import 오케스트레이터 번들(13라인, 99.6% 경량화)로 개편하여 100% 하위 호환성을 보장할 것.
-* **프론트엔드 JS 모듈화 & 모달 분리 (ADR-050)**: 단일 main.js(1,984라인)를 utils(api/date/modal) 및 5개 도메인 모달 컨트롤러로 분할(662라인, 66.6% 경량화)하고, dev.js 중복 제거 및 빌드리스 브라우저 네이티브 구동을 보장할 것.
-* **백엔드 라우터 모듈화 & SRP 분리 (ADR-051)**: 단일 web_router.py(515라인)를 4대 서브 라우터(chat/session/briefing/lifelog)로 분할(95라인, 81.6% 경량화)하고 include_router 통합으로 100% 하위 호환성을 보장할 것.
-* **LLM 및 의도 분석 모듈화 (ADR-052)**: 단일 llm_provider.py(1,188라인)를 4대 서브모듈(agy/prompt/category/intent)로 분할(79라인, 93.3% 경량화)하고 파사드 패턴으로 100% 하위 호환성을 보장할 것.
-* **라이프로그 및 GTD 모듈화 (ADR-053)**: 단일 agent_service.py(853라인)를 lifelog_service(260라인)와 gtd_service(420라인)로 분할(105라인, 87.7% 경량화)하고 파사드로 100% 하위 호환성을 보장할 것.
+* **프론트엔드 CSS/JS 모듈화 (ADR-049, ADR-050)**: 단일 style.css(3,423라인)를 7개 도메인 CSS 모듈과 @import 번들로 분할하고, main.js(1,984라인)를 utils(api/date/modal) 및 5개 모달 컨트롤러로 분할하여 100% 하위 호환성을 보장할 것.
+* **백엔드 라우터/LLM/서비스 모듈화 (ADR-051~053)**: web_router를 4대 서브 라우터(chat/session/briefing/lifelog)로, llm_provider를 4대 서브모듈(agy/prompt/category/intent)로, agent_service를 lifelog/gtd 서비스로 분할하고 파사드 호환성을 보장할 것.
 * **슬래시 커맨드 팔레트 & 미니멀 UI (ADR-054)**: 15개 고정 칩 바를 철거하고 [/] 팝오버 팔레트(3대 카테고리 14종)로 통합하여 실시간 / 필터링, 키보드 내비게이션 및 모바일 최적화를 보장할 것.
 * **DevBot 팔레트 & 인터랙티브 Git 위저드 (ADR-055)**: 20개 칩 바 철거 후 [/] 팔레트(16종 도구) 통합, 3종 Conventional Commits 원클릭 커밋/원터치 푸시 위저드, 백엔드 /push, /sync 탑재 및 다크 터미널 박스를 보장할 것.
 * **비동기 서비스 제어 & 포그라운드 차단 (ADR-056)**: 터미널 세션 블로킹 및 고아 프로세스 방지를 위해 포그라운드 직접 실행(`python app.py`, `uvicorn`)을 엄격히 금지하고, 반드시 `./scripts/service.sh` 또는 `start.sh` 등 비동기 스크립트 및 `app.py` 가드레일로 백그라운드 구동할 것.
@@ -89,9 +86,10 @@
 * **개발/운영 분리 & Pre-Push 품질 게이트 (ADR-062)**: 일상 코드 수정 시 타겟 파일 `ruff`/`mypy`/`pytest`만 실행(Fast Dev Loop)하여 비용을 절감하고, 커밋/푸시 직전에만 `./scripts/gate.sh`(격리 스모크, `DISABLE_TELEGRAM_POLLING=1` 포함)를 1회 실행하며, 에이전트는 사용자가 명시적으로 "커밋해" 지시할 때만 커밋할 것.
 * **상단 헤더 미니멀화 & 설정 팝오버 통합 (ADR-063)**: 웹 콘솔(`/watson`, `/dev`) 상단 헤더는 핵심 배지(허브/잔디/시계)만 노출하고, GTD 경로·출근·텔레그램 메뉴·대화 비우기 등은 `[⚙️ 설정]` 드롭다운(`#header-settings-dropdown`)으로 통합하여 타이틀 겹침을 원천 차단할 것.
 * **로컬 우선 기록 & 일괄 커밋·야간 자동 푸시 (ADR-064)**: 평상시 일기/GTD 추가·완료·제거 시 로컬 마크다운에만 즉시 반영(`auto_push=False`)하고, `/commit` 시 일괄 커밋, `/push` 시 미커밋 자동 커밋 후 원격 푸시하며, 매일 밤 `23:30 KST` 스케줄러가 하루치 변경분을 자동 일괄 커밋·푸시할 것.
+* **리치 마크다운 뷰어 & GTD/로그 타이포그래피 (ADR-065)**: `/watson` 채팅 말풍선과 에디터/출근 프리뷰에 공통 리치 마크다운 렌더러(`window.WatsonMarkdown.render`)를 적용하여 GTD 체크박스 카드(`.md-task-item`), 타임스탬프(`[HH:MM]`)·마감일(`~YYYY-MM-DD`) 배지 및 섹션 헤더를 시각화할 것.
 ### 4. Progressive Disclosure (상세 문서 참조)
 * **제품 기획서 개요**: `docs/PRD.md` | **기능 요구사항**: `docs/requirements.md`
-* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-064)
+* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-065)
 
 ---
 ## 🛠 1. 기술 스택 & 프로젝트 구조 요약

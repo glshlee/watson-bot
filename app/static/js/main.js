@@ -426,8 +426,18 @@ document.addEventListener("DOMContentLoaded", () => {
         bubble.className = "bubble";
 
         const textContent = document.createElement("div");
-        textContent.className = "bubble-text";
-        textContent.innerText = text;
+        textContent.className = role === "assistant" ? "bubble-text markdown-body" : "bubble-text";
+        textContent.dataset.rawMarkdown = typeof text === "string" ? text : String(text || "");
+
+        const renderBubbleText = (rawStr) => {
+            textContent.dataset.rawMarkdown = rawStr;
+            if (role === "assistant" && window.WatsonMarkdown && typeof window.WatsonMarkdown.render === "function") {
+                textContent.innerHTML = window.WatsonMarkdown.render(rawStr);
+            } else {
+                textContent.innerText = rawStr;
+            }
+        };
+        renderBubbleText(textContent.dataset.rawMarkdown);
         bubble.appendChild(textContent);
 
         // Real-time bus arrival inline refresh (ADR-039)
@@ -462,12 +472,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (res.ok) {
                         const data = await res.json();
                         if (data.success) {
-                            if (textContent.innerText.includes("[실시간 출근 버스 도착 정보]")) {
-                                textContent.innerText = data.markdown;
-                            } else if (data.transit_line && textContent.innerText.includes("• 🚌 **출근길 버스")) {
-                                textContent.innerText = textContent.innerText.replace(/•\s*🚌\s*\*\*출근길 버스.*$/m, data.transit_line);
+                            const currentRaw = textContent.dataset.rawMarkdown || "";
+                            if (currentRaw.includes("[실시간 출근 버스 도착 정보]")) {
+                                renderBubbleText(data.markdown);
+                            } else if (data.transit_line && currentRaw.includes("• 🚌 **출근길 버스")) {
+                                renderBubbleText(currentRaw.replace(/•\s*🚌\s*\*\*출근길 버스.*$/m, data.transit_line));
                             } else if (data.markdown) {
-                                textContent.innerText = data.markdown;
+                                renderBubbleText(data.markdown);
                             }
                             badgeSpan.innerHTML = `<span class="refresh-success"><i class="fa-solid fa-check"></i> ${data.updated_time} 갱신됨</span>`;
                         } else {
