@@ -417,6 +417,36 @@ def test_telegram_commands_endpoints():
         assert reset_data["reset_count"] == len(TelegramService.DEFAULT_COMMANDS)
 
 
+def test_telegram_html_rich_formatter():
+    """텔레그램 메시지 발송 시 마크다운 기호를 제거하고 네이티브 HTML 리치 포맷으로 변환하는지 검증."""
+    raw_md = (
+        "### 📋 현재 GTD 파일 현황 브리핑\n\n"
+        "#### 📥 1. 수집함 Inbox (`gtd/inbox.md`) - 미완료 `2`개\n"
+        "```markdown\n"
+        "# 📥 GTD Inbox\n"
+        "## 💬 개인 / 생활\n"
+        "- [ ] 트래블월렛 고객확인 **필수** ~2026-11-05\n"
+        "- [x] 민방위 사이버교육 이수\n"
+        "- [09:30] 아침 스트레칭 완료\n"
+        "---\n"
+        "> 오늘의 다짐: 꾸준히 기록하기\n"
+        "```"
+    )
+    formatted = TelegramService.format_for_telegram_html(raw_md)
+    # 1. 마크다운 코드블록 래퍼(```markdown)와 헤더 기호(###, #)가 노출되지 않아야 함
+    assert "```" not in formatted
+    assert "###" not in formatted
+    # 2. 텔레그램 HTML 볼드, 코드, 취소선, 인용구 및 체크박스 아이콘으로 변환되었는지 확인
+    assert "<b>📋 현재 GTD 파일 현황 브리핑</b>" in formatted
+    assert "<code>gtd/inbox.md</code>" in formatted
+    assert "▫️ 트래블월렛 고객확인 <b>필수</b> <code>📅 ~2026-11-05</code>" in formatted
+    assert "✅ <s>민방위 사이버교육 이수</s>" in formatted
+    assert "🕒 <code>09:30</code> 아침 스트레칭 완료" in formatted
+    assert "━━━━━━━━━━━━━━━━━━" in formatted
+    assert "<blockquote>오늘의 다짐: 꾸준히 기록하기</blockquote>" in formatted
+
+
+
 
 
 
