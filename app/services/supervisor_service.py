@@ -49,15 +49,26 @@ class SupervisorService:
         # 2. 사용자 메시지 DB 저장
         self.session_service.add_message(session_id=session_id, role="user", content=user_message)
 
-        # 3. 비서 의도 분석 및 답변 생성 (ADR-004)
+        # 3. 비서 의도 분석 및 답변 생성 (ADR-004, ADR-066)
+        dirty_before = set(self.git_service.get_dirty_files())
         intent_res = self.llm_provider.analyze_and_respond(
             prompt=user_message,
             history=history,
             pending_log=pending_log,
         )
+        dirty_after_llm = set(self.git_service.get_dirty_files())
+        llm_modified_files = sorted(dirty_after_llm - dirty_before)
 
         filepath = None
         push_success = False
+
+        # 3-1. LLM(AGY 에이전트)이 GTD 스킬 지침에 따라 직접 마크다운 파일을 수정/이동한 경우 (ADR-066)
+        if llm_modified_files and intent_res.intent == "chat_only":
+            filepath = os.path.join(self.base_dir, llm_modified_files[0])
+            if auto_push:
+                date_str = get_now().strftime("%Y-%m-%d")
+                commit_msg = f"docs(gtd): autonomous agent file update ({date_str}) [{session_id}]"
+                push_success = self.git_service.sync_and_commit_push(commit_message=commit_msg, file_path=None)
 
         # 4. 의도별 분기 처리 (ADR-064: Local-First 로컬 우선 기록 정책)
         if intent_res.intent == "log_dual" or intent_res.is_dual_log:
@@ -119,7 +130,38 @@ class SupervisorService:
 
         final_response = intent_res.ai_response
 
-        if intent_res.intent == "gtd_remove":
+        if intent_res.intent == "gtd_move":
+            # (A-3a) GTD 상태 파일 간 태스크 이동 (inbox/next_actions/일정 -> someday/waiting/next_actions - ADR-066)
+            target_q = intent_res.log_content or user_message
+            dest_state = intent_res.category or "someday"
+            move_res = self.agent_service.move_gtd_tasks(target_query=target_q, destination=dest_state)
+            if move_res.get("success"):
+                filepath = move_res.get("dest_filepath")
+                moved_list = move_res.get("moved_tasks", [])
+                bullets = "\n".join(f"• {t}" for t in moved_list)
+                src_label = ", ".join(move_res.get("source_files", [])) or "GTD"
+                dest_label = move_res.get("dest_file", "gtd/someday_maybe.md")
+                push_res = ""
+                if auto_push:
+                    date_str = get_now().strftime("%Y-%m-%d")
+                    commit_msg = f"feat(gtd): move {len(moved_list)} task(s) to {dest_label} ({date_str}) [{session_id}]"
+                    p_success, _ = self.git_service.commit(commit_msg)
+                    if p_success:
+                        p_ok, p_out = self.git_service.push(auto_commit_dirty=False)
+                        push_res = f"\n\n🚀 **원격 저장소 반영**: {p_out}"
+                        push_success = p_ok
+                else:
+                    push_res = "\n\n📁 로컬 파일에 즉시 반영되었습니다. (`/commit`·`/push`로 모아서 커밋하거나 밤 23:30에 자동 백업됩니다 🌙)"
+
+                final_response = (
+                    f"📦 **GTD 항목 상태 이동 완료**\n\n"
+                    f"요청하신 항목을 `{src_label}`에서 **`{dest_label}`**로 이동했습니다:\n"
+                    f"{bullets}{push_res}"
+                )
+            else:
+                final_response = f"이동할 일치하는 GTD 항목('{target_q}')을 찾지 못했습니다. 📋"
+
+        elif intent_res.intent == "gtd_remove":
             # (A-3) GTD 태스크 삭제/제거 -> 로컬 파일 즉시 반영 (ADR-020, ADR-064)
             removed = self.agent_service.find_and_remove_matching_tasks(user_message)
             if removed:

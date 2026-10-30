@@ -685,7 +685,12 @@ Phase 6: GTD 저장소 격리 & 동적 디렉토리 오케스트레이션 (ADR-0
 - [x] `app/static/css/chat.css`에 `.md-viewer-root`, `.md-task-item`, `.md-time-badge`, `.md-due-pill` 다크 테마 문서 타이포그래피 스타일 구축
 - [x] `tests/test_web_router.py` 정적 에셋 검증 테스트(`test_rich_markdown_viewer_static_assets`) 추가 완료
 
-### Phase 65: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
+### Phase 65: LLM 자율 GTD 스킬 위임 및 파이썬 워크플로우 경계 분리 (ADR-066) - ✅ 완료
+- [x] `load_skill_instructions()`에서 `gtd-assistant/SKILL.md` 원문 전체를 동적 로드하여 5대 GTD 파일(`inbox`, `next_actions`, `waiting_for`, `someday_maybe`, `projects`) 명세 주입
+- [x] `SupervisorService`에 LLM 실행 전후 `git_service.get_dirty_files()` 변경 감지 연동 및 `GTDService.move_gtd_tasks` / `gtd_move` 구현
+- [x] `tests/test_supervisor_service.py`에 `someday` 이동 테스트(`test_gtd_move_to_someday_and_autonomous_agent_workflow`) 추가 완료
+
+### Phase 66: 멀티테넌트(Multi-Tenant) 아키텍처 및 다중 사용자 서비스 (타인 배포 2단계)
 
 - [ ] `User` 모델 및 테넌트별 저장소/컨텍스트 격리 (`/data/tenants/{user_id}/`)
 - [ ] 단일 텔레그램 봇 기반 다중 사용자 라우팅 및 계정 바인딩 (`/start [연동코드]`)

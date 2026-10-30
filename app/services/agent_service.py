@@ -87,6 +87,10 @@ class AgentService:
         """키워드와 일치하는 미완료 태스크들을 찾아 완료 처리하고 데일리 로그로 이관합니다."""
         return self.gtd_service.complete_matching_tasks(keywords)
 
+    def move_gtd_tasks(self, target_query: str, destination: str) -> dict[str, Any]:
+        """GTD 항목을 지정된 상태 파일(someday_maybe.md, waiting_for.md, next_actions.md, inbox.md)로 잘라내어 이동합니다 (ADR-066)."""
+        return self.gtd_service.move_gtd_tasks(target_query=target_query, destination=destination)
+
     def read_daily_log(self, date_obj: datetime | None = None) -> str:
         """지정된 날짜의 일일 로그 마크다운 파일을 읽어 전문 및 메타데이터를 반환합니다."""
         return self.lifelog_service.read_daily_log(date_obj)
