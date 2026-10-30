@@ -155,7 +155,7 @@ def test_scan_gtd_due_tasks_and_prioritization():
 def test_llm_provider_dday_intent_and_actionable_task():
     provider = LLMProvider()
 
-    # 1. D-Day 슬래시 커맨드 및 자연어 인텐트 분석
+    # 1. D-Day 슬래시 커맨드 및 자연어 LLM 위임 검증 (ADR-066)
     res1 = provider.analyze_and_respond("/dday")
     assert res1.intent == "dday_inspect"
 
@@ -163,13 +163,7 @@ def test_llm_provider_dday_intent_and_actionable_task():
     assert res2.intent == "dday_inspect"
 
     res3 = provider.analyze_and_respond("마감일 확인해줘")
-    assert res3.intent == "dday_inspect"
-
-    res4 = provider.analyze_and_respond("D-day 현황 알려줘")
-    assert res4.intent == "dday_inspect"
-
-    res5 = provider.analyze_and_respond("마감 임박한 할 일 뭐야?")
-    assert res5.intent == "dday_inspect"
+    assert res3.intent == "chat_only"
 
     # 2. _extract_actionable_task의 마감일 자동 태깅 검증
     # (2-1) 명시적 태그

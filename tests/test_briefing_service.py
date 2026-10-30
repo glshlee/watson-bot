@@ -114,7 +114,7 @@ def test_generate_evening_briefing():
 def test_llm_provider_briefing_intent_classification():
     provider = LLMProvider()
 
-    # 1. 명시적 슬래시 커맨드
+    # 1. 명시적 슬래시 커맨드 (ADR-061, ADR-066)
     res_m = provider.analyze_and_respond("/briefing morning")
     assert res_m.intent == "task_briefing_morning"
 
@@ -124,25 +124,12 @@ def test_llm_provider_briefing_intent_classification():
     res_auto = provider.analyze_and_respond("/briefing")
     assert res_auto.intent == "task_briefing"
 
-    # 2. 자연어 의도
-    res_nlp_m = provider.analyze_and_respond("오늘 아침 브리핑 해줘")
-    assert res_nlp_m.intent == "task_briefing_morning"
-
-    res_nlp_e = provider.analyze_and_respond("오늘 저녁 일과 회고 정리해줘")
-    assert res_nlp_e.intent == "task_briefing_evening"
-
-    res_nlp_general = provider.analyze_and_respond("오늘 할 일 브리핑해줘")
-    assert res_nlp_general.intent == "task_briefing"
-
-    # 3. 스케줄 의도 (ADR-025)
     res_sched_cmd = provider.analyze_and_respond("/schedule")
     assert res_sched_cmd.intent == "briefing_schedule_inspect"
 
-    res_sched_nlp1 = provider.analyze_and_respond("몇 시에 스케줄링 되어있어?")
-    assert res_sched_nlp1.intent == "briefing_schedule_inspect"
-
-    res_sched_nlp2 = provider.analyze_and_respond("브리핑 스케줄 확인해줘")
-    assert res_sched_nlp2.intent == "briefing_schedule_inspect"
+    # 2. 자연어는 파이썬이 인텐트를 분류하지 않고 LLM(chat_only)으로 위임
+    res_nlp = provider.analyze_and_respond("오늘 아침 브리핑 해줘")
+    assert res_nlp.intent == "chat_only"
 
 
 def test_briefing_schedule_info_and_formatting():

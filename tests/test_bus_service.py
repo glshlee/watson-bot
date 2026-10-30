@@ -220,15 +220,14 @@ def test_supervisor_bus_query():
         assert res["intent"] == "commute_inspect"
         assert "실시간 출근 버스 도착 정보" in res["ai_response"]
 
-        # 2. Natural language bus query
+        # 2. Natural language bus query -> 파이썬 인텐트 분류 없이 LLM(chat_only)으로 위임 (ADR-066)
         res2 = service.process_user_request(
             session_id="test_bus_session",
             user_message="출근 버스 언제 와?",
             channel="web",
             auto_push=False,
         )
-        assert res2["intent"] == "commute_inspect"
-        assert "실시간 출근 버스 도착 정보" in res2["ai_response"]
+        assert res2["intent"] == "chat_only"
     finally:
         db.close()
 

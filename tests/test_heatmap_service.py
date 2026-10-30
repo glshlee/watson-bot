@@ -181,12 +181,9 @@ def test_intent_classification():
 
     assert provider.analyze_and_respond("/edit").intent == "lifelog_edit"
     assert provider.analyze_and_respond("/edit 2026-09-15").intent == "lifelog_edit"
-    assert provider.analyze_and_respond("일기 편집해줘").intent == "lifelog_edit"
-    assert provider.analyze_and_respond("오늘 로그 수정하고 싶어").intent == "lifelog_edit"
-
     assert provider.analyze_and_respond("/heatmap").intent == "lifelog_heatmap"
-    assert provider.analyze_and_respond("잔디 보여줘").intent == "lifelog_heatmap"
-    assert provider.analyze_and_respond("기여도 히트맵 확인").intent == "lifelog_heatmap"
+    assert provider.analyze_and_respond("일기 편집해줘").intent == "chat_only"
+    assert provider.analyze_and_respond("잔디 보여줘").intent == "chat_only"
 
 
 def test_supervisor_handling_lifelog(db_session, temp_gtd_env):

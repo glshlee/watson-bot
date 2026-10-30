@@ -161,7 +161,7 @@ def test_weekly_review_service_metrics():
 def test_intent_classification_search_and_weekly():
     provider = LLMProvider()
 
-    # 1. /search 슬래시 커맨드
+    # 1. /search 및 /find 슬래시 커맨드
     res1 = provider.analyze_and_respond("/search 서산 맛집")
     assert res1.intent == "search_query"
     assert res1.log_content == "서산 맛집"
@@ -170,25 +170,13 @@ def test_intent_classification_search_and_weekly():
     assert res2.intent == "search_query"
     assert res2.log_content == "미역국"
 
-    # 2. 자연어 검색 질의
-    res3 = provider.analyze_and_respond("지난달 서산 맛집 찾아줘")
-    assert res3.intent == "search_query"
-    assert "서산 맛집" in (res3.log_content or "")
-
-    res4 = provider.analyze_and_respond("과거 일기에서 운동 기록 찾아봐")
-    assert res4.intent == "search_query"
-    assert "운동" in (res4.log_content or "")
-
-    # 3. /weekly 슬래시 커맨드
+    # 2. /weekly 및 /review 슬래시 커맨드
     res5 = provider.analyze_and_respond("/weekly")
     assert res5.intent == "weekly_review"
 
     res6 = provider.analyze_and_respond("/review")
     assert res6.intent == "weekly_review"
 
-    # 4. 자연어 주간 결산
-    res7 = provider.analyze_and_respond("주간 결산 알려줘")
-    assert res7.intent == "weekly_review"
-
-    res8 = provider.analyze_and_respond("이번 주 회고 보여줘")
-    assert res8.intent == "weekly_review"
+    # 3. 자연어는 파이썬 인텐트 분류 없이 LLM(chat_only)으로 위임 (ADR-066)
+    res3 = provider.analyze_and_respond("지난달 서산 맛집 찾아줘")
+    assert res3.intent == "chat_only"

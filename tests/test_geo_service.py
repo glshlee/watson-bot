@@ -48,19 +48,13 @@ def test_llm_provider_location_intents():
     res2 = provider.analyze_and_respond("/location")
     assert res2.intent == "location_inspect"
 
-    res3 = provider.analyze_and_respond("우리 동네 성동구 금호동으로 설정해줘")
-    assert res3.intent == "location_set"
-
-    res4 = provider.analyze_and_respond("우리 동네 어디로 되어있어?")
-    assert res4.intent == "location_inspect"
-
 
 def test_supervisor_location_set_flow():
     db = SessionLocal()
     service = SupervisorService(db)
     res = service.process_user_request(
         session_id="test_geo_flow",
-        user_message="우리 동네 성동구 금호동으로 설정해줘",
+        user_message="/location 성동구 금호동",
         channel="web",
     )
     assert res["intent"] == "location_set"

@@ -57,11 +57,11 @@ async def test_telegram_command_start(db_session):
 
 
 @pytest.mark.anyio
-async def test_telegram_text_workflow_suggestion(db_session):
+async def test_telegram_text_workflow_natural_chat(db_session):
     service = TelegramService(token="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz")
     service.allowed_chat_ids = []
 
-    # 운동 일과 메시지 -> log_suggest 인라인 키보드 부착 검증
+    # 자연어 메시지 -> 파이썬 인텐트 가로채기 없이 LLM 응답 전송 검증 (ADR-066)
     update = {
         "update_id": 2,
         "message": {
@@ -73,9 +73,8 @@ async def test_telegram_text_workflow_suggestion(db_session):
     with patch.object(service, "send_message", new_callable=AsyncMock) as mock_send:
         await service.process_update(update, db_session)
         mock_send.assert_called_once()
-        _, kwargs = mock_send.call_args
-        assert "reply_markup" in kwargs
-        assert "inline_keyboard" in kwargs["reply_markup"]
+        args, _ = mock_send.call_args
+        assert args[0] == 12345
 
 
 @pytest.mark.anyio
