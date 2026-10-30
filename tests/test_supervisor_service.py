@@ -94,6 +94,25 @@ def test_supervisor_autonomous_llm_file_edit_detection(db_session):
         assert res["filepath"] is not None
         assert "someday_maybe.md" in res["ai_response"]
         assert len(supervisor.git_service.get_dirty_files()) == 2
+
+        # AGY 에이전트가 파일 수정은 완료했으나 타임아웃/빈 응답으로 폴백 문구가 나온 경우 실제 수정된 파일 목록으로 대체되는지 검증
+        def fake_silent_edit_agy(prompt: str, history=None) -> str:
+            with open(inbox_file, "w", encoding="utf-8") as f:
+                f.write("# 📥 Inbox\n")
+            return "네, 말씀 잘 들었습니다! 😊 오늘 있었던 일이나 정리할 GTD 할 일이 있다면 편하게 말씀해 주세요."
+
+        repo.git.add(A=True)
+        repo.index.commit("chore: commit previous move")
+
+        with patch.object(supervisor.llm_provider, "_call_ai_engine", side_effect=fake_silent_edit_agy):
+            res_silent = supervisor.process_user_request(
+                session_id="autonomous_sess",
+                user_message="트래블월렛 고객확인도 지워줘",
+                channel="web",
+            )
+
+        assert "요청하신 GTD/라이프로그 파일 작업을 완료했습니다" in res_silent["ai_response"]
+        assert "gtd/inbox.md" in res_silent["ai_response"]
     finally:
         shutil.rmtree(temp_dir)
 

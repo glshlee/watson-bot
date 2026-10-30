@@ -30,7 +30,7 @@ def execute_agy(
     full_prompt: str,
     gtd_path: str | None = None,
     agy_bin: str | None = None,
-    timeout: int = 45,
+    timeout: int = 120,
 ) -> str | None:
     """Antigravity CLI 바이너리를 서브프로세스로 안전하게 실행하고 응답을 반환합니다."""
     bin_path = agy_bin or find_agy_path()
@@ -47,8 +47,6 @@ def execute_agy(
             full_prompt,
             "--model",
             "gemini-3.8-flash-low",
-            "--effort",
-            "low",
             "--disable-slash-commands",
             "--dangerously-skip-permissions",
         ]
@@ -64,6 +62,13 @@ def execute_agy(
         )
         if res.returncode == 0 and res.stdout.strip():
             return res.stdout.strip()
+        if res.returncode == 0 and not res.stdout.strip():
+            logger.warning("AGY returned exit code 0 with empty stdout.")
+            return ""
+        logger.warning(f"AGY exited with code {res.returncode}: {res.stderr.strip()[:200]}")
+    except subprocess.TimeoutExpired:
+        logger.warning(f"AGY execution timed out after {timeout}s.")
+        return "__AGY_TIMEOUT__"
     except (subprocess.SubprocessError, OSError) as e:
         logger.warning(f"AGY execution error: {e}")
 

@@ -61,10 +61,24 @@ class SupervisorService:
 
         filepath = None
         push_success = False
+        final_response = intent_res.ai_response
 
         # 3-1. LLM(AGY 에이전트)이 GTD 스킬 지침에 따라 직접 마크다운 파일을 수정/이동한 경우 (ADR-066)
         if llm_modified_files and intent_res.intent == "chat_only":
             filepath = os.path.join(self.base_dir, llm_modified_files[0])
+            # 만약 에이전트가 파일 수정 도중 타임아웃되었거나 빈 출력 폴백이 반환된 경우 실제 수정된 파일 목록으로 명확히 브리핑
+            if (
+                not final_response
+                or "추가 응답 텍스트 없음" in final_response
+                or "처리 시간이 초과되었습니다" in final_response
+                or "말씀 잘 들었습니다! 😊" in final_response
+            ):
+                files_md = ", ".join(f"`{f}`" for f in llm_modified_files)
+                final_response = (
+                    f"✅ **요청하신 GTD/라이프로그 파일 작업을 완료했습니다.**\n\n"
+                    f"• **반영된 파일**: {files_md}\n"
+                    f"• 로컬 파일에 즉시 저장되었습니다. (나중에 `/commit`·`/push` 또는 밤 23:30 자동 백업 🌙)"
+                )
             if auto_push:
                 date_str = get_now().strftime("%Y-%m-%d")
                 commit_msg = f"docs(gtd): autonomous agent file update ({date_str}) [{session_id}]"
@@ -127,8 +141,6 @@ class SupervisorService:
         elif intent_res.intent == "log_reject":
             # (C) 사용자가 제안 거절 -> 보류 기록 초기화 (Git 커밋 X, 마크다운 수정 X)
             self.session_service.clear_pending_log(session_id=session_id)
-
-        final_response = intent_res.ai_response
 
         if intent_res.intent == "gtd_move":
             # (A-3a) GTD 상태 파일 간 태스크 이동 (inbox/next_actions/일정 -> someday/waiting/next_actions - ADR-066)
