@@ -57,7 +57,14 @@ class LLMProvider:
         agy_bin = self._find_agy_path()
         if agy_bin:
             full_prompt = build_system_prompt(prompt=prompt, history=history, gtd_path=self.gtd_path)
-            res = execute_agy(full_prompt=full_prompt, gtd_path=self.gtd_path, agy_bin=agy_bin, timeout=45)
+            res = execute_agy(full_prompt=full_prompt, gtd_path=self.gtd_path, agy_bin=agy_bin, timeout=120)
+            if res == "__AGY_TIMEOUT__":
+                return (
+                    "⏱️ **요청하신 작업 처리 시간이 초과되었습니다 (120초).**\n"
+                    "파일 수정이 일부 반영되었을 수 있으니 `/gtd`로 상태를 확인해 보시거나 잠시 후 다시 시도해 주세요."
+                )
+            if res == "":
+                return "✅ **요청하신 작업을 수행했습니다.** (추가 응답 텍스트 없음)"
             if res:
                 return res
 
