@@ -1,7 +1,9 @@
 import os
 import shutil
 import tempfile
+from unittest.mock import patch
 
+import git
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -21,13 +23,15 @@ def db_session():
     finally:
         db.close()
 
-def test_supervisor_pipeline_butler_workflow(db_session):
+
+def test_supervisor_natural_language_delegated_and_slash_log(db_session):
+    """ADR-066: 자연어는 파이썬 인텐트 분류 없이 100% LLM(chat_only)으로 위임되고, /log 슬래시 명령어는 즉시 로컬 마크다운에 기록됨을 검증."""
     temp_dir = tempfile.mkdtemp()
     try:
-        supervisor = SupervisorService(db=db_session, base_dir=temp_dir)
+        supervisor = SupervisorService(db=db_session, base_dir=temp_dir, fast_mode=True)
         session_id = "test_user_session"
 
-        # 1. 단순 잡담 -> chat_only (기록 X, 커밋 X)
+        # 1. 자연어 대화 -> 인텐트 분류 없이 chat_only
         res_chat = supervisor.process_user_request(
             session_id=session_id,
             user_message="안녕하세요! 오늘 날씨 좋네요.",
@@ -37,33 +41,8 @@ def test_supervisor_pipeline_butler_workflow(db_session):
         assert res_chat["intent"] == "chat_only"
         assert res_chat["filepath"] is None
         assert res_chat["git_pushed"] is False
-        assert res_chat["pending_log"] is None
 
-        # 2. 운동 일과 언급 -> log_suggest (제안 + pending_log 보관, 아직 기록 X)
-        res_suggest = supervisor.process_user_request(
-            session_id=session_id,
-            user_message="오늘 저녁에 한강 러닝 5km 뛰고 왔어!",
-            channel="web",
-            auto_push=False,
-        )
-        assert res_suggest["intent"] == "log_suggest"
-        assert res_suggest["filepath"] is None
-        assert res_suggest["pending_log"] is not None
-        assert "러닝 5km" in res_suggest["pending_log"]["content"]
-        assert res_suggest["pending_log"]["category"] == "Workout & Health"
-
-        # 3. 제안 승인 -> log_confirm (마크다운 기록 완료, pending_log 클리어)
-        res_confirm = supervisor.process_user_request(
-            session_id=session_id,
-            user_message="응 좋아 기록해줘",
-            channel="web",
-            auto_push=False,
-        )
-        assert res_confirm["intent"] == "log_confirm"
-        assert res_confirm["filepath"] is not None
-        assert res_confirm["pending_log"] is None
-
-        # 4. 직접 명령 -> log_explicit (즉시 마크다운 기록)
+        # 2. 명시적 /log 명령 -> log_explicit (즉시 로컬 마크다운 기록)
         res_explicit = supervisor.process_user_request(
             session_id=session_id,
             user_message="/log 프로젝트 기획서 검토 완료",
@@ -72,423 +51,16 @@ def test_supervisor_pipeline_butler_workflow(db_session):
         )
         assert res_explicit["intent"] == "log_explicit"
         assert res_explicit["filepath"] is not None
+        assert os.path.exists(res_explicit["filepath"])
     finally:
         shutil.rmtree(temp_dir)
 
 
-def test_supervisor_task_briefing_workflow(db_session):
-    temp_dir = tempfile.mkdtemp()
-    try:
-        import os
-        gtd_dir = os.path.join(temp_dir, "gtd")
-        os.makedirs(gtd_dir, exist_ok=True)
-        with open(os.path.join(gtd_dir, "next_actions.md"), "w", encoding="utf-8") as f:
-            f.write("# Next Actions\n- [ ] 중요한 계약서 검토 완료하기\n")
-
-        supervisor = SupervisorService(db=db_session, base_dir=temp_dir)
-        res = supervisor.process_user_request(
-            session_id="briefing_session",
-            user_message="오늘 해야할 일 정리해줘",
-            channel="telegram",
-            auto_push=False,
-        )
-
-        assert res["intent"] == "task_briefing"
-        assert res["filepath"] is None
-        assert "Briefing" in res["ai_response"] or "브리핑" in res["ai_response"]
-        assert any(w in res["ai_response"] for w in ["계약서", "검토"])
-    finally:
-        shutil.rmtree(temp_dir)
-
-
-def test_supervisor_repo_sync_workflows(db_session):
-    temp_dir = tempfile.mkdtemp()
-    try:
-        import os
-        gtd_dir = os.path.join(temp_dir, "gtd")
-        os.makedirs(gtd_dir, exist_ok=True)
-        with open(os.path.join(gtd_dir, "next_actions.md"), "w", encoding="utf-8") as f:
-            f.write("# Next Actions\n- [ ] 새로운 기능 배포 점검\n")
-
-        supervisor = SupervisorService(db=db_session, base_dir=temp_dir)
-
-        # 1. 단독 최신화 요청
-        res_sync = supervisor.process_user_request(
-            session_id="sync_session",
-            user_message="gtd 레포 최신화해줘",
-            channel="telegram",
-            auto_push=False,
-        )
-        assert res_sync["intent"] == "repo_sync"
-        assert "GTD 저장소 동기화 결과" in res_sync["ai_response"]
-
-        # 2. 최신화 후 브리핑 복합 요청
-        res_sync_brief = supervisor.process_user_request(
-            session_id="sync_session",
-            user_message="gtd 레포 최신화하고 다시 알려줘",
-            channel="telegram",
-            auto_push=False,
-        )
-        assert res_sync_brief["intent"] == "repo_sync_and_briefing"
-        assert "동기화" in res_sync_brief["ai_response"]
-        assert "Briefing" in res_sync_brief["ai_response"] or "브리핑" in res_sync_brief["ai_response"]
-        assert any(w in res_sync_brief["ai_response"] for w in ["배포", "점검", "기능"])
-    finally:
-        shutil.rmtree(temp_dir)
-
-
-def test_supervisor_context_aware_logging_workflow(db_session):
-    temp_dir = tempfile.mkdtemp()
-    try:
-        supervisor = SupervisorService(db=db_session, base_dir=temp_dir)
-        session_id = "context_log_session"
-
-        # 1. 일상/감정 사연 대화
-        story = "지난 주말에 병원에서 가족 검진 결과를 듣고 왔는데 걱정이 많아. 잘 극복해야지."
-        res_story = supervisor.process_user_request(
-            session_id=session_id,
-            user_message=story,
-            channel="telegram",
-            auto_push=False,
-        )
-        assert res_story["intent"] in ["chat_only", "log_suggest"]
-
-        # 2. 맥락 참조 기록 요청 ("오늘 로그에 내가 아까 말한 내용도 기록해줘. 내 감정이니까")
-        res_context_log = supervisor.process_user_request(
-            session_id=session_id,
-            user_message="오늘 로그에 내가 아까 말한 내용도 기록해줘. 내 감정이니까",
-            channel="telegram",
-            auto_push=False,
-        )
-        assert res_context_log["intent"] == "log_explicit"
-        assert res_context_log["filepath"] is not None
-        with open(res_context_log["filepath"], encoding="utf-8") as f:
-            assert "가족 검진 결과" in f.read()
-    finally:
-        shutil.rmtree(temp_dir)
-
-
-def test_supervisor_repo_push_workflow(db_session):
-    temp_dir = tempfile.mkdtemp()
-    try:
-        supervisor = SupervisorService(db=db_session, base_dir=temp_dir)
-        res_push = supervisor.process_user_request(
-            session_id="push_session",
-            user_message="푸시해줘",
-            channel="telegram",
-            auto_push=False,
-        )
-        assert res_push["intent"] == "repo_push"
-        assert "GitHub 푸시 결과" in res_push["ai_response"]
-    finally:
-        shutil.rmtree(temp_dir)
-
-
-def test_supervisor_pure_directive_logging_workflow(db_session):
-    temp_dir = tempfile.mkdtemp()
-    try:
-        supervisor = SupervisorService(db=db_session, base_dir=temp_dir)
-        session_id = "gordon_session"
-
-        # 1. 고든 퇴사 이야기
-        supervisor.process_user_request(
-            session_id=session_id,
-            user_message="오늘은 첫 버디였던 고든이 퇴사하는 날이야. 아쉽고 고마운 마음이 크네.",
-            channel="telegram",
-            auto_push=False,
-        )
-
-        # 2. "응 오늘 로그에 기록해줘" 지시
-        res = supervisor.process_user_request(
-            session_id=session_id,
-            user_message="응 오늘 로그에 기록해줘",
-            channel="telegram",
-            auto_push=False,
-        )
-        assert res["intent"] == "log_explicit"
-        assert res["filepath"] is not None
-        with open(res["filepath"], encoding="utf-8") as f:
-            content = f.read()
-            assert "고든이 퇴사하는 날" in content
-            assert "응 오늘 로그에" not in content
-    finally:
-        shutil.rmtree(temp_dir)
-
-
-def test_supervisor_dual_logging_workflow(db_session):
-    temp_dir = tempfile.mkdtemp()
-    try:
-        # Create inbox and logs/daily structure
-        gtd_dir = os.path.join(temp_dir, "gtd")
-        daily_dir = os.path.join(temp_dir, "logs", "daily")
-        os.makedirs(gtd_dir, exist_ok=True)
-        os.makedirs(daily_dir, exist_ok=True)
-
-        inbox_file = os.path.join(gtd_dir, "inbox.md")
-        with open(inbox_file, "w", encoding="utf-8") as f:
-            f.write(
-                "# 📥 GTD Inbox\n\n"
-                "## 🏢 회사 업무 (01_work)\n\n"
-                "## 🧘 개인 생활 & 건강 (02_personal)\n"
-            )
-
-        supervisor = SupervisorService(db=db_session, base_dir=temp_dir)
-        session_id = "dual_log_session"
-
-        prompt = (
-            "회사에서 리조트를 신청할 수 있거든? 와이프와 가려고 부여리조트를 신청했는데 떨어졌어. "
-            "그래서 그냥 서산쪽으로 여행을 가보려구. 용현집이라고 어죽을 파는 곳을 좋아했거든? "
-            "그래서 거기를 가보고싶고, 또간집에 나온 게국지 집에도 가보고싶대. 로그와 gtd에 기록해줘."
-        )
-
-        res = supervisor.process_user_request(
-            session_id=session_id,
-            user_message=prompt,
-            channel="telegram",
-            auto_push=False,
-        )
-
-        assert res["intent"] == "log_dual"
-        assert res["filepath"] is not None
-
-        # Verify daily log
-        with open(res["filepath"], encoding="utf-8") as f:
-            daily_content = f.read()
-            assert "서산쪽으로 여행" in daily_content
-            assert "로그와 gtd에" not in daily_content
-
-        # Verify GTD inbox
-        with open(inbox_file, encoding="utf-8") as f:
-            inbox_content = f.read()
-            assert "서산" in inbox_content
-            assert "여행" in inbox_content
-            assert "용현집" in inbox_content
-    finally:
-        shutil.rmtree(temp_dir)
-
-
-def test_supervisor_gtd_remove_and_commit_workflows(db_session):
-    temp_dir = tempfile.mkdtemp()
-    try:
-        gtd_dir = os.path.join(temp_dir, "gtd")
-        os.makedirs(gtd_dir, exist_ok=True)
-        inbox_file = os.path.join(gtd_dir, "inbox.md")
-        with open(inbox_file, "w", encoding="utf-8") as f:
-            f.write("# Inbox\n- [ ] tiara_ad 처리 방안 가이드라인 후속 작업 🚨\n- [ ] 생필품 구매\n")
-
-        supervisor = SupervisorService(db=db_session, base_dir=temp_dir)
-
-        # 1. gtd_remove: "tiara_ad는 제거해"
-        res_remove = supervisor.process_user_request(
-            session_id="remove_session",
-            user_message="tiara_ad는 제거해",
-            channel="telegram",
-            auto_push=False,
-        )
-        assert res_remove["intent"] == "gtd_remove"
-        assert "tiara_ad" in res_remove["ai_response"]
-        with open(inbox_file, "r", encoding="utf-8") as f:
-            assert "tiara_ad" not in f.read()
-
-        # 2. repo_commit: "커밋해"
-        res_commit = supervisor.process_user_request(
-            session_id="commit_session",
-            user_message="커밋해",
-            channel="telegram",
-            auto_push=False,
-        )
-        assert res_commit["intent"] == "repo_commit"
-        assert "Git 커밋" in res_commit["ai_response"]
-
-        # 3. repo_push with natural ending: "푸시도해야지"
-        res_push1 = supervisor.process_user_request(
-            session_id="push_session",
-            user_message="푸시도해야지",
-            channel="telegram",
-            auto_push=False,
-        )
-        assert res_push1["intent"] == "repo_push"
-        assert "GitHub 푸시 결과" in res_push1["ai_response"]
-
-        # 4. repo_push destination query: "어디다 푸시한거야?"
-        res_push_query = supervisor.process_user_request(
-            session_id="push_session",
-            user_message="어디다 푸시한거야?",
-            channel="telegram",
-            auto_push=False,
-        )
-        assert res_push_query["intent"] == "repo_push"
-        assert "원격 GitHub 저장소 정보" in res_push_query["ai_response"]
-        assert "origin/private-lifelog" not in res_push_query["ai_response"]
-    finally:
-        shutil.rmtree(temp_dir)
-
-
-def test_supervisor_inspection_shortcuts(db_session):
-    temp_dir = tempfile.mkdtemp()
-    try:
-        daily_dir = os.path.join(temp_dir, "logs", "daily")
-        gtd_dir = os.path.join(temp_dir, "gtd")
-        os.makedirs(daily_dir, exist_ok=True)
-        os.makedirs(gtd_dir, exist_ok=True)
-
-        supervisor = SupervisorService(db=db_session, base_dir=temp_dir)
-
-        # 1. /today shortcut
-        res_today = supervisor.process_user_request(
-            session_id="today_session",
-            user_message="/today",
-            channel="web",
-            auto_push=False,
-        )
-        assert res_today["intent"] == "daily_log_inspect"
-        assert "오늘" in res_today["ai_response"]
-
-        # 2. /gtd shortcut
-        inbox_file = os.path.join(gtd_dir, "inbox.md")
-        with open(inbox_file, "w", encoding="utf-8") as f:
-            f.write("# Inbox\n- [ ] 긴급 버그 수정\n")
-
-        res_gtd = supervisor.process_user_request(
-            session_id="gtd_session",
-            user_message="/gtd",
-            channel="web",
-            auto_push=False,
-        )
-        assert res_gtd["intent"] == "gtd_inspect"
-        assert "수집함 Inbox" in res_gtd["ai_response"]
-        assert "긴급 버그 수정" in res_gtd["ai_response"]
-
-        # 3. /gtd-today composite shortcut
-        res_comp = supervisor.process_user_request(
-            session_id="comp_session",
-            user_message="/gtd-today",
-            channel="web",
-            auto_push=False,
-        )
-        assert res_comp["intent"] == "gtd_and_log_inspect"
-        assert "일일 로그" in res_comp["ai_response"]
-        assert "GTD 파일 현황" in res_comp["ai_response"]
-
-        # 4. /briefing shortcut
-        res_briefing = supervisor.process_user_request(
-            session_id="briefing_session",
-            user_message="/briefing",
-            channel="web",
-            auto_push=False,
-        )
-        assert res_briefing["intent"] == "task_briefing"
-    finally:
-        shutil.rmtree(temp_dir)
-
-
-def test_supervisor_log_status_inspect_workflow(db_session):
-    temp_dir = tempfile.mkdtemp()
-    try:
-        supervisor = SupervisorService(db=db_session, base_dir=temp_dir)
-        session_id = "inspect_test_session"
-
-        # 1. 사용자 일과 대화
-        supervisor.process_user_request(
-            session_id=session_id,
-            user_message="오늘은 아침에 일어나서 와이프를 위한 미역국을 끓였어",
-            channel="telegram",
-            auto_push=False,
-        )
-
-        # 2. 기록 여부 질의 (아직 물리적 파일 없음)
-        res_inspect1 = supervisor.process_user_request(
-            session_id=session_id,
-            user_message="오늘 로그 파일에 기록했어?",
-            channel="telegram",
-            auto_push=False,
-        )
-        assert res_inspect1["intent"] == "log_status_inspect"
-        assert "아직 오늘" in res_inspect1["ai_response"]
-        assert "기록되지 않았습니다" in res_inspect1["ai_response"]
-        assert "미역국" in res_inspect1["ai_response"]
-        # pending_log가 설정되어 있어야 함
-        assert res_inspect1["pending_log"] is not None
-
-        # 3. 사용자 승인 ("응")
-        res_confirm = supervisor.process_user_request(
-            session_id=session_id,
-            user_message="응",
-            channel="telegram",
-            auto_push=False,
-        )
-        assert res_confirm["intent"] == "log_confirm"
-        assert res_confirm["filepath"] is not None
-
-        # 4. 기록 후 다시 기록 여부 질의 (물리적 파일 존재 확인)
-        res_inspect2 = supervisor.process_user_request(
-            session_id=session_id,
-            user_message="오늘 로그 파일에 기록했어?",
-            channel="telegram",
-            auto_push=False,
-        )
-        assert res_inspect2["intent"] == "log_status_inspect"
-        assert "정상 기록되어 있습니다" in res_inspect2["ai_response"]
-        assert "미역국" in res_inspect2["ai_response"]
-    finally:
-        shutil.rmtree(temp_dir)
-
-
-def test_local_first_batch_commit_and_push_workflow(db_session):
-    """ADR-064: 평상시 로컬 우선 기록 후 모아서 일괄 커밋(/commit) 및 원격 푸시(/push) 워크플로우 검증."""
-    import git
-
+def test_supervisor_autonomous_llm_file_edit_detection(db_session):
+    """ADR-066: LLM(AGY 에이전트)이 자연어 요청('은퇴 계획 일정을 someday로 이동시켜줘')을 받아 직접 마크다운 파일을 수정하면, 파이썬이 인텐트 분류 없이도 git status로 변경 파일을 정확히 감지하는지 검증."""
     temp_dir = tempfile.mkdtemp()
     try:
         repo = git.Repo.init(temp_dir)
-        os.makedirs(os.path.join(temp_dir, "gtd"), exist_ok=True)
-        os.makedirs(os.path.join(temp_dir, "logs", "daily"), exist_ok=True)
-        inbox_file = os.path.join(temp_dir, "gtd", "inbox.md")
-        with open(inbox_file, "w", encoding="utf-8") as f:
-            f.write("# 📥 Inbox\n\n## 🧘 개인 생활 & 건강 (02_personal)\n")
-        repo.git.add(A=True)
-        repo.index.commit("chore: initial gtd repo")
-
-        supervisor = SupervisorService(db=db_session, base_dir=temp_dir, fast_mode=True)
-
-        # 1. 평상시 명령 2회: 로컬 파일만 수정되고 즉시 커밋되지 않아야 함 (is_dirty == True)
-        res1 = supervisor.process_user_request(
-            session_id="batch_sess",
-            user_message="/log 아침 스트레칭 15분 완료",
-            channel="web",
-        )
-        assert res1["intent"] == "log_explicit"
-        assert res1["git_pushed"] is False
-
-        res2 = supervisor.process_user_request(
-            session_id="batch_sess",
-            user_message="트래블월렛 고객확인 gtd에 추가",
-            channel="web",
-        )
-        assert res2["intent"] == "log_explicit"
-        assert res2["git_pushed"] is False
-
-        dirty_files = supervisor.git_service.get_dirty_files()
-        assert len(dirty_files) == 2
-
-        # 2. 사용자가 "커밋해" 명령 시 2개 파일이 한 번에 일괄 커밋되어야 함
-        res_commit = supervisor.process_user_request(
-            session_id="batch_sess",
-            user_message="커밋해",
-            channel="web",
-        )
-        assert res_commit["intent"] == "repo_commit"
-        assert "2개 파일" in res_commit["ai_response"]
-        assert supervisor.git_service.get_dirty_files() == []
-        assert "batch update 2 file(s)" in str(repo.head.commit.message)
-    finally:
-        shutil.rmtree(temp_dir)
-
-
-def test_gtd_move_to_someday_and_autonomous_agent_workflow(db_session):
-    """ADR-066: 일정을 someday(또는 waiting/next_actions)로 이동 요청 시 현황 브리핑 오탐 없이 실제 파일 이동을 수행하는지 검증."""
-    temp_dir = tempfile.mkdtemp()
-    try:
         gtd_dir = os.path.join(temp_dir, "gtd")
         os.makedirs(gtd_dir, exist_ok=True)
         inbox_file = os.path.join(gtd_dir, "inbox.md")
@@ -498,30 +70,82 @@ def test_gtd_move_to_someday_and_autonomous_agent_workflow(db_session):
             f.write("# 📥 Inbox\n- [ ] 은퇴 계획 정리 및 독서 📖\n- [ ] 트래블월렛 고객확인 💳\n")
         with open(someday_file, "w", encoding="utf-8") as f:
             f.write("# 💡 GTD Someday / Maybe\n\n## 🎯 개인 목표\n")
+        repo.git.add(A=True)
+        repo.index.commit("chore: initial gtd files")
 
-        supervisor = SupervisorService(db=db_session, base_dir=temp_dir, fast_mode=True)
-        res = supervisor.process_user_request(
-            session_id="move_sess",
-            user_message="은퇴 계획 일정을 someday로 이동시켜줘",
-            channel="web",
-        )
+        supervisor = SupervisorService(db=db_session, base_dir=temp_dir, fast_mode=False)
 
-        assert res["intent"] == "gtd_move"
+        # AGY 에이전트가 직접 inbox.md에서 잘라내어 someday_maybe.md에 붙여넣는 자율 동작 시뮬레이션
+        def fake_autonomous_agy(prompt: str, history=None) -> str:
+            with open(inbox_file, "w", encoding="utf-8") as f:
+                f.write("# 📥 Inbox\n- [ ] 트래블월렛 고객확인 💳\n")
+            with open(someday_file, "a", encoding="utf-8") as f:
+                f.write("- [ ] 은퇴 계획 정리 및 독서 📖\n")
+            return "요청하신 '은퇴 계획 정리 및 독서' 일정을 `gtd/someday_maybe.md`로 이동했습니다!"
+
+        with patch.object(supervisor.llm_provider, "_call_ai_engine", side_effect=fake_autonomous_agy):
+            res = supervisor.process_user_request(
+                session_id="autonomous_sess",
+                user_message="은퇴 계획 일정을 someday로 이동시켜줘",
+                channel="web",
+            )
+
+        assert res["intent"] == "chat_only"
+        assert res["filepath"] is not None
         assert "someday_maybe.md" in res["ai_response"]
-        assert "은퇴 계획" in res["ai_response"]
-
-        with open(inbox_file, "r", encoding="utf-8") as f:
-            assert "은퇴 계획" not in f.read()
-        with open(someday_file, "r", encoding="utf-8") as f:
-            assert "은퇴 계획" in f.read()
+        assert len(supervisor.git_service.get_dirty_files()) == 2
     finally:
         shutil.rmtree(temp_dir)
 
 
+def test_supervisor_slash_shortcuts_and_git_workflows(db_session):
+    """ADR-061 & ADR-064: 슬래시(/) 명령어(/today, /gtd, /briefing, /sync, /commit, /push, /status) 워크플로우 검증."""
+    temp_dir = tempfile.mkdtemp()
+    try:
+        repo = git.Repo.init(temp_dir)
+        daily_dir = os.path.join(temp_dir, "logs", "daily")
+        gtd_dir = os.path.join(temp_dir, "gtd")
+        os.makedirs(daily_dir, exist_ok=True)
+        os.makedirs(gtd_dir, exist_ok=True)
 
+        inbox_file = os.path.join(gtd_dir, "inbox.md")
+        with open(inbox_file, "w", encoding="utf-8") as f:
+            f.write("# Inbox\n- [ ] 긴급 버그 수정\n")
+        repo.git.add(A=True)
+        repo.index.commit("chore: init")
 
+        supervisor = SupervisorService(db=db_session, base_dir=temp_dir, fast_mode=True)
 
+        # 1. /today
+        res_today = supervisor.process_user_request(session_id="s1", user_message="/today")
+        assert res_today["intent"] == "daily_log_inspect"
 
+        # 2. /gtd
+        res_gtd = supervisor.process_user_request(session_id="s1", user_message="/gtd")
+        assert res_gtd["intent"] == "gtd_inspect"
+        assert "긴급 버그 수정" in res_gtd["ai_response"]
 
+        # 3. /briefing
+        res_brief = supervisor.process_user_request(session_id="s1", user_message="/briefing")
+        assert res_brief["intent"] == "task_briefing"
 
+        # 4. /sync
+        res_sync = supervisor.process_user_request(session_id="s1", user_message="/sync")
+        assert res_sync["intent"] == "repo_sync"
 
+        # 5. /log 2회 후 /commit 일괄 커밋 (ADR-064)
+        supervisor.process_user_request(session_id="s1", user_message="/log 아침 스트레칭 완료")
+        supervisor.agent_service.append_to_gtd_inbox("트래블월렛 고객확인 💳")
+        assert len(supervisor.git_service.get_dirty_files()) == 2
+
+        res_commit = supervisor.process_user_request(session_id="s1", user_message="/commit")
+        assert res_commit["intent"] == "repo_commit"
+        assert "2개 파일" in res_commit["ai_response"]
+        assert supervisor.git_service.get_dirty_files() == []
+
+        # 6. /status
+        res_status = supervisor.process_user_request(session_id="s1", user_message="/status")
+        assert res_status["intent"] == "log_status_inspect"
+        assert "정상 기록되어 있습니다" in res_status["ai_response"]
+    finally:
+        shutil.rmtree(temp_dir)

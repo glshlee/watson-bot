@@ -162,61 +162,39 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "3. Testing POST /api/chat (ADR-004 Smart Butler Workflow)..."
+echo "3. Testing POST /api/chat (ADR-066 Pure Agent & Slash Workflow)..."
 
-echo "  3-1. Testing Chat Only (인사/잡담 - 마크다운 기록 X)..."
+echo "  3-1. Testing Natural Language Delegation (인사/자연어 - 파이썬 인텐트 분류 없이 LLM 위임)..."
 CHAT_RES1=$(run_curl -X POST "$SERVER_URL/api/chat" \
   -H "Content-Type: application/json" \
   -d '{"session_id": "smoke_butler_session", "message": "안녕하세요 왓슨!", "auto_push": false}')
 if echo "$CHAT_RES1" | grep -q '"intent":"chat_only"'; then
-    echo "  ✅ 3-1. Chat Only Passed (intent=chat_only, No File Created)"
+    echo "  ✅ 3-1. Natural Language Delegation Passed (intent=chat_only)"
 else
-    echo "  ❌ 3-1. Chat Only Failed. Response: $CHAT_RES1"
+    echo "  ❌ 3-1. Natural Language Delegation Failed. Response: $CHAT_RES1"
     exit 1
 fi
 
-echo "  3-2. Testing Lifelog Suggestion (운동 일과 감지 - 제안 생성)..."
-CHAT_RES2=$(run_curl -X POST "$SERVER_URL/api/chat" \
-  -H "Content-Type: application/json" \
-  -d '{"session_id": "smoke_butler_session", "message": "오늘 저녁 한강 러닝 5km 뛰었어", "auto_push": false}')
-if echo "$CHAT_RES2" | grep -q '"intent":"log_suggest"'; then
-    echo "  ✅ 3-2. Suggestion Passed (intent=log_suggest, Pending Log Saved)"
-else
-    echo "  ❌ 3-2. Suggestion Failed. Response: $CHAT_RES2"
-    exit 1
-fi
-
-echo "  3-3. Testing Confirmation & Commit (승인 - 마크다운 기록 생성)..."
-CHAT_RES3=$(run_curl -X POST "$SERVER_URL/api/chat" \
-  -H "Content-Type: application/json" \
-  -d '{"session_id": "smoke_butler_session", "message": "응 좋아", "auto_push": false}')
-if echo "$CHAT_RES3" | grep -q '"intent":"log_confirm"'; then
-    echo "  ✅ 3-3. Confirmation Passed (intent=log_confirm, File Written)"
-else
-    echo "  ❌ 3-3. Confirmation Failed. Response: $CHAT_RES3"
-    exit 1
-fi
-
-echo "  3-4. Testing Direct Command (/log - 직접 마크다운 기록)..."
+echo "  3-2. Testing Direct Command (/log - 직접 마크다운 기록)..."
 CHAT_RES4=$(run_curl -X POST "$SERVER_URL/api/chat" \
   -H "Content-Type: application/json" \
   -d '{"session_id": "smoke_butler_session", "message": "/log 프로젝트 기획 완료", "auto_push": false}')
 if echo "$CHAT_RES4" | grep -q '"intent":"log_explicit"'; then
-    echo "  ✅ 3-4. Direct Command Passed (intent=log_explicit)"
+    echo "  ✅ 3-2. Direct Command Passed (intent=log_explicit)"
 else
-    echo "  ❌ 3-4. Direct Command Failed. Response: $CHAT_RES4"
+    echo "  ❌ 3-2. Direct Command Failed. Response: $CHAT_RES4"
     exit 1
 fi
 
 if [ "$QUICK_MODE" -eq 1 ]; then
-    echo "  3-Q1. Testing GTD Task Addition (ADR-059/061)..."
+    echo "  3-Q1. Testing /gtd & /briefing Slash Shortcuts (ADR-061/066)..."
     QUICK_GTD=$(run_curl -X POST "$SERVER_URL/api/chat" \
       -H "Content-Type: application/json" \
-      -d '{"session_id": "smoke_butler_session", "message": "트래블월렛 고객확인 gtd에 추가", "auto_push": false}')
-    if echo "$QUICK_GTD" | grep -q '"intent":"log_explicit"'; then
-        echo "  ✅ 3-Q1. Quick GTD Task Addition Passed"
+      -d '{"session_id": "smoke_butler_session", "message": "/gtd", "auto_push": false}')
+    if echo "$QUICK_GTD" | grep -q '"intent":"gtd_inspect"'; then
+        echo "  ✅ 3-Q1. Quick /gtd Inspection Passed"
     else
-        echo "  ❌ 3-Q1. Quick GTD Task Addition Failed. Response: $QUICK_GTD"
+        echo "  ❌ 3-Q1. Quick /gtd Inspection Failed. Response: $QUICK_GTD"
         exit 1
     fi
 

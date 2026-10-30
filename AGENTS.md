@@ -86,7 +86,7 @@
 * **상단 헤더 미니멀화 & 설정 팝오버 통합 (ADR-063)**: 웹 콘솔(`/watson`, `/dev`) 상단 헤더는 핵심 배지(허브/잔디/시계)만 노출하고, GTD 경로·출근·텔레그램 메뉴·대화 비우기 등은 `[⚙️ 설정]` 드롭다운(`#header-settings-dropdown`)으로 통합하여 타이틀 겹침을 원천 차단할 것.
 * **로컬 우선 기록 & 일괄 커밋·야간 자동 푸시 (ADR-064)**: 평상시 일기/GTD 추가·완료·제거 시 로컬 마크다운에만 즉시 반영(`auto_push=False`)하고, `/commit` 시 일괄 커밋, `/push` 시 미커밋 자동 커밋 후 원격 푸시하며, 매일 밤 `23:30 KST` 스케줄러가 하루치 변경분을 자동 일괄 커밋·푸시할 것.
 * **리치 마크다운 뷰어 & GTD/로그 타이포그래피 (ADR-065)**: `/watson` 채팅 말풍선과 에디터/출근 프리뷰에 공통 리치 마크다운 렌더러(`window.WatsonMarkdown.render`)를 적용하여 GTD 체크박스 카드(`.md-task-item`), 타임스탬프(`[HH:MM]`)·마감일(`~YYYY-MM-DD`) 배지 및 섹션 헤더를 시각화할 것.
-* **LLM 자율 GTD 스킬 위임 & 파이썬 워크플로우 분리 (ADR-066)**: `gtd-assistant/SKILL.md`(5대 상태 파일) 원문을 LLM에 직접 주입하고, 자연어 분류/이동(`someday`, `waiting`, `next_actions`)은 LLM 직접 편집 및 `gtd_move`로 처리하며, 파이썬은 세션·외부 API·`git status` 변경 감지 및 커밋/푸시 워크플로우만 전담할 것.
+* **파이썬 인텐트 분류 철거 & 순수 LLM 자율 위임 (ADR-066)**: 파이썬 측 자연어 인텐트 분류기(`[INTENT: ...]`, 정규식 폴백)를 전면 철거하고 `gtd-assistant/SKILL.md` 원문을 주입하여 모든 자연어 판단·파일 편집을 LLM에 위임하며, 파이썬은 `/` 슬래시 숏컷과 `git status` 변경 감지·커밋/푸시 워크플로우만 전담할 것.
 ### 4. Progressive Disclosure (상세 문서 참조)
 * **제품 기획서 개요**: `docs/PRD.md` | **기능 요구사항**: `docs/requirements.md`
 * **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-066)

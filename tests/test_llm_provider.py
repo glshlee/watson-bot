@@ -1,229 +1,84 @@
+import os
+import tempfile
+
+from app.services.llm.prompt_builder import build_system_prompt, load_skill_instructions
 from app.services.llm_provider import LLMProvider
 
 
-def test_llm_provider_chat_only():
-    provider = LLMProvider()
-    res = provider.analyze_and_respond("안녕? 오늘 날씨 어때?")
-    assert res.intent == "chat_only"
-    assert len(res.ai_response.strip()) > 5
-    assert res.log_content is None
+def test_llm_provider_natural_language_delegated_without_intent_classification():
+    """ADR-066: 슬래시(/)가 아닌 모든 자연어 입력은 파이썬이 인텐트를 분류하거나 가로채지 않고 100% LLM 응답(chat_only)으로 위임됨을 검증."""
+    provider = LLMProvider(fast_mode=True)
+
+    natural_inputs = [
+        "안녕? 오늘 날씨 어때?",
+        "오늘 퇴근하고 헬스장에서 스쿼트 100kg 성공했어!",
+        "은퇴 계획 일정을 someday로 이동시켜줘",
+        "트래블월렛 고객확인 gtd에 추가",
+        "오늘 gtd 할일 확인해줘",
+        "민방위 사이버교육은 완료했어.",
+        "휴지는 선물받아서 구매할 필요가 없어.",
+    ]
+    for msg in natural_inputs:
+        res = provider.analyze_and_respond(msg)
+        assert res.intent == "chat_only", f"Natural language '{msg}' must not be classified by Python, got {res.intent}"
+        assert len(res.ai_response.strip()) > 0
 
 
-def test_llm_provider_workout_suggest():
-    provider = LLMProvider()
-    res = provider.analyze_and_respond("오늘 퇴근하고 헬스장에서 스쿼트 100kg 성공했어!")
-    assert res.intent == "log_suggest"
-    assert res.category == "Workout & Health"
-    assert "스쿼트 100kg" in res.log_content
-    assert "기록해 둘까요" in res.ai_response
+def test_llm_provider_slash_command_routing():
+    """ADR-061 & ADR-066: 오직 명시적 슬래시(/) 명령어만 파이썬 결정론적 워크플로우로 즉시 라우팅됨을 검증."""
+    provider = LLMProvider(fast_mode=True)
+
+    assert provider.analyze_and_respond("/today").intent == "daily_log_inspect"
+    assert provider.analyze_and_respond("/gtd").intent == "gtd_inspect"
+    assert provider.analyze_and_respond("/inbox").intent == "gtd_inspect"
+    assert provider.analyze_and_respond("/dday").intent == "dday_inspect"
+    assert provider.analyze_and_respond("/briefing").intent == "task_briefing"
+    assert provider.analyze_and_respond("/briefing morning").intent == "task_briefing_morning"
+    assert provider.analyze_and_respond("/briefing evening").intent == "task_briefing_evening"
+    assert provider.analyze_and_respond("/schedule").intent == "briefing_schedule_inspect"
+    assert provider.analyze_and_respond("/commit").intent == "repo_commit"
+    assert provider.analyze_and_respond("/push").intent == "repo_push"
+    assert provider.analyze_and_respond("/sync").intent == "repo_sync"
+    assert provider.analyze_and_respond("/weekly").intent == "weekly_review"
+    assert provider.analyze_and_respond("/heatmap").intent == "lifelog_heatmap"
+    assert provider.analyze_and_respond("/edit 2026-09-15").intent == "lifelog_edit"
+    assert provider.analyze_and_respond("/status").intent == "log_status_inspect"
+
+    res_log = provider.analyze_and_respond("/log 내일 아침 10시 미팅 준비")
+    assert res_log.intent == "log_explicit"
+    assert "미팅 준비" in (res_log.log_content or "")
+
+    res_done = provider.analyze_and_respond("/done 세무 신고")
+    assert res_done.intent == "task_complete"
+    assert res_done.log_content == "세무 신고"
 
 
-def test_llm_provider_confirm_and_reject():
-    provider = LLMProvider()
+def test_llm_provider_pending_draft_confirm_and_reject():
+    """Vision 사진 분석 카드 등 보류 중인 초안(pending_log)에 대한 짧은 승인/거절 토큰 처리 검증."""
+    provider = LLMProvider(fast_mode=True)
     pending = {"content": "한강 러닝 5km", "category": "Workout & Health"}
 
-    # 승인
     res_confirm = provider.analyze_and_respond("응 좋아", pending_log=pending)
     assert res_confirm.intent == "log_confirm"
     assert res_confirm.log_content == "한강 러닝 5km"
-    assert res_confirm.category == "Workout & Health"
 
-    # 거절
-    res_reject = provider.analyze_and_respond("아니 괜찮아", pending_log=pending)
+    res_reject = provider.analyze_and_respond("아니", pending_log=pending)
     assert res_reject.intent == "log_reject"
-    assert res_reject.log_content is None
 
 
-def test_llm_provider_explicit_command():
-    provider = LLMProvider()
-    res = provider.analyze_and_respond("/log 내일 아침 10시 미팅 준비")
-    assert res.intent == "log_explicit"
-    assert "미팅 준비" in res.log_content
+def test_skill_md_full_injection_in_system_prompt():
+    """ADR-066: 연결된 GTD 저장소의 .agents/skills/gtd-assistant/SKILL.md 원문이 프롬프트에 그대로 주입되고 [INTENT: ...] 강제 태그가 제거되었는지 검증."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        skill_dir = os.path.join(tmpdir, ".agents", "skills", "gtd-assistant")
+        os.makedirs(skill_dir, exist_ok=True)
+        skill_path = os.path.join(skill_dir, "SKILL.md")
+        with open(skill_path, "w", encoding="utf-8") as f:
+            f.write("# GTD Assistant Skill\n- gtd/someday_maybe.md\n- gtd/waiting_for.md\n")
 
+        loaded = load_skill_instructions(tmpdir)
+        assert "gtd/someday_maybe.md" in loaded
+        assert "gtd/waiting_for.md" in loaded
 
-def test_llm_provider_repo_push():
-    provider = LLMProvider()
-    for prompt in ["푸시해줘", "푸시도 해줘", "푸시가 안됐는데 다시 확인해줘", "/push", "깃 푸시"]:
-        res = provider.analyze_and_respond(prompt)
-        assert res.intent == "repo_push", f"Failed for {prompt}"
-
-    # "푸시업"은 운동 제안으로 가야 함
-    res_pushup = provider.analyze_and_respond("오늘 헬스장에서 푸시업 100개 완료")
-    assert res_pushup.intent == "log_suggest"
-    assert res_pushup.category == "Workout & Health"
-
-
-def test_llm_provider_conversational_directive_resolution():
-    provider = LLMProvider()
-    history = [
-        {"role": "user", "content": "오늘은 내가 카카오페이에 처음 왔을 때 나의 버디였던 고든이 퇴사하는 날이야. 고마웠는데 아쉽네."},
-        {"role": "assistant", "content": "첫 버디의 퇴사라니 참 섭섭하고 허전하시겠습니다."},
-    ]
-    for prompt in ["응 오늘 로그에 기록해줘", "응 로그에 기록해줘", "오늘 로그에 기록해줘", "이 내용 오늘 일기에 적어줘"]:
-        res = provider.analyze_and_respond(prompt, history=history)
-        assert res.intent == "log_explicit", f"Failed for {prompt}"
-        assert "고든이 퇴사하는 날" in res.log_content, f"Content mismatch for {prompt}: {res.log_content}"
-
-
-def test_llm_provider_dual_logging_and_task_extraction():
-    provider = LLMProvider()
-    prompt = (
-        "회사에서 리조트를 신청할 수 있거든? 와이프와 가려고 부여리조트를 신청했는데 떨어졌어. "
-        "그래서 그냥 서산쪽으로 여행을 가보려구. 용현집이라고 어죽을 파는 곳을 좋아했거든? "
-        "그래서 거기를 가보고싶고, 또간집에 나온 게국지 집에도 가보고싶대. 로그와 gtd에 기록해줘."
-    )
-    res = provider.analyze_and_respond(prompt)
-    assert res.intent == "log_dual"
-    assert res.is_dual_log is True
-    assert "로그와 gtd에" not in res.log_content
-    assert not res.log_content.endswith(".")
-    assert "서산" in res.gtd_task_content
-    assert "여행" in res.gtd_task_content
-    assert "용현집" in res.gtd_task_content
-
-
-def test_llm_provider_log_status_inspect():
-    provider = LLMProvider()
-    queries = [
-        "오늘 로그 파일에 기록했어?",
-        "오늘 로그에 기록했어?",
-        "오늘 일기 적었어?",
-        "기록했어?",
-        "기록됐어?",
-        "기록된거 맞아?",
-        "기록 확인",
-        "오늘 기록 확인",
-        "일기 확인해줘",
-        "기록 됐니?",
-    ]
-    for q in queries:
-        res = provider.analyze_and_respond(q)
-        assert res.intent == "log_status_inspect", f"Failed for query '{q}': got {res.intent}"
-
-
-def test_llm_provider_front_placed_directive():
-    provider = LLMProvider()
-    prompt = (
-        "아니 어제 gtd에 이 내용을 넣어달라구\n\n"
-        "어제 이야기를 좀 해도 될까. 어제 와이프랑 산부인과에 초음파를 보러 갔는데, 아기가 심장이 멈췄대. "
-        "그래서 급하게 병원을 잡아서 소파술을 하고왔어."
-    )
-    res = provider.analyze_and_respond(prompt)
-    assert res.intent == "log_explicit"
-    assert "산부인과" in res.log_content or "소파술" in res.log_content
-    assert res.category == "GTD Inbox"
-
-
-def test_llm_provider_update_context_directive_not_sync():
-    provider = LLMProvider()
-    history = [
-        {"role": "user", "content": "어제 와이프랑 산부인과에 초음파를 보러 갔는데 소파술을 하고 왔어."},
-        {"role": "assistant", "content": "정말 가슴 아프셨겠습니다. 위로를 드립니다."},
-    ]
-    prompt = "어제 gtd에 업데이트 해줘 위ㅡ내용"
-    res = provider.analyze_and_respond(prompt, history=history)
-    assert res.intent == "log_explicit"
-    assert "산부인과" in res.log_content
-
-
-def test_llm_provider_life_moment_draft_preview():
-    provider = LLMProvider()
-    prompt = "오늘은 아침에 일어나서 와이프를 위한 미역국을 끓였어"
-    res = provider.analyze_and_respond(prompt)
-    assert res.intent == "log_suggest"
-    assert res.category == "Daily Notes & Diary"
-    assert "라이프로그 초안" in res.ai_response
-    assert "미역국" in res.ai_response
-    assert "기록해 둘까요" in res.ai_response
-
-
-def test_llm_provider_dual_confirm_from_pending():
-    provider = LLMProvider()
-    pending = {
-        "content": "아내 수술 후 퇴원 및 저녁 미역국 식사",
-        "category": "Daily Notes & Diary",
-        "gtd_task": "아내 신체 회복을 위한 영양식 및 보온 챙기기",
-        "is_dual": True,
-    }
-    for confirm_prompt in ["응", "이대로 해줘", "좋아", "이대로 기록해줘", "응 좋아"]:
-        res = provider.analyze_and_respond(confirm_prompt, pending_log=pending)
-        assert res.intent == "log_dual", f"Failed for {confirm_prompt}"
-        assert res.is_dual_log is True
-        assert "영양식" in (res.gtd_task_content or "")
-
-
-def test_llm_provider_negative_feedback_and_yoga_guard():
-    """'필요가 없어'에서 '요가' 오탐지 차단 및 불필요/취소 발화의 LLM 자연어 위임 검증 (ADR-036)."""
-    provider = LLMProvider()
-
-    # 1. '필요가 없어' ➔ 운동 오탐지 절대 발생 금지 (chat_only로 안전하게 위임)
-    res_tissue = provider.analyze_and_respond("휴지는 선물받아서 구매할 필요가 없어.")
-    assert res_tissue.intent == "chat_only"
-    assert res_tissue.category is None
-    assert "Workout" not in (res_tissue.category or "")
-
-    # 2. 기타 불필요/취소 발화
-    for neg_text in ["그 물건은 살 필요가 없는데?", "오늘 오후 팀 미팅 취소됐어", "아이디어 회의 취소"]:
-        res_neg = provider.analyze_and_respond(neg_text)
-        assert res_neg.intent == "chat_only", f"Failed for {neg_text}: got {res_neg.intent}"
-
-    # 3. 진짜 요가 수업 완료 발화 ➔ Workout & Health 정상 감지
-    res_yoga = provider.analyze_and_respond("오늘 저녁에 요가 수업 다녀왔어")
-    assert res_yoga.intent == "log_suggest"
-    assert res_yoga.category == "Workout & Health"
-
-
-def test_gtd_task_addition_and_briefing_guard():
-    """'트래블월렛 고객확인 gtd에 추가' 등 구어체 태스크 등록 및 브리핑 오탐 가드레일 검증 (ADR-059)."""
-    provider = LLMProvider()
-
-    # 1. '트래블월렛 고객확인 gtd에 추가' ➔ 브리핑 오탐 없이 log_explicit 정상 등록
-    res_wallet = provider.analyze_and_respond("트래블월렛 고객확인 gtd에 추가")
-    assert res_wallet.intent == "log_explicit"
-    assert res_wallet.category == "GTD Inbox"
-    assert "트래블월렛 고객확인" in (res_wallet.log_content or "")
-    assert "💳" in (res_wallet.log_content or "")
-
-    # 2. 다양한 약식 지시어 (등록, 추가, 넣어 등)
-    res_doc = provider.analyze_and_respond("본인확인 서류 제출 gtd에 등록")
-    assert res_doc.intent == "log_explicit"
-    assert res_doc.category == "GTD Inbox"
-    assert "본인확인" in (res_doc.log_content or "")
-
-    # 3. 순수 브리핑 요청은 정상적으로 task_briefing으로 동작
-    res_briefing = provider.analyze_and_respond("오늘 gtd 할일 확인해줘")
-    assert res_briefing.intent in ("task_briefing", "task_briefing_morning", "task_briefing_evening")
-
-
-def test_llm_provider_gtd_inspect_and_briefing_separation():
-    """'gtd inbox 확인' 등 수집함/GTD 직접 조회와 브리핑 분리 검증 (ADR-060)."""
-    provider = LLMProvider()
-
-    # 1. 파일 직접 열람 구어체 질의 ➔ gtd_inspect (브리핑 오탐 원천 차단)
-    for q in [
-        "gtd inbox 확인",
-        "inbox 확인",
-        "gtd 확인",
-        "수집함 확인",
-        "인박스 확인",
-        "inbox 보여줘",
-        "gtd 파일 보여줘",
-        "inbox.md 확인",
-        "next_actions 확인",
-        "다음 행동 확인",
-    ]:
-        res = provider.analyze_and_respond(q)
-        assert res.intent == "gtd_inspect", f"Expected gtd_inspect for '{q}', got '{res.intent}'"
-
-    # 2. 명시적 브리핑 요청 ➔ task_briefing
-    for b in [
-        "/briefing",
-        "브리핑",
-        "브리핑 해줘",
-        "오늘 할 일 브리핑해줘",
-        "오늘 해야할 일 정리해줘",
-    ]:
-        res_b = provider.analyze_and_respond(b)
-        assert res_b.intent in ("task_briefing", "task_briefing_morning", "task_briefing_evening"), f"Expected briefing for '{b}', got '{res_b.intent}'"
-
-
+        sys_prompt = build_system_prompt("은퇴 계획 일정을 someday로 이동시켜줘", gtd_path=tmpdir)
+        assert "gtd/someday_maybe.md" in sys_prompt
+        assert "[INTENT: log_suggest" not in sys_prompt

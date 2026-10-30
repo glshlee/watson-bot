@@ -27,43 +27,16 @@ def temp_gtd_env():
         yield tmpdir
 
 
-def test_colloquial_task_completion_intent():
-    """ADR-031: 구어체 태스크 완료 보고 발화의 task_complete 의도 분류 검증."""
-    llm = LLMProvider()
+def test_slash_done_command_and_natural_delegation():
+    """ADR-066: /done 슬래시 명령어는 task_complete로, 자연어는 파이썬 인텐트 분류 없이 LLM(chat_only)으로 위임됨을 검증."""
+    llm = LLMProvider(fast_mode=True)
 
-    res1 = llm.analyze_and_respond("민방위 사이버교육은 완료했어.")
-    assert res1.intent == "task_complete"
-    assert "민방위" in res1.log_content
+    res_slash = llm.analyze_and_respond("/done 민방위 사이버교육")
+    assert res_slash.intent == "task_complete"
+    assert "민방위" in (res_slash.log_content or "")
 
-    res2 = llm.analyze_and_respond("민방위 사이버교육 완료 gtd에 기록해.")
-    assert res2.intent == "task_complete"
-    assert "민방위" in res2.log_content
-
-    res3 = llm.analyze_and_respond("사이버교육 다했어")
-    assert res3.intent == "task_complete"
-    assert "사이버교육" in res3.log_content
-
-    res4 = llm.analyze_and_respond("휴지랑 원두 구매 완료 인박스에 체크해줘")
-    assert res4.intent == "task_complete"
-
-
-def test_meta_feedback_and_protest_guardrail():
-    """ADR-031: 사용자 항의/메타 피드백이 log_suggest(일기 초안)로 오인되지 않고 지능형 복구됨을 검증."""
-    llm = LLMProvider()
-
-    history = [
-        {"role": "user", "content": "민방위 사이버교육 완료 gtd에 기록해."},
-        {"role": "assistant", "content": "요청하신 태스크를 GTD 수집함에 등록했습니다!"},
-    ]
-
-    protest_prompt = "아니 이미 인박스에 있다면서. 그래서 완료했다고 말한건데?"
-    res = llm.analyze_and_respond(protest_prompt, history=history)
-
-    # 절대로 log_suggest 초안 카드가 떠서는 안 됨!
-    assert res.intent != "log_suggest"
-    # 완료 의도가 담긴 항의이므로 task_complete로 자동 복구
-    assert res.intent == "task_complete"
-    assert "민방위" in res.log_content
+    res_natural = llm.analyze_and_respond("민방위 사이버교육은 완료했어.")
+    assert res_natural.intent == "chat_only"
 
 
 def test_complete_matching_tasks_fuzzy_and_predicate_stripping(temp_gtd_env):
