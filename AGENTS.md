@@ -80,16 +80,16 @@
 * **비동기 서비스 제어 & 포그라운드 차단 (ADR-056)**: 터미널 세션 블로킹 및 고아 프로세스 방지를 위해 포그라운드 직접 실행(`python app.py`, `uvicorn`)을 엄격히 금지하고, 반드시 `./scripts/service.sh` 또는 `start.sh` 등 비동기 스크립트 및 `app.py` 가드레일로 백그라운드 구동할 것.
 * **DevBot 스킬 연동 & 로드맵 인스펙터 (ADR-057)**: .agents/skills/ 동적 탐색·주입과 /skills, /skill <name> 명세 카탈로그를 지원하고, /roadmap 및 REST API로 전체 56개 마일스톤 진척도·예정 과제를 실시간 브리핑할 것.
 * **웹 자율 코딩 스튜디오 & 자가 치유 (ADR-058)**: 웹 IDE 에디터·Diff 모달(/studio), DevBot 자율 패치(/implement, /patch), 백업 롤백(/rollback), 자가 치유(/heal) 및 팔레트 23종 보장.
-* **GTD 구어체 태스크 등록 & 브리핑 가드레일 (ADR-059)**: "gtd에 추가" 등 구어체 축약어 수용, "고객확인" 속 '확인'의 브리핑 오탐 차단 및 금융 태스크(💳) 개인 섹션 자동 라우팅 보장.
-* **브리핑 가로채기 철거 & GTD 열람 라우팅 (ADR-060)**: briefing_triggers에서 gtd/inbox/수집함 철거로 저녁 회고 오탐 차단, "gtd inbox 확인" 등 파일 직접 조회를 100% gtd_inspect로 라우팅할 것.
-* **슬래시 명령어 전용 라우팅 & 자연어 100% LLM 위임 (ADR-061)**: 슬래시(/) 명령어 전용 즉각 라우터 외 800여 줄 정규식 가로채기를 전면 철거하고 모든 자연어를 100% LLM(Intent Protocol)으로 위임할 것.
+* **GTD 구어체 태스크 등록 & 브리핑/열람 라우팅 (ADR-059, ADR-060)**: "gtd에 추가" 등 구어체 축약어 수용, 금융 태스크(💳) 개인 섹션 라우팅 및 "gtd inbox 확인" 등 파일 직접 조회를 100% gtd_inspect로 라우팅할 것.
+* **슬래시 명령어 전용 라우팅 & 자연어 100% LLM 위임 (ADR-061)**: 슬래시(/) 명령어 전용 즉각 라우터 외 정규식 가로채기를 철거하고 모든 자연어를 100% LLM으로 위임할 것.
 * **개발/운영 분리 & Pre-Push 품질 게이트 (ADR-062)**: 일상 코드 수정 시 타겟 파일 `ruff`/`mypy`/`pytest`만 실행(Fast Dev Loop)하여 비용을 절감하고, 커밋/푸시 직전에만 `./scripts/gate.sh`(격리 스모크, `DISABLE_TELEGRAM_POLLING=1` 포함)를 1회 실행하며, 에이전트는 사용자가 명시적으로 "커밋해" 지시할 때만 커밋할 것.
 * **상단 헤더 미니멀화 & 설정 팝오버 통합 (ADR-063)**: 웹 콘솔(`/watson`, `/dev`) 상단 헤더는 핵심 배지(허브/잔디/시계)만 노출하고, GTD 경로·출근·텔레그램 메뉴·대화 비우기 등은 `[⚙️ 설정]` 드롭다운(`#header-settings-dropdown`)으로 통합하여 타이틀 겹침을 원천 차단할 것.
 * **로컬 우선 기록 & 일괄 커밋·야간 자동 푸시 (ADR-064)**: 평상시 일기/GTD 추가·완료·제거 시 로컬 마크다운에만 즉시 반영(`auto_push=False`)하고, `/commit` 시 일괄 커밋, `/push` 시 미커밋 자동 커밋 후 원격 푸시하며, 매일 밤 `23:30 KST` 스케줄러가 하루치 변경분을 자동 일괄 커밋·푸시할 것.
 * **리치 마크다운 뷰어 & GTD/로그 타이포그래피 (ADR-065)**: `/watson` 채팅 말풍선과 에디터/출근 프리뷰에 공통 리치 마크다운 렌더러(`window.WatsonMarkdown.render`)를 적용하여 GTD 체크박스 카드(`.md-task-item`), 타임스탬프(`[HH:MM]`)·마감일(`~YYYY-MM-DD`) 배지 및 섹션 헤더를 시각화할 것.
+* **LLM 자율 GTD 스킬 위임 & 파이썬 워크플로우 분리 (ADR-066)**: `gtd-assistant/SKILL.md`(5대 상태 파일) 원문을 LLM에 직접 주입하고, 자연어 분류/이동(`someday`, `waiting`, `next_actions`)은 LLM 직접 편집 및 `gtd_move`로 처리하며, 파이썬은 세션·외부 API·`git status` 변경 감지 및 커밋/푸시 워크플로우만 전담할 것.
 ### 4. Progressive Disclosure (상세 문서 참조)
 * **제품 기획서 개요**: `docs/PRD.md` | **기능 요구사항**: `docs/requirements.md`
-* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-065)
+* **개발 로드맵 & 백로그**: `docs/roadmap.md` | **ADR 목록**: `docs/adr/` (ADR-001 ~ ADR-066)
 
 ---
 ## 🛠 1. 기술 스택 & 프로젝트 구조 요약

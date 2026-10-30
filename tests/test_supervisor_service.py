@@ -485,6 +485,40 @@ def test_local_first_batch_commit_and_push_workflow(db_session):
         shutil.rmtree(temp_dir)
 
 
+def test_gtd_move_to_someday_and_autonomous_agent_workflow(db_session):
+    """ADR-066: 일정을 someday(또는 waiting/next_actions)로 이동 요청 시 현황 브리핑 오탐 없이 실제 파일 이동을 수행하는지 검증."""
+    temp_dir = tempfile.mkdtemp()
+    try:
+        gtd_dir = os.path.join(temp_dir, "gtd")
+        os.makedirs(gtd_dir, exist_ok=True)
+        inbox_file = os.path.join(gtd_dir, "inbox.md")
+        someday_file = os.path.join(gtd_dir, "someday_maybe.md")
+
+        with open(inbox_file, "w", encoding="utf-8") as f:
+            f.write("# 📥 Inbox\n- [ ] 은퇴 계획 정리 및 독서 📖\n- [ ] 트래블월렛 고객확인 💳\n")
+        with open(someday_file, "w", encoding="utf-8") as f:
+            f.write("# 💡 GTD Someday / Maybe\n\n## 🎯 개인 목표\n")
+
+        supervisor = SupervisorService(db=db_session, base_dir=temp_dir, fast_mode=True)
+        res = supervisor.process_user_request(
+            session_id="move_sess",
+            user_message="은퇴 계획 일정을 someday로 이동시켜줘",
+            channel="web",
+        )
+
+        assert res["intent"] == "gtd_move"
+        assert "someday_maybe.md" in res["ai_response"]
+        assert "은퇴 계획" in res["ai_response"]
+
+        with open(inbox_file, "r", encoding="utf-8") as f:
+            assert "은퇴 계획" not in f.read()
+        with open(someday_file, "r", encoding="utf-8") as f:
+            assert "은퇴 계획" in f.read()
+    finally:
+        shutil.rmtree(temp_dir)
+
+
+
 
 
 

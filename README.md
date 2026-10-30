@@ -316,6 +316,10 @@
   - **원문 마크다운 기호 완전 제거**: `/watson` 채팅 콘솔과 일일 로그 에디터 프리뷰에서 `###`, `**`, `- [ ]`, `---` 같은 날것의 마크다운 기호 대신 노션/깃허브 스타일의 구조화된 섹션 헤더, 인용구, 테이블, 코드 블록으로 깔끔하게 렌더링합니다.
   - **GTD 할 일 카드 & 타임스탬프/마감일 배지**: `- [ ]` 미완료 항목과 `- [x]` 완료 항목을 직관적인 체크박스 카드(`.md-task-item`)로 시각화하고, `[HH:MM]` 시간 기록은 스카이 블루 배지(`.md-time-badge`), `~YYYY-MM-DD` 마감일은 앰버 캘린더 배지(`.md-due-pill`)로 강조 표시합니다.
 
+- 🧠 **LLM 자율 GTD 스킬 위임 & 파이썬 워크플로우 경계 분리 (Autonomous GTD Skill Delegation - ADR-066)**
+  - **`gtd-assistant/SKILL.md` 원문 주입 & 자율 조작**: 연결된 GTD 저장소의 `SKILL.md`(5대 상태 파일: `inbox.md`, `next_actions.md`, `waiting_for.md`, `someday_maybe.md`, `projects.md`) 원문을 LLM에 주입하여, 자연어 요청은 LLM이 스킬 지침에 따라 직접 판단·편집하고 파이썬 백엔드는 세션·외부 API·Git 상태(`git status`) 감지 및 커밋/푸시 워크플로우만 전담합니다.
+  - **GTD 상태 파일 간 이동 (`gtd_move`)**: *"~ 일정을 someday로 이동시켜줘"*, *"~를 대기(waiting)로 옮겨줘"* 요청 시 현황 브리핑 오탐 없이 원본 파일에서 항목을 잘라내어 `gtd/someday_maybe.md` 등 목적지 파일로 즉시 이동합니다.
+
 - 📁 **GTD 저장소 격리 및 외부 체계 오케스트레이션 (GTD Repo Isolation - ADR-007)**
 
   - 왓슨 봇 소스코드 저장소와 개인 데이터(GTD/라이프로그) 저장소를 물리적으로 완벽히 분리합니다.

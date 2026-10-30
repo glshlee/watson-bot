@@ -522,6 +522,135 @@ class GTDService:
 
         return completed_tasks
 
+    def move_gtd_tasks(self, target_query: str, destination: str) -> dict[str, Any]:
+        """
+        GTD 상태 파일(inbox.md, next_actions.md, waiting_for.md, someday_maybe.md, 당일 일일 로그)에서
+        target_query와 일치하는 미완료 태스크를 찾아 잘라낸(Cut) 뒤,
+        지정된 destination 상태 파일(someday_maybe.md, waiting_for.md, next_actions.md, inbox.md)로 이동(Paste)합니다 (ADR-066).
+        """
+        dest_norm = (destination or "someday").strip().lower()
+        dest_map = {
+            "someday": ("someday_maybe.md", "# 💡 GTD Someday / Maybe (언젠가 / 혹시)\n\n## 🎯 보류 및 아이디어 (Someday / Maybe)\n"),
+            "someday_maybe": ("someday_maybe.md", "# 💡 GTD Someday / Maybe (언젠가 / 혹시)\n\n## 🎯 보류 및 아이디어 (Someday / Maybe)\n"),
+            "언젠가": ("someday_maybe.md", "# 💡 GTD Someday / Maybe (언젠가 / 혹시)\n\n## 🎯 보류 및 아이디어 (Someday / Maybe)\n"),
+            "waiting": ("waiting_for.md", "# ⏳ GTD Waiting For (대기 중)\n\n## ⏳ 외부 응답 및 대기 항목\n"),
+            "waiting_for": ("waiting_for.md", "# ⏳ GTD Waiting For (대기 중)\n\n## ⏳ 외부 응답 및 대기 항목\n"),
+            "대기": ("waiting_for.md", "# ⏳ GTD Waiting For (대기 중)\n\n## ⏳ 외부 응답 및 대기 항목\n"),
+            "next": ("next_actions.md", "# ⚡ GTD Next Actions (다음 행동)\n\n## 💡 다음 행동 (Next Actions)\n"),
+            "next_actions": ("next_actions.md", "# ⚡ GTD Next Actions (다음 행동)\n\n## 💡 다음 행동 (Next Actions)\n"),
+            "다음행동": ("next_actions.md", "# ⚡ GTD Next Actions (다음 행동)\n\n## 💡 다음 행동 (Next Actions)\n"),
+            "inbox": ("inbox.md", "# 📥 GTD Inbox (수집함)\n\n## 💬 빠른 메모 / 캡처 (Watson & Quick Capture)\n"),
+            "수집함": ("inbox.md", "# 📥 GTD Inbox (수집함)\n\n## 💬 빠른 메모 / 캡처 (Watson & Quick Capture)\n"),
+            "projects": ("projects.md", "# 🎯 GTD Projects (프로젝트 인덱스)\n\n## 🚀 활성 프로젝트\n"),
+        }
+        dest_filename, default_header = dest_map.get(
+            dest_norm,
+            ("someday_maybe.md", "# 💡 GTD Someday / Maybe (언젠가 / 혹시)\n\n## 🎯 보류 및 아이디어 (Someday / Maybe)\n"),
+        )
+        gtd_dir = os.path.join(self.base_dir, "gtd")
+        os.makedirs(gtd_dir, exist_ok=True)
+        dest_filepath = (
+            self.get_gtd_inbox_filepath()
+            if dest_filename == "inbox.md"
+            else os.path.join(gtd_dir, dest_filename)
+        )
+
+        # 검색 키워드 정제
+        cleaned_q = re.sub(
+            r"(?:일정을|일정은|일정|할일을|할일은|할일|태스크를|태스크는|태스크|항목을|항목은|항목|을|를|은|는|이|가)?\s*"
+            r"(?:someday_maybe|someday|waiting_for|waiting|next_actions|next|inbox|언젠가|보류|대기|다음\s*행동|수집함|인박스)"
+            r"(?:으로|로|에|파일로|목록으로)?\s*(?:이동시켜줘|이동시켜달라고|이동해줘|이동|옮겨줘|옮겨|보내줘|보내|빼줘|빼).*$",
+            "",
+            target_query.strip(),
+            flags=re.IGNORECASE,
+        ).strip()
+        cleaned_q = re.sub(r"[은는이가을를도]$", "", cleaned_q).strip()
+
+        keywords = [w.lower() for w in re.split(r"\s+", cleaned_q) if len(w.strip()) >= 2]
+        if not keywords and len(cleaned_q) >= 2:
+            keywords = [cleaned_q.lower()]
+
+        today_log = (
+            self.lifelog_service.get_lifelog_filepath()
+            if self.lifelog_service
+            else os.path.join(self.base_dir, "logs", "daily", f"{get_now().strftime('%Y-%m-%d')}.md")
+        )
+        source_candidates = [
+            self.get_gtd_inbox_filepath(),
+            os.path.join(gtd_dir, "next_actions.md"),
+            os.path.join(gtd_dir, "waiting_for.md"),
+            os.path.join(gtd_dir, "someday_maybe.md"),
+            today_log,
+        ]
+
+        moved_tasks: list[str] = []
+        source_files_used: list[str] = []
+
+        for src_path in source_candidates:
+            if not os.path.exists(src_path) or os.path.abspath(src_path) == os.path.abspath(dest_filepath):
+                continue
+            try:
+                with open(src_path, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+            except OSError:
+                continue
+
+            new_lines = []
+            modified = False
+            for line in lines:
+                line_s = line.strip()
+                if line_s.startswith("- [ ]"):
+                    line_lower = line_s.lower()
+                    matched = False
+                    if keywords:
+                        for kw in keywords:
+                            if kw in line_lower or kw.replace(" ", "") in line_lower.replace(" ", ""):
+                                matched = True
+                                break
+                    if matched:
+                        task_raw = line_s[5:].strip()
+                        moved_tasks.append(task_raw)
+                        modified = True
+                        src_name = os.path.basename(src_path)
+                        if src_name not in source_files_used:
+                            source_files_used.append(src_name)
+                        continue
+                new_lines.append(line)
+
+            if modified:
+                try:
+                    with open(src_path, "w", encoding="utf-8") as f:
+                        f.writelines(new_lines)
+                except OSError as e:
+                    logger.error(f"Failed to update source GTD file {src_path}: {e}")
+
+        # 만약 기존 파일에 없으면 신규 항목으로 목적지 파일에 추가할 수 있도록 처리
+        if not moved_tasks and cleaned_q and len(cleaned_q) >= 2:
+            moved_tasks.append(cleaned_q)
+            source_files_used.append("신규 분류")
+
+        if moved_tasks:
+            if not os.path.exists(dest_filepath):
+                with open(dest_filepath, "w", encoding="utf-8") as f:
+                    f.write(default_header)
+            with open(dest_filepath, "r", encoding="utf-8") as f:
+                dest_content = f.read()
+            if not dest_content.endswith("\n"):
+                dest_content += "\n"
+            for t in moved_tasks:
+                t_line = t if t.startswith("- [") else f"- [ ] {t}"
+                dest_content += f"{t_line}\n"
+            with open(dest_filepath, "w", encoding="utf-8") as f:
+                f.write(dest_content)
+
+        return {
+            "success": len(moved_tasks) > 0,
+            "moved_tasks": moved_tasks,
+            "source_files": source_files_used,
+            "dest_file": f"gtd/{dest_filename}",
+            "dest_filepath": dest_filepath,
+        }
+
     def read_gtd_files(self) -> str:
         """
         현재 연결된 GTD 저장소의 수집함(inbox.md) 및 다음 행동(next_actions.md) 파일을 직접 읽어
@@ -559,13 +688,28 @@ class GTDService:
         else:
             next_content = "(파일이 존재하지 않습니다)"
 
+        someday_path = os.path.join(self.base_dir, "gtd", "someday_maybe.md")
+        someday_section = ""
+        if os.path.exists(someday_path):
+            try:
+                with open(someday_path, "r", encoding="utf-8") as f:
+                    s_lines = f.readlines()
+                    s_open = sum(1 for line in s_lines if line.strip().startswith("- [ ]"))
+                    s_content = "".join(s_lines).strip()
+                someday_section = (
+                    f"\n\n#### 💭 3. 언젠가 / 보류 Someday (`gtd/someday_maybe.md`) - 미완료 `{s_open}`개\n"
+                    f"```markdown\n{s_content}\n```"
+                )
+            except OSError:
+                pass
+
         dday_section = ""
         try:
             from app.services.due_date_service import DueDateService
             scan_res = DueDateService.scan_gtd_due_tasks(self.base_dir)
             if scan_res["total_count"] > 0:
                 dday_lines = [
-                    f"#### ⏳ 3. 마감일(D-Day) 현황 - 총 `{scan_res['total_count']}`개 (긴급 `{scan_res['action_needed_count']}`개)"
+                    f"#### ⏳ 4. 마감일(D-Day) 현황 - 총 `{scan_res['total_count']}`개 (긴급 `{scan_res['action_needed_count']}`개)"
                 ]
                 for t in scan_res["all_tasks"][:5]:
                     dday_lines.append(f"* {t['badge']} `{t['display_title']}` (~{t['due_date_str']}) - {t['source_label']}")
@@ -581,5 +725,6 @@ class GTDService:
             f"```markdown\n{inbox_content}\n```\n\n"
             f"#### ⚡ 2. 다음 행동 Next Actions (`{next_rel}`) - 미완료 `{next_open}`개\n"
             f"```markdown\n{next_content}\n```"
+            f"{someday_section}"
             f"{dday_section}\n"
         )

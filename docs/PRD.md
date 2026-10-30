@@ -620,6 +620,12 @@
 * **GTD 태스크 카드 & 타임스탬프/D-Day 배지 시각화**:
   * `- [ ]` 미완료 항목과 `- [x]` 완료 항목을 체크박스 아이콘과 취소선이 적용된 카드형 리스트(`.md-task-item`)로 표현하고, `[HH:MM]` 시간 배지(`.md-time-badge`) 및 `~YYYY-MM-DD` 마감일 배지(`.md-due-pill`)를 자동 하이라이팅.
 
+### 3.63. 🧠 LLM 자율 GTD 스킬 위임 및 파이썬 워크플로우 경계 분리 (Autonomous GTD Skill Delegation - ADR-066)
+* **`gtd-assistant/SKILL.md` 원문 주입 및 자율 파일 조작**:
+  * 연결된 GTD 저장소의 `SKILL.md`(5대 상태 파일: `inbox.md`, `next_actions.md`, `waiting_for.md`, `someday_maybe.md`, `projects.md`) 원문을 LLM 프롬프트에 직접 주입하고, 자연어 분류/이동 요청 시 LLM이 스킬 지침에 따라 마크다운을 직접 편집하거나 `gtd_move` 워크플로우를 호출하도록 지원.
+* **GTD 상태 파일 간 이동 (`gtd_move`) 및 파이썬 `git status` 감지**:
+  * *"~ 일정을 someday로 이동시켜줘"*, *"~를 waiting으로 옮겨줘"* 요청 시 현황 브리핑 오탐 없이 `GTDService.move_gtd_tasks` 또는 LLM 직접 편집을 통해 출발지 파일에서 잘라내어 `gtd/someday_maybe.md` 등 목적지 파일로 즉시 이동하며, 파이썬 백엔드는 `git status` 변경 감지 및 커밋/푸시 워크플로우만 전담.
+
 
 ---
 

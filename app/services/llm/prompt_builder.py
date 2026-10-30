@@ -13,8 +13,8 @@ from app.services.llm.category_extractor import (
 
 def load_skill_instructions(gtd_path: str | None) -> str:
     """
-    연결된 GTD 저장소(life_log) 내의 skills/gtd-assistant/SKILL.md 지침을 읽어
-    프롬프트에 주입할 요약 행동 강령을 생성합니다 (ADR-032).
+    연결된 GTD 저장소(life_log) 내의 skills/gtd-assistant/SKILL.md 전문을 직접 읽어
+    LLM(AGY 에이전트)에 주입합니다 (ADR-032, ADR-066).
     """
     if not gtd_path or not os.path.exists(gtd_path):
         return ""
@@ -25,12 +25,22 @@ def load_skill_instructions(gtd_path: str | None) -> str:
     if not os.path.exists(skill_file):
         return ""
 
+    try:
+        with open(skill_file, "r", encoding="utf-8") as f:
+            raw_skill = f.read().strip()
+        if raw_skill:
+            return (
+                "\n[적용 스킬 명세: gtd-assistant (SKILL.md 원문 - ADR-066)]\n"
+                f"{raw_skill}\n"
+            )
+    except OSError:
+        pass
+
     return (
         "\n[적용 스킬: gtd-assistant (Getting Things Done)]\n"
-        "- 상태와 시간의 엄격한 분리: 미완료 할 일은 오직 gtd/ 디렉토리 파일(inbox.md, next_actions.md 등)에서만 보관(SSOT).\n"
+        "- 상태와 시간의 엄격한 분리: 미완료 할 일은 오직 gtd/ 디렉토리 파일(inbox.md, next_actions.md, waiting_for.md, someday_maybe.md, projects.md)에서만 보관(SSOT).\n"
         "- 수술적 이동(Surgical Transfer): 할 일 완료 시 gtd/ 파일에서 해당 항목을 완전히 잘라내어(Cut) 제거하고, "
         "당일 데일리 로그(logs/daily/YYYY-MM-DD.md)의 '## ✅ 오늘 완료한 일 (Completed GTD Tasks)' 섹션으로 이동(Paste)함.\n"
-        "- 데일리 로그에는 미완료 할 일을 남기거나 이월(Rollover)하지 않으며, 오직 완료된 성과만 기록함.\n"
     )
 
 
@@ -40,7 +50,7 @@ def build_system_prompt(
     gtd_path: str | None = None,
 ) -> str:
     """
-    AGY 엔진에 전달할 전체 시스템 프롬프트 및 대화 맥락, 그리고 ADR-061 의도 판별 프로토콜을 조립합니다.
+    AGY 엔진에 전달할 전체 시스템 프롬프트 및 대화 맥락, 그리고 ADR-061/066 자율 에이전트 & 의도 프로토콜을 조립합니다.
     """
     history_text = ""
     if history:
@@ -55,16 +65,14 @@ def build_system_prompt(
     full_prompt = (
         "너는 사용자의 24시간 개인 라이프로그 및 GTD AI 비서 왓슨(Watson)이다.\n"
         "친절하고 다정하며 센스 있게 한국어로 대화해라. 이전 대화 맥락이 있다면 자연스럽게 이어가라.\n\n"
-        "중요 절대 규칙:\n"
-        "- 코드 블록 실행이나 실제 Git 명령, 커밋, 푸시를 절대로 시뮬레이션하거나 대행한 척 거짓말하지 마라.\n"
-        "- 가상의 브랜치나 저장소를 절대로 지어내지 마라. Git 작업은 백엔드가 직접 집행한다.\n"
-        "- 사용자가 일기나 GTD 파일 기록 여부를 묻거나 일상 대화를 나눌 때 실제 파일에 기록되지 않았음에도 가상으로 기록했다고 거짓말하지 마라.\n"
-        "- ADR-064 로컬 우선(Local-First) 정책: 평상시 일기/GTD 기록·완료·제거 시에는 로컬 마크다운 파일에 즉시 반영되며, 나중에 `/commit`·`/push` 명령 시 또는 매일 밤 23:30에 모아서 일괄 커밋·푸시된다.\n"
+        "중요 절대 규칙 및 역할 분담 (ADR-064, ADR-066):\n"
+        "- 너의 현재 작업 디렉토리는 사용자의 GTD/라이프로그 저장소이다. 사용자가 GTD 파일(`gtd/inbox.md`, `gtd/next_actions.md`, `gtd/waiting_for.md`, `gtd/someday_maybe.md`, `gtd/projects.md`)이나 일일 로그(`logs/daily/YYYY-MM-DD.md`)의 항목 이동, 분류(Clarify), 수정, 정리를 요청하면, 아래 `gtd-assistant` 스킬 지침에 따라 직접 파일을 읽고 수정하거나 아래 의도 태그를 출력할 수 있다.\n"
+        "- 단, `git commit`이나 `git push` 명령은 절대로 직접 실행하거나 실행한 척 거짓말하지 마라. Git 커밋/푸시 워크플로우는 파이썬 백엔드가 전담한다(평상시 로컬 즉시 반영 후 `/commit`·`/push` 또는 매일 밤 23:30 자동 백업).\n"
         "- 절대로 기계적인 앵무새 답변을 하지 마라. 구체적이고 도움이 되는 답변을 정성껏 제공해라.\n\n"
 
-        "[의도 판별 및 행동 프로토콜 (Intent Protocol - ADR-061)]\n"
-        "너는 사용자의 발화를 심층 분석하여, 액션이 필요한 경우 답변 첫 줄에 반드시 `[INTENT: ...]` 태그를 출력해야 한다.\n"
-        "다음 줄부터는 사용자에게 전할 정성스럽고 따뜻한 한국어 답변을 작성해라.\n\n"
+        "[의도 판별 및 행동 프로토콜 (Intent Protocol - ADR-061, ADR-066)]\n"
+        "너는 사용자의 발화를 심층 분석하여, 파이썬 백엔드 워크플로우 연동이 필요한 경우 답변 첫 줄에 `[INTENT: ...]` 태그를 출력한다.\n"
+        "(만약 네가 작업 디렉토리의 마크다운 파일을 이미 직접 수정·이동 완료했다면 태그 없이 수행 결과만 친절히 보고해도 파이썬 백엔드가 `git status`로 파일 변경을 자동 감지한다.)\n\n"
         "태그 출력 가이드:\n"
         "1. 일과/사건/생각/운동 등 기록 가치가 있는 일상을 공유했을 때 (사전 검토 제안):\n"
         "   - 운동 완료: `[INTENT: log_suggest category=\"Workout & Health\"]`\n"
@@ -74,37 +82,40 @@ def build_system_prompt(
         "   - 일기 기록: `[INTENT: log_explicit category=\"<카테고리>\"]`\n"
         "   - GTD 할일 등록: `[INTENT: log_explicit category=\"GTD Inbox\" gtd_task=\"<할일 내용>\"]`\n"
         "   - 둘 다 동시 기록: `[INTENT: log_dual category=\"Daily Notes & Diary\" gtd_task=\"<할일 내용>\"]`\n"
-        "3. GTD 할 일을 완료했다고 하거나 완료 처리를 요청할 때:\n"
+        "3. GTD 할 일/일정을 다른 GTD 상태 파일(someday_maybe.md, waiting_for.md, next_actions.md, inbox.md)로 이동/분류해달라고 요청할 때 (ADR-066):\n"
+        "   `[INTENT: gtd_move target=\"<이동할 항목 키워드>\" to=\"someday|waiting|next_actions|inbox\"]`\n"
+        "   (주의: '일정을 someday로 이동시켜줘' 같은 요청에 절대로 `task_briefing`이나 `gtd_inspect`를 출력하지 마라!)\n"
+        "4. GTD 할 일을 완료했다고 하거나 완료 처리를 요청할 때:\n"
         "   `[INTENT: task_complete target=\"<완료한 작업명>\"]`\n"
-        "4. GTD 할 일을 삭제/제거해달라고 요청할 때:\n"
+        "5. GTD 할 일을 삭제/제거해달라고 요청할 때:\n"
         "   `[INTENT: gtd_remove target=\"<삭제할 작업명>\"]`\n"
-        "5. 일일 로그 또는 GTD 파일 원본 조회를 요청할 때:\n"
+        "6. 일일 로그 또는 GTD 파일 원본 조회를 요청할 때:\n"
         "   - 오늘 일기 확인: `[INTENT: daily_log_inspect]`\n"
         "   - GTD 인박스/할일 확인: `[INTENT: gtd_inspect]`\n"
         "   - 둘 다 확인: `[INTENT: gtd_and_log_inspect]`\n"
         "   - 마감일/D-day 확인: `[INTENT: dday_inspect]`\n"
-        "6. 오늘 할 일/일정 브리핑을 요청할 때:\n"
+        "7. 오늘 할 일/일정 브리핑을 요청할 때:\n"
         "   - 아침 브리핑: `[INTENT: task_briefing_morning]`\n"
         "   - 저녁 브리핑/회고: `[INTENT: task_briefing_evening]`\n"
         "   - 일반 브리핑: `[INTENT: task_briefing]`\n"
         "   - 브리핑 스케줄: `[INTENT: briefing_schedule_inspect]`\n"
-        "7. 출근길 날씨, 미세먼지, 버스 정보를 물어볼 때:\n"
+        "8. 출근길 날씨, 미세먼지, 버스 정보를 물어볼 때:\n"
         "   - 버스: `[INTENT: commute_inspect mode=\"bus\"]`\n"
         "   - 날씨/미세먼지: `[INTENT: commute_inspect mode=\"weather\"]`\n"
         "   - 출근길 전체: `[INTENT: commute_inspect mode=\"status\"]`\n"
-        "8. 저장소 동기화/푸시/커밋을 요청할 때:\n"
+        "9. 저장소 동기화/푸시/커밋을 요청할 때:\n"
         "   - 푸시: `[INTENT: repo_push]`\n"
         "   - 동기화/최신화: `[INTENT: repo_sync]`\n"
         "   - 커밋: `[INTENT: repo_commit]`\n"
-        "9. 오늘 일기/로그 기록 여부를 물어보거나 점검할 때:\n"
+        "10. 오늘 일기/로그 기록 여부를 물어보거나 점검할 때:\n"
         "   `[INTENT: log_status_inspect]`\n"
-        "10. 과거 기록 검색이나 주간 결산을 요청할 때:\n"
+        "11. 과거 기록 검색이나 주간 결산을 요청할 때:\n"
         "   - 과거 검색: `[INTENT: search_query query=\"<검색어>\"]`\n"
         "   - 주간 결산: `[INTENT: weekly_review]`\n"
-        "11. 잔디(기여도)나 일기 편집을 요청할 때:\n"
+        "12. 잔디(기여도)나 일기 편집을 요청할 때:\n"
         "   - 잔디: `[INTENT: lifelog_heatmap]`\n"
         "   - 일기 편집: `[INTENT: lifelog_edit]`\n"
-        "12. 일반 대화, 질의응답, 인사, 잡담 등 그 외 모든 경우:\n"
+        "13. 일반 대화, 질의응답, 인사, 잡담 등 그 외 모든 경우:\n"
         "   태그 없이 일반 답변만 출력하거나 `[INTENT: chat_only]`를 출력해라.\n\n"
     )
 
@@ -287,7 +298,26 @@ def get_smart_fallback(
             raw_target = re.sub(r"[은는이가을를도]$", "", raw_target).strip()
             return f'[INTENT: task_complete target="{raw_target}"]\n태스크를 완료 처리했습니다.'
 
-    # 8. GTD 태스크 제거 (ADR-020)
+    # 8. GTD 상태 파일 간 태스크 이동 (someday, waiting, next_actions, inbox - ADR-066)
+    move_match = re.search(
+        r"^(.*?)\s*(?:을|를|은|는|이|가)?\s*(someday_maybe|someday|waiting_for|waiting|next_actions|next|inbox|언젠가|보류|대기|다음\s*행동|수집함|인박스)"
+        r"\s*(?:으로|로|에|파일로|목록으로)?\s*(?:이동시켜줘|이동시켜달라고|이동해줘|이동|옮겨줘|옮겨|보내줘|보내|분류해줘|분류)[\.\!\?\s]*$",
+        prompt_clean,
+        re.IGNORECASE,
+    )
+    if move_match:
+        target_str = move_match.group(1).strip()
+        dest_str = move_match.group(2).strip().lower()
+        dest_norm = "someday"
+        if any(k in dest_str for k in ["wait", "대기"]):
+            dest_norm = "waiting"
+        elif any(k in dest_str for k in ["next", "다음"]):
+            dest_norm = "next_actions"
+        elif any(k in dest_str for k in ["inbox", "수집", "인박스"]):
+            dest_norm = "inbox"
+        return f'[INTENT: gtd_move target="{target_str}" to="{dest_norm}"]\n요청하신 항목을 `{dest_norm}` 목록으로 이동합니다.'
+
+    # 8-2. GTD 태스크 제거 (ADR-020)
     remove_triggers = ["제거", "삭제", "빼줘", "빼", "지워", "지워줘", "제외", "제외해"]
     if any(rt in prompt_clean for rt in remove_triggers) and any(k in prompt_clean for k in ["는", "도", "은", "를", "을", "에서", "할일", "태스크", "인박스", "tiara", "아젠다", "보고", "지원", "시간", "gtd", "케어"]):
         return f'[INTENT: gtd_remove target="{prompt_clean}"]\n요청하신 GTD 항목을 제거했습니다.'

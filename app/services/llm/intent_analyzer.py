@@ -355,6 +355,16 @@ def _parse_llm_intent_result(
             category="GTD",
         )
 
+    if intent_tag == "gtd_move":
+        target = attrs.get("target") or prompt_clean
+        dest = attrs.get("to") or attrs.get("dest") or "someday"
+        return IntentResult(
+            intent="gtd_move",
+            ai_response=ai_response,
+            log_content=target,
+            category=dest,
+        )
+
     if intent_tag == "gtd_remove":
         target = attrs.get("target") or prompt_clean
         return IntentResult(

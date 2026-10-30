@@ -375,6 +375,10 @@
 - **FR-64.1**: `app/static/js/utils/modal.js`에 XSS 이스케이프 및 블록/인라인 파싱을 지원하는 `renderRichMarkdown`(`window.WatsonMarkdown.render`)을 구현하여 헤더(`h1`~`h4`), 인용구, 테이블, 코드 블록, 수평선, 불릿/번호 목록을 불필요한 `<br>` 중첩 없이 렌더링해야 한다.
 - **FR-64.2**: GTD 체크리스트(`- [ ]`, `- [x]`)를 카드형 `.md-task-item`으로, 타임스탬프(`[HH:MM]`)를 `.md-time-badge`로, 마감일(`~YYYY-MM-DD`)을 `.md-due-pill` 배지로 시각화하고 `/watson` 채팅 콘솔(`main.js`), 에디터 모달(`editor_modal.js`), 출근 프리뷰(`commute_modal.js`)에 일괄 적용해야 한다.
 
+### FR-65: LLM 자율 GTD 스킬 위임 및 상태 파일 간 이동 워크플로우 (ADR-066)
+- **FR-65.1**: `load_skill_instructions()`는 GTD 저장소 내 `.agents/skills/gtd-assistant/SKILL.md` 원문 전체를 로드하여 LLM이 5대 GTD 상태 파일(`inbox.md`, `next_actions.md`, `waiting_for.md`, `someday_maybe.md`, `projects.md`) 규약을 온전히 준수하도록 해야 한다.
+- **FR-65.2**: `SupervisorService`는 LLM 실행 전후의 `git_service.get_dirty_files()` 차이를 감지하여 LLM의 자율 마크다운 편집을 로컬 우선 워크플로우와 연결하고, `GTDService.move_gtd_tasks()` 및 `gtd_move` 인텐트를 통해 상태 파일 간 항목 이동(Cut & Paste)을 브리핑 오탐 없이 수행해야 한다.
+
 
 ---
 
@@ -463,6 +467,7 @@
 | **FR-62** | `app/templates/index.html`, `app/templates/dev.html`, `app/static/css/layout.css`, `app/static/css/modals.css`, `app/static/css/responsive.css`, `app/static/js/utils/modal.js`, `app/static/js/modules/gtd_modal.js` | Pytest 단위 테스트(`test_web_router.py`) & 브라우저 헤더/팝오버 렌더링 검증 (ADR-063) |
 | **FR-63** | `app/services/git_service.py`, `app/services/supervisor_service.py`, `app/services/briefing_scheduler.py`, `app/services/briefing_service.py`, `app/routers/chat_router.py`, `app/routers/briefing_router.py` | Pytest 단위 테스트(`test_supervisor_service.py`, `test_briefing_scheduler.py`) 검증 (ADR-064) |
 | **FR-64** | `app/static/js/utils/modal.js`, `app/static/js/main.js`, `app/static/js/modules/editor_modal.js`, `app/static/js/modules/commute_modal.js`, `app/static/css/chat.css` | Pytest 정적 에셋 테스트(`test_web_router.py`) & 브라우저 렌더링 검증 (ADR-065) |
+| **FR-65** | `app/services/llm/prompt_builder.py`, `app/services/llm/intent_analyzer.py`, `app/services/gtd_service.py`, `app/services/supervisor_service.py` | Pytest 단위 테스트(`test_supervisor_service.py`) 검증 (ADR-066) |
 
 
 
