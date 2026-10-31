@@ -66,20 +66,149 @@ class TelegramService:
             return True
         return str(chat_id) in self.allowed_chat_ids
 
+    @staticmethod
+    def format_for_telegram_html(text: str) -> str:
+        """
+        마크다운 형식의 메시지(# 헤더, **볼드**, `코드`, ```markdown 블록, - [ ] 체크박스 등)를
+        텔레그램 네이티브 HTML(parse_mode='HTML') 리치 포맷으로 예쁘게 변환합니다 (ADR-065 확장).
+        """
+        if not text:
+            return ""
+
+        import html
+
+        # 1. ```markdown ... ``` 코드블록 래퍼는 벗겨내어 내부 GTD/일기 항목도 리치 포맷팅 적용
+        processed = re.sub(
+            r"```(?:markdown|md)\n([\s\S]*?)```",
+            lambda m: m.group(1).strip(),
+            text,
+            flags=re.IGNORECASE,
+        )
+
+        # 2. 일반 코드블록(```python 등)은 플레이스홀더로 보호
+        code_blocks: list[str] = []
+
+        def _save_code_block(match: re.Match[str]) -> str:
+            code_content = html.escape(match.group(1).strip())
+            idx = len(code_blocks)
+            code_blocks.append(f"<pre>{code_content}</pre>")
+            return f"@@TG_CODE_BLOCK_{idx}@@"
+
+        processed = re.sub(r"```[a-zA-Z0-9_-]*\n([\s\S]*?)```", _save_code_block, processed)
+
+        # 3. 인라인 코드(`...`) 보호
+        inline_codes: list[str] = []
+
+        def _save_inline_code(match: re.Match[str]) -> str:
+            c_text = html.escape(match.group(1))
+            idx = len(inline_codes)
+            inline_codes.append(f"<code>{c_text}</code>")
+            return f"@@TG_INLINE_CODE_{idx}@@"
+
+        processed = re.sub(r"`([^`\n]+)`", _save_inline_code, processed)
+
+        # 4. 줄 단위 파싱 및 변환
+        out_lines: list[str] = []
+        for raw_line in processed.splitlines():
+            line = raw_line.rstrip()
+            stripped = line.strip()
+
+            # 수평선 (---, ***)
+            if re.match(r"^[-*]{3,}$", stripped):
+                out_lines.append("━━━━━━━━━━━━━━━━━━")
+                continue
+
+            # 마크다운 헤더 (#, ##, ###, ####) -> 굵은 강조 타이틀로 변환
+            h_match = re.match(r"^(#{1,6})\s+(.*)$", stripped)
+            if h_match:
+                level = len(h_match.group(1))
+                title_raw = html.escape(h_match.group(2).strip())
+                title_formatted = re.sub(r"\*\*(.+?)\*\*", r"\1", title_raw)
+                if level == 1:
+                    out_lines.append(f"\n📌 <b>{title_formatted}</b>")
+                elif level == 2:
+                    out_lines.append(f"\n<b>{title_formatted}</b>")
+                else:
+                    out_lines.append(f"<b>{title_formatted}</b>")
+                continue
+
+            # 인용구 (> ...) -> 텔레그램 blockquote
+            if stripped.startswith(">"):
+                q_text = html.escape(stripped.lstrip(">").strip())
+                q_text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", q_text)
+                out_lines.append(f"<blockquote>{q_text}</blockquote>")
+                continue
+
+            # GTD 미완료 체크박스 (- [ ] ...)
+            todo_match = re.match(r"^[-*]\s*\[\s*\]\s+(.*)$", stripped)
+            if todo_match:
+                item_text = html.escape(todo_match.group(1).strip())
+                item_text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", item_text)
+                item_text = re.sub(r"(~\d{4}-\d{2}-\d{2}|@due\(\d{4}-\d{2}-\d{2}\))", r"<code>📅 \1</code>", item_text)
+                out_lines.append(f"  ▫️ {item_text}")
+                continue
+
+            # GTD 완료 체크박스 (- [x] ...)
+            done_match = re.match(r"^[-*]\s*\[[xX]\]\s+(.*)$", stripped)
+            if done_match:
+                item_text = html.escape(done_match.group(1).strip())
+                item_text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", item_text)
+                out_lines.append(f"  ✅ <s>{item_text}</s>")
+                continue
+
+            # 일일 로그 타임스탬프 불릿 (- [HH:MM] ...)
+            ts_match = re.match(r"^[-*]\s*\[(\d{2}:\d{2})\]\s+(.*)$", stripped)
+            if ts_match:
+                ts_val = ts_match.group(1)
+                body_text = html.escape(ts_match.group(2).strip())
+                body_text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", body_text)
+                out_lines.append(f"  🕒 <code>{ts_val}</code> {body_text}")
+                continue
+
+            # 일반 불릿 리스트 (- ..., * ...)
+            bullet_match = re.match(r"^(\s*)[-*]\s+(.*)$", line)
+            if bullet_match:
+                indent = "  " if len(bullet_match.group(1)) >= 2 else ""
+                b_text = html.escape(bullet_match.group(2).strip())
+                b_text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", b_text)
+                b_text = re.sub(r"\[([^\]]+)\]\((https?://[^\)]+)\)", r'<a href="\2">\1</a>', b_text)
+                out_lines.append(f"{indent}• {b_text}")
+                continue
+
+            # 일반 텍스트 라인
+            escaped = html.escape(line)
+            escaped = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", escaped)
+            escaped = re.sub(r"~~(.+?)~~", r"<s>\1</s>", escaped)
+            escaped = re.sub(r"\[([^\]]+)\]\((https?://[^\)]+)\)", r'<a href="\2">\1</a>', escaped)
+            out_lines.append(escaped)
+
+        result = "\n".join(out_lines)
+
+        # 5. 보호된 인라인 코드 및 코드블록 복원
+        for idx, c_html in enumerate(inline_codes):
+            result = result.replace(f"@@TG_INLINE_CODE_{idx}@@", c_html)
+        for idx, b_html in enumerate(code_blocks):
+            result = result.replace(f"@@TG_CODE_BLOCK_{idx}@@", b_html)
+
+        # 과도한 연속 빈 줄(3줄 이상)을 2줄로 정리
+        result = re.sub(r"\n{3,}", "\n\n", result).strip()
+        return result
+
     async def send_message(
         self,
         chat_id: int | str,
         text: str,
         reply_markup: dict[str, Any] | None = None,
-        parse_mode: str | None = None,
+        parse_mode: str | None = "HTML",
     ) -> bool:
-        """텔레그램 사용자에게 메시지를 전송합니다."""
+        """텔레그램 사용자에게 리치 포맷(기본 HTML)으로 메시지를 전송합니다."""
         if not self.is_configured():
             return False
 
+        formatted_text = self.format_for_telegram_html(text) if parse_mode == "HTML" else text
         payload: dict[str, Any] = {
             "chat_id": chat_id,
-            "text": text,
+            "text": formatted_text,
         }
         if reply_markup:
             payload["reply_markup"] = reply_markup
@@ -94,6 +223,7 @@ class TelegramService:
                         f"Telegram sendMessage with parse_mode={parse_mode} failed ({res.status_code}: {res.text}), retrying without parse_mode..."
                     )
                     payload.pop("parse_mode", None)
+                    payload["text"] = text
                     res = await client.post(f"{self.base_url}/sendMessage", json=payload)
                 return res.status_code == 200
         except httpx.HTTPError as e:
@@ -123,16 +253,17 @@ class TelegramService:
         message_id: int,
         text: str,
         reply_markup: dict[str, Any] | None = None,
-        parse_mode: str | None = None,
+        parse_mode: str | None = "HTML",
     ) -> bool:
-        """기존 텔레그램 메시지의 텍스트 및 인라인 키보드를 인라인으로 수정합니다 (ADR-039)."""
+        """기존 텔레그램 메시지의 텍스트 및 인라인 키보드를 리치 포맷(기본 HTML)으로 인라인 수정합니다 (ADR-039)."""
         if not self.is_configured():
             return False
 
+        formatted_text = self.format_for_telegram_html(text) if parse_mode == "HTML" else text
         payload: dict[str, Any] = {
             "chat_id": chat_id,
             "message_id": message_id,
-            "text": text,
+            "text": formatted_text,
         }
         if reply_markup:
             payload["reply_markup"] = reply_markup
@@ -149,6 +280,7 @@ class TelegramService:
                         f"Telegram editMessageText with parse_mode={parse_mode} failed ({res.status_code}: {res.text}), retrying without parse_mode..."
                     )
                     payload.pop("parse_mode", None)
+                    payload["text"] = text
                     res = await client.post(f"{self.base_url}/editMessageText", json=payload)
                     if res.status_code == 200:
                         return True
